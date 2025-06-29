@@ -6,12 +6,13 @@ import {
     SvelteFlowProvider,
     type Node,
     type Edge,
-    useSvelteFlow
-
+    useSvelteFlow,
 } from '@xyflow/svelte'
 import * as d3Force from 'd3-force';
 import type { Simulation } from 'd3-force';
 import '@xyflow/svelte/dist/style.css'
+import { config } from '$lib/config'
+import { createNodeIdGenerator } from './util';
 
 export type LayoutState =
   | "grid"
@@ -35,6 +36,8 @@ export default class LayoutStateManager {
   private simulation: d3.Simulation<Node, Edge>;
   private currentState: LayoutState = "grid";
   private payload: LayoutPayload = {};
+
+  private nextFileNodeId = createNodeIdGenerator('file')
 
   constructor(simulation: d3.Simulation<Node, Edge>) {
     this.simulation = simulation;
@@ -69,5 +72,44 @@ export default class LayoutStateManager {
     this.simulation.force("snap", null);
     this.simulation.force("highlight", null);
     // Add others as needed
+  }
+
+  /// Returned string is NodeId; otherwise returns null
+  public dropFiles(files: [File]): [string] | null {
+    if (this.state !== 'mainGrid') { return null }
+
+    let newNodeIds = [];
+    for (let file of files) {
+      let response = fetch('/canvas/upload', {
+          method: 'POST',
+          body: null// droppedFiles
+      })
+
+      let newNodeId = this.nextFileNodeId()[0]
+      newNodeIds.push(newNodeId)
+      this.nodes.push({
+          id: newNodeId,
+          data: { label: file.name, breakdown: { name: "hi", amount: 1000, currency: "AUD" } },
+          position: { x: 200, y: 100 },
+          type: 'fileNode'
+      })
+      console.log("Dropped: ", file.name)
+    }
+
+    console.log('Dropped files: ', files.length);
+    this.updateSimulation()
+  }
+  
+  private filterAllowedFiles(file: File): boolean {
+    const ext = file.type.split('/').pop()?.toLowerCase();
+    if (!ext) return false;
+
+    return file.size <= config.maxUploadSizeMB * 10**6 &&
+    config.allowedFileExts.includes(ext)
+  }
+
+  /// Call to re-render simulation, use sparingly
+  public updateSimulation() {
+    
   }
 }

@@ -3,7 +3,6 @@
     import AggregateNode from './AggregateNode.svelte'
     import LayoutStateManager from './LayoutStateManager'
     import { config } from '$lib/config'
-    import { createNodeIdGenerator } from './util';
     import { onMount, onDestroy } from 'svelte';
 
     type FileMapBreakdown = {
@@ -13,54 +12,6 @@
     }
 
     const nodeTypes = { fileNode: FileNode, aggregateNode: AggregateNode }
-
-    const nextFileNodeIds = createNodeIdGenerator('file')
-    let isDragging = $state(false);
-
-    function filterAllowedFiles(file: File): boolean {
-        const ext = file.type.split('/').pop()?.toLowerCase();
-        if (!ext) return false;
-
-        return file.size <= config.maxUploadSizeMB * 10**6 &&
-        config.allowedFileExts.includes(ext)
-    }
-
-    function handleDrop(event: DragEvent) {
-        event.preventDefault();
-        if(!event.dataTransfer) return;
-
-        // Have to mention only allowed file types
-        let droppedFiles = Array.from(event.dataTransfer.files)
-            .filter(filterAllowedFiles);
-        console.log(droppedFiles)
-
-        for (let file of droppedFiles) {
-            let response = fetch('/canvas/upload', {
-                method: 'POST',
-                body: null// droppedFiles
-            })
-            nodes.push({
-                id: nextFileNodeIds()[0],
-                data: { label: file.name, breakdown: { name: "hi", amount: 1000, currency: "AUD" } },
-                position: { x: 200, y: 100 },
-                type: 'fileNode'
-            })
-            console.log("Dropped: ", file.name)
-            console.log(nodes.length)
-        }
-        nodes = [...nodes]
-        console.log('Dropped files:', droppedFiles);
-    }
-
-    function handleDragOver(event: DragEvent) {
-        event.preventDefault();
-        isDragging = true;
-    }
-
-    function handleDragLeave(event: DragEvent) {
-        event.preventDefault()
-        isDragging = false;
-    }
 
     let nodes = $state.raw<Node[]>([
         {
@@ -255,6 +206,30 @@
         return force;
     }
 
+    let isDragging = $state(false);
+
+    function handleDrop(event: DragEvent) {
+        event.preventDefault();
+        if(!event.dataTransfer) return;
+
+        // Have to mention only allowed file types
+        let droppedFiles = Array.from(event.dataTransfer.files);
+        if (layoutStateManager.dropFiles(droppedFiles) !== null)  {
+            // TODO: Implement a nice graphic
+            alert("Oops, that wasn't meant to happen")
+            console.log("File upload failed")
+        }
+    }
+
+    function handleDragOver(event: DragEvent) {
+        event.preventDefault();
+        isDragging = true;
+    }
+
+    function handleDragLeave(event: DragEvent) {
+        event.preventDefault()
+        isDragging = false;
+    }
 
     // Dragging behaviour under simulation
     // @ts-ignore
