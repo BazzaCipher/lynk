@@ -4,6 +4,18 @@
     import LayoutStateManager from './LayoutStateManager'
     import { config } from '$lib/config'
     import { onMount, onDestroy } from 'svelte';
+import {
+    SvelteFlow,
+    Controls,
+    Background,
+    MiniMap,
+    SvelteFlowProvider,
+    type Node,
+    type Edge,
+    useSvelteFlow,
+} from '@xyflow/svelte'
+import * as d3Force from 'd3-force';
+import type { Simulation } from 'd3-force';
 
     type FileMapBreakdown = {
         name: string,
@@ -44,30 +56,17 @@
 
     // Run the simulation below
     let simulation: Simulation<any, any>;
-    let initialized = $state(false);
-    let running = $state(true)
-    let draggingNode = $state<Node>();
+    let layoutStateManager: LayoutStateManager;
 
     onMount(() => {
         console.log('mounting')
-        simulation = d3Force
-            .forceSimulation()
-            .alphaDecay(0.009)
-            .stop();
-
-        setTimeout(() => {
-            console.log('initialised simulation')
-            initialized = true;
-            for (let i =0; i < 100; i++) { //
-            nodes.push({
-                id: nextFileNodeIds()[0],
-                data: { label: 'Hi', breakdown: { name: "hi", amount: 1000, currency: "AUD" } },
-                position: { x: 200, y: 100 },
-                type: 'fileNode'
-            }) } //
-            initializeSimulation();
-            window.requestAnimationFrame(tick);
-        }, 500)
+        layoutStateManager = new LayoutStateManager(nodes, edges)
+        layoutStateManager.initialise()
+        simulation = layoutStateManager.getSimulation()
+        //simulation = d3Force
+            //.forceSimulation()
+            //.alphaDecay(0.009)
+            //.stop();
 
         return () => {
             if (simulation) simulation.stop();
@@ -79,108 +78,6 @@
         simulation.stop();
         }
     });
-
-    function initializeSimulation() {
-        console.log('starting initialisation')
-        if (!simulation || !initialized) return;
-
-        // Create a deep copy of nodes to avoid direct mutation
-        let simNodes = nodes.map((node) => ({
-            ...node,
-            x: node.position.x,
-            y: node.position.y,
-            measured: {
-                width: node.width || 150,
-                height: node.height || 40,
-            },
-        }));
-    
-        // Create a deep copy of edges and ensure it has all the necessary properties
-        let simEdges = edges.map((edge) => ({
-            ...edge,
-            source: edge.source,
-            target: edge.target,
-        }));
-    
-        // Reset the simulation with the current nodes and edges
-        simulation.nodes(simNodes);
-        simulation
-            // .force('links',
-            // d3Force
-            //     .forceLink(simEdges)
-            //     .id((d) => d.id)
-            //     .strength(0.05)
-            //     .distance(100),
-            // )
-            .force('fileNodeCollide', d3Force.forceCollide(40))
-            .force('fileNodeCenterX', d3Force.forceX().x(0).strength(
-                d => (d as Node).type == 'fileNode' ? Math.pow(1.1, 1 - config.centralFileNodeXCoord): 0))
-            .force('fileNodeCenterY', d3Force.forceY().y(0)
-                .strength(d => (d as Node).type == 'fileNode' ? 0.02: 0))
-        
-        console.log('finished initialising simulation')
-    }
-
-    let attractForceApplyTimeoutId = $state(0);
-    let attractForceRemoveTimeoutId = $state(0);
-    function tick() {
-        if (!running) return;
-
-        // Get current simulation nodes
-        const simNodes = simulation.nodes();
-    
-        // Update dragged node position if applicable
-        simNodes.forEach((node: Node, i: number) => {
-            const dragging = draggingNode?.id === node.id;
-        
-            // Setting the fx/fy properties of a node tells the simulation to "fix"
-            // the node at that position and ignore any forces that would normally
-            // cause it to move.
-            if (dragging && !!draggingNode) {
-                // Debounce for attract force of 5 seconds
-                clearTimeout(attractForceApplyTimeoutId)
-                clearTimeout(attractForceRemoveTimeoutId)
-                attractForceApplyTimeoutId = setTimeout(() => {
-                    simulation.force('fileNodeAttract', d3Force.forceManyBody().strength(300));
-                    simulation.alpha(0.4)
-                }, 5000)
-                attractForceRemoveTimeoutId = setTimeout(() => {
-                    simulation.force('fileNodeAttract', null);
-                }, 15000)
-                // Fix the position to the dragged position
-                simNodes[i].fx = draggingNode.position.x;
-                simNodes[i].fy = draggingNode.position.y;
-                simulation.alpha(0.4)
-            } else {
-                // Release fixed position
-                delete simNodes[i].fx;
-                delete simNodes[i].fy;
-            }
-        });
-    
-        // Step the simulation forward
-        simulation.tick();
-    
-        // Update the nodes with their new positions from the simulation
-        // Preserve all the original node data while updating only the position
-        nodes = simNodes.map((simNode) => {
-            // Find the original node to keep all its properties
-            const originalNode = nodes.find((n) => n.id === simNode.id) || {};
-
-            return {
-            ...originalNode,
-            position: {
-                x: simNode.fx ?? simNode.x,
-                y: simNode.fy ?? simNode.y,
-            },
-            };
-        });
-
-        // Request next animation frame and fit the view
-        window.requestAnimationFrame(() => {
-            if (running) tick();
-        });
-    }
 
     function forceContainWithinParent(nodes, parents) {
         function force(alpha) {
@@ -234,16 +131,19 @@
     // Dragging behaviour under simulation
     // @ts-ignore
     function handleNodeDragStart({ targetNode }) {
-        draggingNode = targetNode
+        layoutStateManager.draggingNode = targetNode;
+        //draggingNode = targetNode
     }
     
     // @ts-ignore
     function handleNodeDrag({ targetNode }) {
-        draggingNode = targetNode;
+        layoutStateManager.draggingNode = targetNode;
+        //draggingNode = targetNode;
     }
     
     function handleNodeDragStop() {
-        draggingNode = undefined;
+        layoutStateManager.draggingNode = null;
+        //draggingNode = undefined;
     }
 </script>
 

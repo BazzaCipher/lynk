@@ -26,21 +26,40 @@ interface LayoutPayload {
   // Add more as needed
 }
 
+export type LayoutTreeNode = {
+
+}
+
 /** LayoutStateManager
  * Handles the state of the canvas layout, provide it the set of initial
  * nodes and it will handle all state transitions. Accepts new nodes (Files)
  * 
- * 
+ * The initial nodes can be provided via the constructor
  */
 export default class LayoutStateManager {
-  private simulation: d3.Simulation<Node, Edge>;
+  // These states can be modified anytime
+  private simulation: Simulation<any, any>;
   private currentState: LayoutState = "grid";
   private payload: LayoutPayload = {};
+  private running = false;
+  public draggingNode: Node | null = null;
 
+  // These states describe the grid shape, serializable
+  #nodes: Node[] = [];
+  #edges: Edge[] = [];
+
+  // Other useful properties
   private nextFileNodeId = createNodeIdGenerator('file')
 
-  constructor(simulation: d3.Simulation<Node, Edge>) {
-    this.simulation = simulation;
+  constructor(nodes: Node[], edges: Edge[]) {
+    this.simulation = d3Force
+      .forceSimulation()
+      .alphaDecay(0.009)
+      .stop();
+
+    this.#nodes = nodes;
+    this.#edges = edges;
+    this.simulation.nodes(nodes);
   }
 
   public setState(state: LayoutState, payload: LayoutPayload = {}) {
@@ -50,12 +69,12 @@ export default class LayoutStateManager {
 
     switch (state) {
       case "grid":
-        this.simulation.force("snap", forceSnapToGrid(...));
+        //this.simulation.force("snap", forceSnapToGrid(...));
         break;
 
       case "focusOneAggregate":
-        this.simulation.force("snap", forceSnapToAggregate(payload.selectedAggregateId!));
-        this.simulation.force("highlight", forceHighlightContributors(payload.selectedAggregateId!));
+        //this.simulation.force("snap", forceSnapToAggregate(payload.selectedAggregateId!));
+        //this.simulation.force("highlight", forceHighlightContributors(payload.selectedAggregateId!));
         break;
 
       // Add more state transitions here
@@ -75,8 +94,8 @@ export default class LayoutStateManager {
   }
 
   /// Returned string is NodeId; otherwise returns null
-  public dropFiles(files: [File]): [string] | null {
-    if (this.state !== 'mainGrid') { return null }
+  public dropFiles(files: File[]): string[] | null {
+    if (this.currentState !== 'grid') { return null }
 
     let newNodeIds = [];
     for (let file of files) {
@@ -87,7 +106,7 @@ export default class LayoutStateManager {
 
       let newNodeId = this.nextFileNodeId()[0]
       newNodeIds.push(newNodeId)
-      this.nodes.push({
+      this.#nodes.push({
           id: newNodeId,
           data: { label: file.name, breakdown: { name: "hi", amount: 1000, currency: "AUD" } },
           position: { x: 200, y: 100 },
@@ -98,6 +117,8 @@ export default class LayoutStateManager {
 
     console.log('Dropped files: ', files.length);
     this.updateSimulation()
+
+    return newNodeIds
   }
   
   private filterAllowedFiles(file: File): boolean {
@@ -105,11 +126,130 @@ export default class LayoutStateManager {
     if (!ext) return false;
 
     return file.size <= config.maxUploadSizeMB * 10**6 &&
-    config.allowedFileExts.includes(ext)
+      config.allowedFileExts.includes(ext)
+  }
+
+  public getSimulation(): Simulation<any, any> {
+    return this.simulation
   }
 
   /// Call to re-render simulation, use sparingly
   public updateSimulation() {
     
+  }
+
+  public initialise() {
+    if (!this.simulation) return;
+    console.log('starting initialisation')
+
+    // Create a deep copy of nodes to avoid direct mutation
+    let simNodes = this.#nodes.map((node) => ({
+        ...node,
+        x: node.position.x,
+        y: node.position.y,
+        measured: {
+            width: node.width || 150,
+            height: node.height || 40,
+        },
+    }));
+
+    // Create a deep copy of edges and ensure it has all the necessary properties
+    let simEdges = this.#edges.map((edge) => ({
+        ...edge,
+        source: edge.source,
+        target: edge.target,
+    }));
+
+    // Reset the simulation with the current nodes and edges
+    this.simulation.nodes(simNodes);
+    this.simulation
+        // .force('links',
+        // d3Force
+        //     .forceLink(simEdges)
+        //     .id((d) => d.id)
+        //     .strength(0.05)
+        //     .distance(100),
+        // )
+        .force('fileNodeCollide', d3Force.forceCollide(40))
+        .force('fileNodeCenterX', d3Force.forceX().x(0).strength(
+            d => (d as Node).type == 'fileNode' ? Math.pow(1.1, 1 - config.centralFileNodeXCoord): 0))
+        .force('fileNodeCenterY', d3Force.forceY().y(0)
+            .strength(d => (d as Node).type == 'fileNode' ? 0.02: 0))
+    
+    console.log('finished initialising simulation')
+
+    setTimeout(() => {
+        console.log('starting animation')
+        this.start()
+    }, 500)
+  }
+
+  private attractForceApplyTimeoutId = 0;
+  private attractForceRemoveTimeoutId = 0;
+  private tick() {
+    if (!this.running) return;
+
+    // Get current simulation nodes
+    const simNodes = this.simulation.nodes();
+
+    // Update dragged node position if applicable
+    simNodes.forEach((node: Node, i: number) => {
+        const dragging = this.draggingNode?.id === node.id;
+    
+        // Setting the fx/fy properties of a node tells the simulation to "fix"
+        // the node at that position and ignore any forces that would normally
+        // cause it to move.
+        if (dragging && !!this.draggingNode) {
+            // Debounce for attract force of 5 seconds
+            clearTimeout(this.attractForceApplyTimeoutId)
+            clearTimeout(this.attractForceRemoveTimeoutId)
+            this.attractForceApplyTimeoutId = setTimeout(() => {
+                this.simulation.force('fileNodeAttract', d3Force.forceManyBody().strength(300));
+                this.simulation.alpha(0.4)
+            }, 5000)
+            this.attractForceRemoveTimeoutId = setTimeout(() => {
+                this.simulation.force('fileNodeAttract', null);
+            }, 15000)
+            // Fix the position to the dragged position
+            simNodes[i].fx = this.draggingNode.position.x;
+            simNodes[i].fy = this.draggingNode.position.y;
+            this.simulation.alpha(0.4)
+        } else {
+            // Release fixed position
+            delete simNodes[i].fx;
+            delete simNodes[i].fy;
+        }
+    });
+
+    // Step the simulation forward
+    this.simulation.tick();
+
+    // Update the nodes with their new positions from the simulation
+    // Preserve all the original node data while updating only the position
+    this.#nodes = simNodes.map((simNode) => {
+        // Find the original node to keep all its properties
+        const originalNode = this.#nodes.find((n) => n.id === simNode.id) || {};
+
+        return {
+        ...originalNode,
+        position: {
+            x: simNode.fx ?? simNode.x,
+            y: simNode.fy ?? simNode.y,
+        },
+        };
+    });
+
+    // Request next animation frame and fit the view
+    window.requestAnimationFrame(() => {
+      if (this.running) this.tick();
+    });
+  }
+  
+  public start() {
+    this.running = true
+    window.requestAnimationFrame(() => this.tick());
+  }
+  public stop() {
+    this.running = false
   }
 }
