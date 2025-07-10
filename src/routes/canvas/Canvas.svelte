@@ -1,7 +1,7 @@
 <script lang="ts">
     import FileNode from './FileNode.svelte'
     import AggregateNode from './AggregateNode.svelte'
-    import LayoutStateManager from './LayoutStateManager'
+    import LayoutStateManager from './LayoutStateManager.svelte'
     import { config } from '$lib/config'
     import { onMount, onDestroy } from 'svelte';
 import {
@@ -14,7 +14,6 @@ import {
     type Edge,
     useSvelteFlow,
 } from '@xyflow/svelte'
-import * as d3Force from 'd3-force';
 import type { Simulation } from 'd3-force';
 
     type FileMapBreakdown = {
@@ -23,61 +22,36 @@ import type { Simulation } from 'd3-force';
         currency: string,
     }
 
+    let nodes: Node[] = $state([]);
+    let edges: Node[] = $state([]);
     const nodeTypes = { fileNode: FileNode, aggregateNode: AggregateNode }
-
-    let nodes = $state.raw<Node[]>([
-        {
-        id: '1',
-        data: { label: 'Hello' },
-        position: { x: 0, y: 0 },
-        type: 'fileNode'
-        },
-        {
-        id: '2',
-        data: { label: 'World' },
-        position: { x: 0, y: 150 },
-        type: 'fileNode'
-        },
-        {
-        id: '3',
-        data: { label: 'World' },
-        position: { x: 250, y: 150 },
-        type: 'fileNode'
-        },
-        {
-        id: '4',
-        data: { label: 'Oh myu' },
-        position: { x: 250, y: 150 },
-        type: 'aggregateNode'
-        }
-    ]);
-
-    let edges = $state.raw<Edge[]>([ ]);
 
     // Run the simulation below
     let simulation: Simulation<any, any>;
     let layoutStateManager: LayoutStateManager;
 
     onMount(() => {
-        console.log('mounting')
-        layoutStateManager = new LayoutStateManager(nodes, edges)
-        layoutStateManager.initialise()
-        simulation = layoutStateManager.getSimulation()
+        console.log('mounting');
+        layoutStateManager = new LayoutStateManager(nodes, edges);
+        layoutStateManager.initialise();
+        ({ nodes, edges } = layoutStateManager);
+        simulation = layoutStateManager.getSimulation();
         //simulation = d3Force
             //.forceSimulation()
             //.alphaDecay(0.009)
             //.stop();
-
+        
         return () => {
-            if (simulation) simulation.stop();
+            if (simulation) layoutStateManager.stop();
         }
     })
 
     onDestroy(() => {
-        if (simulation) {
-        simulation.stop();
-        }
+        if (simulation) layoutStateManager.stop();
     });
+    $effect(() => {
+  console.log('Nodes state updated:', nodes.map(n => ({ id: n.id, pos: n.position })));
+});
 
     function forceContainWithinParent(nodes, parents) {
         function force(alpha) {

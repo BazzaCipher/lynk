@@ -26,9 +26,36 @@ interface LayoutPayload {
   // Add more as needed
 }
 
-export type LayoutTreeNode = {
+// export type LayoutTreeNode = {
+// }
+let defNodes = $state.raw<Node[]>([
+    {
+    id: '1',
+    data: { label: 'Hello' },
+    position: { x: 0, y: 0 },
+    type: 'fileNode'
+    },
+    {
+    id: '2',
+    data: { label: 'World' },
+    position: { x: 0, y: 150 },
+    type: 'fileNode'
+    },
+    {
+    id: '3',
+    data: { label: 'World' },
+    position: { x: 250, y: 150 },
+    type: 'fileNode'
+    },
+    {
+    id: '4',
+    data: { label: 'Oh myu' },
+    position: { x: 250, y: 150 },
+    type: 'aggregateNode'
+    }
+]);
 
-}
+let defEdges = $state.raw<Edge[]>([ ]);
 
 /** LayoutStateManager
  * Handles the state of the canvas layout, provide it the set of initial
@@ -45,21 +72,31 @@ export default class LayoutStateManager {
   public draggingNode: Node | null = null;
 
   // These states describe the grid shape, serializable
-  #nodes: Node[] = [];
-  #edges: Edge[] = [];
+  #nodes: Node[] = $state.raw([]);
+  #edges: Edge[] = $state.raw([]);
 
   // Other useful properties
   private nextFileNodeId = createNodeIdGenerator('file')
 
   constructor(nodes: Node[], edges: Edge[]) {
-    this.simulation = d3Force
-      .forceSimulation()
-      .alphaDecay(0.009)
-      .stop();
+      this.simulation = d3Force
+        .forceSimulation()
+        .alphaDecay(0.009)
+        .stop();
 
-    this.#nodes = nodes;
-    this.#edges = edges;
-    this.simulation.nodes(nodes);
+      this.#nodes = nodes.length === 0 ? defNodes : nodes
+      this.#edges = edges.length === 0 ? defEdges : edges
+      this.simulation.nodes(nodes);
+
+      //this.setState('grid', {});
+  }
+
+  get nodes(): Node[] {
+    return this.#nodes
+  }
+
+  get edges(): Edge[] {
+    return this.#edges
   }
 
   public setState(state: LayoutState, payload: LayoutPayload = {}) {
@@ -69,6 +106,7 @@ export default class LayoutStateManager {
 
     switch (state) {
       case "grid":
+        this.simulation.force("AAAA", d3Force.forceCenter(0,0))
         //this.simulation.force("snap", forceSnapToGrid(...));
         break;
 
@@ -79,6 +117,7 @@ export default class LayoutStateManager {
 
       // Add more state transitions here
     }
+    console.log('added forces')
 
     this.simulation.alphaTarget(0.3).restart();
   }
@@ -188,6 +227,7 @@ export default class LayoutStateManager {
   private attractForceRemoveTimeoutId = 0;
   private tick() {
     if (!this.running) return;
+    console.log("ticking")
 
     // Get current simulation nodes
     const simNodes = this.simulation.nodes();
@@ -233,8 +273,8 @@ export default class LayoutStateManager {
         return {
         ...originalNode,
         position: {
-            x: simNode.fx ?? simNode.x,
-            y: simNode.fy ?? simNode.y,
+            x: 0,//simNode.fx ?? simNode.x,
+            y: 0//simNode.fy ?? simNode.y,
         },
         };
     });
@@ -246,10 +286,13 @@ export default class LayoutStateManager {
   }
   
   public start() {
-    this.running = true
+    console.log("starting simulation");
+    this.running = true;
+    this.simulation.alpha(1).restart();
     window.requestAnimationFrame(() => this.tick());
   }
   public stop() {
-    this.running = false
+    console.log("stopping simulation");
+    this.running = false;
   }
 }
