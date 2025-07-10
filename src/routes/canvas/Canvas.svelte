@@ -15,7 +15,6 @@ import {
     useSvelteFlow,
 } from '@xyflow/svelte'
 import type { Simulation } from 'd3-force';
-
     type FileMapBreakdown = {
         name: string,
         amount: number,
@@ -23,7 +22,7 @@ import type { Simulation } from 'd3-force';
     }
 
     let nodes: Node[] = $state([]);
-    let edges: Node[] = $state([]);
+    let edges: Edge[] = $state([]);
     const nodeTypes = { fileNode: FileNode, aggregateNode: AggregateNode }
 
     // Run the simulation below
@@ -34,12 +33,19 @@ import type { Simulation } from 'd3-force';
         console.log('mounting');
         layoutStateManager = new LayoutStateManager(nodes, edges);
         layoutStateManager.initialise();
-        ({ nodes, edges } = layoutStateManager);
         simulation = layoutStateManager.getSimulation();
         //simulation = d3Force
             //.forceSimulation()
             //.alphaDecay(0.009)
             //.stop();
+          $effect(() => {
+    nodes = layoutStateManager.nodes;
+  });
+
+  $effect(() => {
+    edges = layoutStateManager.edges;
+  });
+
         
         return () => {
             if (simulation) layoutStateManager.stop();

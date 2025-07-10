@@ -273,8 +273,8 @@ export default class LayoutStateManager {
         return {
         ...originalNode,
         position: {
-            x: 0,//simNode.fx ?? simNode.x,
-            y: 0//simNode.fy ?? simNode.y,
+            x: simNode.fx ?? simNode.x,
+            y: simNode.fy ?? simNode.y,
         },
         };
     });
