@@ -31,7 +31,7 @@ interface LayoutPayload {
 let defNodes = $state.raw<Node[]>([
     {
     id: '1',
-    data: { label: 'Hello' },
+    data: { label: 'Hello', value: 3_232_232.54 },
     position: { x: 0, y: 0 },
     type: 'entryNode'
     },

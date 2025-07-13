@@ -15,7 +15,7 @@
         type Edge,
         useSvelteFlow,
     } from '@xyflow/svelte'
-    import '@xyflow/svelte/dist/style.css'
+    import './xy-theme.css'
     import type { Simulation } from 'd3-force';
     type FileMapBreakdown = {
         name: string,
