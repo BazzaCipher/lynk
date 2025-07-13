@@ -34,18 +34,13 @@ import type { Simulation } from 'd3-force';
         layoutStateManager = new LayoutStateManager(nodes, edges);
         layoutStateManager.initialise();
         simulation = layoutStateManager.getSimulation();
-        //simulation = d3Force
-            //.forceSimulation()
-            //.alphaDecay(0.009)
-            //.stop();
-          $effect(() => {
-    nodes = layoutStateManager.nodes;
-  });
-
-  $effect(() => {
-    edges = layoutStateManager.edges;
-  });
-
+        // Set up the reactivity on the node simulation
+        $effect(() => {
+            nodes = layoutStateManager.nodes;
+        });
+        $effect(() => {
+            edges = layoutStateManager.edges;
+        });
         
         return () => {
             if (simulation) layoutStateManager.stop();
@@ -55,9 +50,6 @@ import type { Simulation } from 'd3-force';
     onDestroy(() => {
         if (simulation) layoutStateManager.stop();
     });
-    $effect(() => {
-  console.log('Nodes state updated:', nodes.map(n => ({ id: n.id, pos: n.position })));
-});
 
     function forceContainWithinParent(nodes, parents) {
         function force(alpha) {

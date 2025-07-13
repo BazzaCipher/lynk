@@ -106,7 +106,6 @@ export default class LayoutStateManager {
 
     switch (state) {
       case "grid":
-        this.simulation.force("AAAA", d3Force.forceCenter(0,0))
         //this.simulation.force("snap", forceSnapToGrid(...));
         break;
 
