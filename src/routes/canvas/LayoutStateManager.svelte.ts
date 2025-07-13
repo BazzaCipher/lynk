@@ -15,9 +15,9 @@ import { config } from '$lib/config'
 import { createNodeIdGenerator } from './util';
 
 export type LayoutState =
-  | "grid"
-  | "focusOneAggregate"
-  | "multiFocus"
+  | "grid" // Grid of files on the right, one focus col, and aggregates
+  | "focusOneAggregate" // Focus on aggregate node
+  | "multiFocus" // Focus on
   | "childTracing";
 
 interface LayoutPayload {
@@ -33,7 +33,7 @@ let defNodes = $state.raw<Node[]>([
     id: '1',
     data: { label: 'Hello' },
     position: { x: 0, y: 0 },
-    type: 'fileNode'
+    type: 'entryNode'
     },
     {
     id: '2',
@@ -71,6 +71,10 @@ export default class LayoutStateManager {
   private running = false;
   public draggingNode: Node | null = null;
 
+  private sim = {
+    centre: [0, 0]
+  }
+
   // These states describe the grid shape, serializable
   #nodes: Node[] = $state.raw([]);
   #edges: Edge[] = $state.raw([]);
@@ -87,16 +91,6 @@ export default class LayoutStateManager {
       this.#nodes = nodes.length === 0 ? defNodes : nodes
       this.#edges = edges.length === 0 ? defEdges : edges
       this.simulation.nodes(nodes);
-
-      //this.setState('grid', {});
-  }
-
-  get nodes(): Node[] {
-    return this.#nodes
-  }
-
-  get edges(): Edge[] {
-    return this.#edges
   }
 
   public setState(state: LayoutState, payload: LayoutPayload = {}) {
@@ -231,34 +225,7 @@ export default class LayoutStateManager {
     // Get current simulation nodes
     const simNodes = this.simulation.nodes();
 
-    // Update dragged node position if applicable
-    simNodes.forEach((node: Node, i: number) => {
-        const dragging = this.draggingNode?.id === node.id;
-    
-        // Setting the fx/fy properties of a node tells the simulation to "fix"
-        // the node at that position and ignore any forces that would normally
-        // cause it to move.
-        if (dragging && !!this.draggingNode) {
-            // Debounce for attract force of 5 seconds
-            clearTimeout(this.attractForceApplyTimeoutId)
-            clearTimeout(this.attractForceRemoveTimeoutId)
-            this.attractForceApplyTimeoutId = setTimeout(() => {
-                this.simulation.force('fileNodeAttract', d3Force.forceManyBody().strength(300));
-                this.simulation.alpha(0.4)
-            }, 5000)
-            this.attractForceRemoveTimeoutId = setTimeout(() => {
-                this.simulation.force('fileNodeAttract', null);
-            }, 15000)
-            // Fix the position to the dragged position
-            simNodes[i].fx = this.draggingNode.position.x;
-            simNodes[i].fy = this.draggingNode.position.y;
-            this.simulation.alpha(0.4)
-        } else {
-            // Release fixed position
-            delete simNodes[i].fx;
-            delete simNodes[i].fy;
-        }
-    });
+    this.simulateDrag(simNodes)
 
     // Step the simulation forward
     this.simulation.tick();
@@ -283,6 +250,37 @@ export default class LayoutStateManager {
       if (this.running) this.tick();
     });
   }
+
+  private simulateDrag(simNodes: Node[]) {
+    // Update dragged node position if applicable
+    simNodes.forEach((node: Node, i: number) => {
+        const dragging = this.draggingNode?.id === node.id;
+    
+        // Setting the fx/fy properties of a node tells the simulation to "fix"
+        // the node at that position and ignore any forces that would normally
+        // cause it to move.
+        if (!dragging || !this.draggingNode) {
+            // Release fixed position
+            delete simNodes[i].fx;
+            delete simNodes[i].fy;
+        } else {
+            // Debounce for attract force of 5 seconds
+            clearTimeout(this.attractForceApplyTimeoutId)
+            clearTimeout(this.attractForceRemoveTimeoutId)
+            this.attractForceApplyTimeoutId = setTimeout(() => {
+                this.simulation.force('fileNodeAttract', d3Force.forceManyBody().strength(300));
+                this.simulation.alpha(0.4)
+            }, 5000)
+            this.attractForceRemoveTimeoutId = setTimeout(() => {
+                this.simulation.force('fileNodeAttract', null);
+            }, 15000)
+            // Fix the position to the dragged position
+            simNodes[i].fx = this.draggingNode.position.x;
+            simNodes[i].fy = this.draggingNode.position.y;
+            this.simulation.alpha(0.4)
+        }
+    });
+  }
   
   public start() {
     console.log("starting simulation");
@@ -290,8 +288,18 @@ export default class LayoutStateManager {
     this.simulation.alpha(1).restart();
     window.requestAnimationFrame(() => this.tick());
   }
+
   public stop() {
     console.log("stopping simulation");
     this.running = false;
   }
+
+  get nodes(): Node[] {
+    return this.#nodes
+  }
+
+  get edges(): Edge[] {
+    return this.#edges
+  }
+
 }

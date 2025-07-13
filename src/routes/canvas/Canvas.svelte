@@ -2,19 +2,21 @@
     import FileNode from './FileNode.svelte'
     import AggregateNode from './AggregateNode.svelte'
     import LayoutStateManager from './LayoutStateManager.svelte'
+    import EntryNode from './EntryNode.svelte'
     import { config } from '$lib/config'
     import { onMount, onDestroy } from 'svelte';
-import {
-    SvelteFlow,
-    Controls,
-    Background,
-    MiniMap,
-    SvelteFlowProvider,
-    type Node,
-    type Edge,
-    useSvelteFlow,
-} from '@xyflow/svelte'
-import type { Simulation } from 'd3-force';
+    import {
+        SvelteFlow,
+        Controls,
+        Background,
+        MiniMap,
+        SvelteFlowProvider,
+        type Node,
+        type Edge,
+        useSvelteFlow,
+    } from '@xyflow/svelte'
+    import '@xyflow/svelte/dist/style.css'
+    import type { Simulation } from 'd3-force';
     type FileMapBreakdown = {
         name: string,
         amount: number,
@@ -23,7 +25,11 @@ import type { Simulation } from 'd3-force';
 
     let nodes: Node[] = $state([]);
     let edges: Edge[] = $state([]);
-    const nodeTypes = { fileNode: FileNode, aggregateNode: AggregateNode }
+    const nodeTypes = {
+        fileNode: FileNode,
+        entryNode: EntryNode,
+        aggregateNode: AggregateNode
+    }
 
     // Run the simulation below
     let simulation: Simulation<any, any>;
