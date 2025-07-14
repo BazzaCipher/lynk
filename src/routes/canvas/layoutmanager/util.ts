@@ -1,4 +1,3 @@
-
 // Generates node id for the canvas
 export function createNodeIdGenerator(suffix = 'node') {
   let counter = 1;

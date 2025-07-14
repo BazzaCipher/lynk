@@ -1,8 +1,8 @@
 <script lang="ts">
-    import FileNode from './FileNode.svelte'
-    import AggregateNode from './AggregateNode.svelte'
-    import LayoutStateManager from './LayoutStateManager.svelte'
-    import EntryNode from './EntryNode.svelte'
+    import {
+        NodeTypes,
+        LayoutStateManager
+    } from './layoutmanager/LayoutStateManager.svelte'
     import { config } from '$lib/config'
     import { onMount, onDestroy } from 'svelte';
     import {
@@ -15,7 +15,6 @@
         type Edge,
         useSvelteFlow,
     } from '@xyflow/svelte'
-    import './xy-theme.css'
     import type { Simulation } from 'd3-force';
     type FileMapBreakdown = {
         name: string,
@@ -25,11 +24,6 @@
 
     let nodes: Node[] = $state([]);
     let edges: Edge[] = $state([]);
-    const nodeTypes = {
-        fileNode: FileNode,
-        entryNode: EntryNode,
-        aggregateNode: AggregateNode
-    }
 
     // Run the simulation below
     let simulation: Simulation<any, any>;
@@ -153,7 +147,7 @@
         <SvelteFlow
             bind:nodes
             bind:edges
-            {nodeTypes}
+            nodeTypes={NodeTypes}
             fitView
             onnodedragstart={handleNodeDragStart}
             onnodedrag={handleNodeDrag}
