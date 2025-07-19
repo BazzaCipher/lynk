@@ -14,7 +14,6 @@ import type { Simulation } from 'd3-force';
 import '@xyflow/svelte/dist/style.css'
 import './xy-theme.css'
 import { config } from '$lib/config'
-import { createNodeIdGenerator } from './util';
 // Node imports
 import FileNode from './FileNode.svelte'
 import AggregateNode from './AggregateNode.svelte'
@@ -32,15 +31,7 @@ export const NodeTypes = {
 	aggregateNode: AggregateNode
 }
 
-interface LayoutPayload {
-	selectedAggregateId?: string;
-	focusedNodes?: string[];
-	// Add more as needed
-}
-
-// export type LayoutTreeNode = {
-// }
-let defNodes = $state.raw<Node[]>([
+let defNodes = $state.raw<any>([
 	{
 		id: '1',
 		data: { label: 'Hello', value: 3_232_232.54 },
@@ -55,13 +46,13 @@ let defNodes = $state.raw<Node[]>([
 	},
 	{
 		id: '2',
-		data: { label: 'World' },
+		data: { label: 'World', file: { ext: 'pdf', src: '' } },
 		position: { x: 0, y: 150 },
 		type: 'fileNode'
 	},
 	{
 		id: '3',
-		data: { label: 'World' },
+		data: { label: 'World', file: { ext: 'xlsx', src: '' } },
 		position: { x: 250, y: 150 },
 		type: 'fileNode'
 	},
@@ -86,7 +77,6 @@ export class LayoutStateManager {
 	// These states can be modified anytime
 	private simulation: Simulation<any, any>;
 	private currentState: LayoutState = "grid";
-	private payload: LayoutPayload = {};
 	private running = false;
 	public draggingNode: Node | null = null;
 	
@@ -95,9 +85,9 @@ export class LayoutStateManager {
 	}
 	
 	// These states describe the grid shape, serializable
+	// Raw states are flat for the simulation
 	#nodes: Node[] = $state.raw([]);
 	#edges: Edge[] = $state.raw([]);
-	// And subsets for relevant subgroup nodes
 	
 	// Other useful properties
 	private nextFileNodeId = createNodeIdGenerator('file')
@@ -141,10 +131,9 @@ export class LayoutStateManager {
 		this.simulation.nodes(nodes);
 	}
 	
-	public setState(state: LayoutState, payload: LayoutPayload = {}) {
+	public setState(state: LayoutState) {
 		this.cleanupForces();
 		this.currentState = state;
-		this.payload = payload;
 		console.log('applying state', state)
 		
 		switch (state) {
@@ -277,6 +266,8 @@ export class LayoutStateManager {
 		// Step the simulation forward
 		this.simulation.tick();
 		
+		// TODO: Update size of nodes on size change of parent.
+
 		// Update the nodes with their new positions from the simulation
 		// Preserve all the original node data while updating only the position
 		this.#nodes = simNodes.map((simNode) => {
@@ -352,4 +343,14 @@ export class LayoutStateManager {
 	get edges(): Edge[] {
 		return this.#edges
 	}
+}
+
+// Generates node id for the canvas
+export function createNodeIdGenerator(suffix = 'node') {
+  let counter = 1;
+
+  return function getNextNodeIds(n = 1): string[] {
+    const ids = Array.from({ length: n }, () => `${counter++}-${suffix}`);
+    return ids;
+  };
 }

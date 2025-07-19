@@ -24,7 +24,6 @@
 
 <style>
     .entry-node {
-        width: 100px;
         display: flex;
         flex-direction: row;
         justify-content: space-between;
@@ -40,9 +39,9 @@
     }
 </style>
 
-<div class="entry-node flex flex-row ">
+<div class="entry-node flex flex-row max-w-48">
     <div class="left text-left flex-1 min-w-0 truncate">{data.label}</div>
-    <div class="right shrink-0 font-bold">
+    <div class="right shrink-0 font-bold ps-1">
         {formattedValue}
     </div>
 </div>
