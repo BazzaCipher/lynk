@@ -33,22 +33,24 @@ export const NodeTypes = {
 
 let defNodes = $state.raw<any>([
 	{
+		id: '2',
+		data: { label: 'World', file: { ext: 'pdf', src: '' } },
+		position: { x: 0, y: 150 },
+		type: 'fileNode'
+	},
+	{
 		id: '1',
 		data: { label: 'Hello', value: 3_232_232.54 },
 		position: { x: 0, y: 0 },
+		parentId: '2',
 		type: 'entryNode'
 	},
 	{
 		id: '7',
 		data: { label: 'MyOtherEntryNode', value: 444 },
 		position: { x: 100, y: 0 },
+		parentId: '2',
 		type: 'entryNode'
-	},
-	{
-		id: '2',
-		data: { label: 'World', file: { ext: 'pdf', src: '' } },
-		position: { x: 0, y: 150 },
-		type: 'fileNode'
 	},
 	{
 		id: '3',
@@ -80,10 +82,6 @@ export class LayoutStateManager {
 	private running = false;
 	public draggingNode: Node | null = null;
 	
-	private sim = {
-		centre: [0, 0]
-	}
-	
 	// These states describe the grid shape, serializable
 	// Raw states are flat for the simulation
 	#nodes: Node[] = $state.raw([]);
@@ -91,6 +89,24 @@ export class LayoutStateManager {
 	
 	// Other useful properties
 	private nextFileNodeId = createNodeIdGenerator('file')
+	private trees = $derived.by(() => { // Depth 1 trees
+		// Node parentId indexes the type and other array
+		// I do not understand types
+		let trees: Record<string, [string[], string?]> = {};
+		this.#nodes.forEach(node => {
+			switch (node.type) {
+				case 'fileNode':
+				case 'aggregateNode':
+					trees[node.id] = [[], node.type]
+				case 'entryNode':
+					if (node.parentId) {
+						trees[node.parentId][0].push(node.id)
+					}
+					break;
+			}
+		});
+		return trees
+	})
 	
 	// Forces definitions
 	// TODO: Add forces to organise automatically
@@ -139,7 +155,7 @@ export class LayoutStateManager {
 		switch (state) {
 			case "grid":
 				//this.applyNodeForce('entryNodeCollideSiblings')
-				// this.applyNodeForce('nodesCollide')
+				this.applyNodeForce('nodesCollide')
 				// this.applyNodeForce('fileNodeCenterX')
 				// this.applyNodeForce('fileNodeCenterY')
 			break;
@@ -265,24 +281,43 @@ export class LayoutStateManager {
 		
 		// Step the simulation forward
 		this.simulation.tick();
-		
-		// TODO: Update size of nodes on size change of parent.
 
 		// Update the nodes with their new positions from the simulation
 		// Preserve all the original node data while updating only the position
+		// TODO: Make efficient
+		console.log('ticking')
 		this.#nodes = simNodes.map((simNode) => {
 			// Find the original node to keep all its properties
 			const originalNode = this.#nodes.find((n) => n.id === simNode.id) || {};
 			
+			// Take care of ordinarily scaling issues in tick
+			let w, h;
+			if (simNode.type == 'entryNode' && simNode.parentId) {
+				let { parentId } = simNode
+				let parent = this.#nodes.find(n => n.id === parentId)
+				if (parent) {
+					let m;
+					if (!parent.width && !parent.height) {
+						let nodeEl = document.querySelector(`[data-id="${parentId}"]`);
+						m = nodeEl?.getBoundingClientRect();
+					}
+					w = parent.width ?? m.width;
+					h = parent.height ?? m.height
+					if (!w || !h) { return } // No possible way to constrain
+					console.log(w, h)
+				}
+			}
 			return {
 				...originalNode,
+				width: w ? w / 2: originalNode.width,
+				height: h ? h / 2: originalNode.height,
 				position: {
 					x: simNode.fx ?? simNode.x,
 					y: simNode.fy ?? simNode.y,
 				},
-			};
+			} as Node;
 		});
-		
+
 		// Request next animation frame and fit the view
 		window.requestAnimationFrame(() => {
 			if (this.running) this.tick();

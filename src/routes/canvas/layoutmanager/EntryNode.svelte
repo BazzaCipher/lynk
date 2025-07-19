@@ -19,7 +19,7 @@
         style: 'currency',
         currency: defaultCurrencyForLocale[userLocale] ?? 'USD',
         currencySign: 'accounting'
-    }).format(data.value)
+    }).format(Number.isInteger(data.value) ? data.value : 0)
 </script>
 
 <style>
@@ -39,7 +39,7 @@
     }
 </style>
 
-<div class="entry-node flex flex-row max-w-48">
+<div class="entry-node flex flex-row">
     <div class="left text-left flex-1 min-w-0 truncate">{data.label}</div>
     <div class="right shrink-0 font-bold ps-1">
         {formattedValue}
