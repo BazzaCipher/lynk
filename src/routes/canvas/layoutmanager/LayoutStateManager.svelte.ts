@@ -10,6 +10,7 @@ import {
 } from '@xyflow/svelte'
 import * as d3Force from 'd3-force';
 import type { Simulation } from 'd3-force';
+//import { 'collide' } from 'd3-bboxCollide'
 import '@xyflow/svelte/dist/style.css'
 import './xy-theme.css'
 import { config } from '$lib/config'
@@ -30,11 +31,12 @@ export const NodeTypes = {
 	entryNode: EntryNode,
 	aggregateNode: AggregateNode
 }
-// interface LayoutPayload {
-// 	selectedAggregateId?: string;
-// 	focusedNodes?: string[];
-// 	// Add more as needed
-// }
+
+interface LayoutPayload {
+	selectedAggregateId?: string;
+	focusedNodes?: string[];
+	// Add more as needed
+}
 
 // export type LayoutTreeNode = {
 // }
@@ -95,23 +97,20 @@ export class LayoutStateManager {
 	// These states describe the grid shape, serializable
 	#nodes: Node[] = $state.raw([]);
 	#edges: Edge[] = $state.raw([]);
+	// And subsets for relevant subgroup nodes
 	
 	// Other useful properties
 	private nextFileNodeId = createNodeIdGenerator('file')
 	
 	// Forces definitions
-	static nodeForces: {
+	// TODO: Add forces to organise automatically
+	static NODEFORCES: {
 		[key: string]: d3Force.Force<
 		d3Force.SimulationNodeDatum,
 		d3Force.SimulationLinkDatum<d3Force.SimulationNodeDatum>
 		> | undefined
 	} = {
-		'entryNodeCollideSiblings': d3Force.forceCollide().radius(
-			d => (d as Node).type == 'entryNode' ? 40 : 0
-		),
-		'fileNodeCollideSiblings': d3Force.forceCollide().radius(
-			d => (d as Node).type == 'fileNode' ? 40 : 0
-		),
+		'nodesCollide': d3Force.forceCollide().radius(40),
 		// 'entryNodeInsideParent': d3Force.forceCollide().radius(
 		//     function(d: Node) {
 		//         if (d.type != 'entryNode') return 0;
@@ -123,8 +122,12 @@ export class LayoutStateManager {
 			Math.pow(1.1, 1 - config.centralFileNodeXCoord):
 			0
 		),
-		'fileNodeCenterY': d3Force.forceY().y(0)
-		
+		'fileNodeCenterY': d3Force.forceY().y(0),
+		// 'test': function(nodes) {
+		// 	function initalise() {
+
+		// 	}
+		// }
 	};
 	
 	constructor(nodes: Node[], edges: Edge[]) {
@@ -146,22 +149,18 @@ export class LayoutStateManager {
 		
 		switch (state) {
 			case "grid":
-				this.applyNodeForce('entryNodeCollideSiblings')
-				this.applyNodeForce('fileNodeCollideSiblings')
-				this.applyNodeForce('fileNodeCenterX')
-				this.applyNodeForce('fileNodeCenterY')
+				//this.applyNodeForce('entryNodeCollideSiblings')
+				// this.applyNodeForce('nodesCollide')
+				// this.applyNodeForce('fileNodeCenterX')
+				// this.applyNodeForce('fileNodeCenterY')
 			break;
-			
 			case "focusOneAggregate":
-			//this.simulation.force("snap", forceSnapToAggregate(payload.selectedAggregateId!));
-			//this.simulation.force("highlight", forceHighlightContributors(payload.selectedAggregateId!));
+				// this.simulation.force("snap", forceSnapToAggregate(payload.selectedAggregateId!));
+				// this.simulation.force("highlight", forceHighlightContributors(payload.selectedAggregateId!));
 			break;
-			
-			// Add more state transitions here
 		}
-		console.log('added forces')
-		console.log('entrycollide', this.simulation.force('entryNodeCollideSiblings'))
-		
+		// console.log('added forces')
+
 		this.simulation.alphaTarget(0.3).restart();
 	}
 	
@@ -169,17 +168,17 @@ export class LayoutStateManager {
 		return this.currentState;
 	}
 	
-	private applyNodeForce(forcename: string) {
+	private applyNodeForce(forcename: string, subset: typeof NodeTypes = 'entryNode') {
 		this.simulation.force(forcename,
-			LayoutStateManager.nodeForces[forcename] ?? null
+			LayoutStateManager.NODEFORCES[forcename] ?? null
 		);
 	}
 	
 	private cleanupForces() {
 		// Iterate over forces object
-		this.simulation.force("snap", null);
-		this.simulation.force("highlight", null);
-		// Add others as needed
+		for (let f in LayoutStateManager.NODEFORCES) {
+			this.simulation.force(f, null)
+		}
 	}
 	
 	/// Returned string is NodeId; otherwise returns null
@@ -329,6 +328,10 @@ export class LayoutStateManager {
 			}
 		});
 	}
+
+	private nodeSubset(nt: typeof NodeTypes): Node[] {
+		return this.#nodes.filter(d => d.data.type == nt)
+	}
 	
 	public start() {
 		console.log("starting simulation");
@@ -349,5 +352,4 @@ export class LayoutStateManager {
 	get edges(): Edge[] {
 		return this.#edges
 	}
-	
 }
