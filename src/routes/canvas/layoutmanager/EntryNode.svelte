@@ -39,7 +39,7 @@
     }
 </style>
 
-<div class="entry-node flex flex-row">
+<div class="entry-node flex flex-row w-full">
     <div class="left text-left flex-1 min-w-0 truncate">{data.label}</div>
     <div class="right shrink-0 font-bold ps-1">
         {formattedValue}

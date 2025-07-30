@@ -36,6 +36,8 @@ let defNodes = $state.raw<any>([
 		id: '2',
 		data: { label: 'World', file: { ext: 'pdf', src: '' } },
 		position: { x: 0, y: 150 },
+		width: 200,
+		height: 30,
 		type: 'fileNode'
 	},
 	{
@@ -56,12 +58,16 @@ let defNodes = $state.raw<any>([
 		id: '3',
 		data: { label: 'World', file: { ext: 'xlsx', src: '' } },
 		position: { x: 250, y: 150 },
+		width: 200,
+		height: 30,
 		type: 'fileNode'
 	},
 	{
 		id: '4',
 		data: { label: 'Oh myu' },
 		position: { x: 250, y: 150 },
+		width: 200,
+		height: 30,
 		type: 'aggregateNode'
 	}
 ]);
@@ -155,7 +161,7 @@ export class LayoutStateManager {
 		switch (state) {
 			case "grid":
 				//this.applyNodeForce('entryNodeCollideSiblings')
-				this.applyNodeForce('nodesCollide')
+				//this.applyNodeForce('nodesCollide')
 				// this.applyNodeForce('fileNodeCenterX')
 				// this.applyNodeForce('fileNodeCenterY')
 			break;
@@ -289,31 +295,52 @@ export class LayoutStateManager {
 		this.#nodes = simNodes.map((simNode) => {
 			// Find the original node to keep all its properties
 			const originalNode = this.#nodes.find((n) => n.id === simNode.id) || {};
-			
-			// Take care of ordinarily scaling issues in tick
-			let w, h;
-			if (simNode.type == 'entryNode' && simNode.parentId) {
-				let { parentId } = simNode
-				let parent = this.#nodes.find(n => n.id === parentId)
-				if (parent) {
-					let m;
-					if (!parent.width && !parent.height) {
-						let nodeEl = document.querySelector(`[data-id="${parentId}"]`);
-						m = nodeEl?.getBoundingClientRect();
+
+			switch (originalNode.type) {
+				case 'entryNode': {
+					let w, h, x, y = 0;
+					if (simNode.type == 'entryNode' && simNode.parentId) {
+						let { parentId } = simNode
+						let parent = this.#nodes.find(n => n.id === parentId)
+						if (parent) {
+							w = parent.width;
+							h = parent.height;
+							x = parent.position.x;
+							y = parent.position.y;
+						}
 					}
-					w = parent.width ?? m.width;
-					h = parent.height ?? m.height
-					if (!w || !h) { return } // No possible way to constrain
-					console.log(w, h)
+					return {
+						...originalNode,
+						width:  w ? w : originalNode.width,
+						height: h ? h : originalNode.height,
+						origin: [0, 0.5],
+						position: {
+							x: 0,
+							y: simNode.fy ?? simNode.y
+						},
+					} as Node;
+				}
+				default: {
+					return {
+						...originalNode,
+						position: {
+							x: simNode.fx ?? simNode.x,
+							y: simNode.fy ?? simNode.y,
+						},
+						origin: [0, 0],
+					} as Node;
 				}
 			}
+			
+			// Take care of ordinarily scaling issues in tick
 			return {
 				...originalNode,
-				width: w ? w / 2: originalNode.width,
-				height: h ? h / 2: originalNode.height,
+				width:  w ? w : originalNode.width,
+				height: h ? h : originalNode.height,
+				origin: originalNode.type == "entryNode" ? [0.5, 0] : [0, 0],
 				position: {
 					x: simNode.fx ?? simNode.x,
-					y: simNode.fy ?? simNode.y,
+					y: y + 20 + (simNode.fy ?? simNode.y),
 				},
 			} as Node;
 		});
