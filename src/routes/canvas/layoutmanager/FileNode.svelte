@@ -10,12 +10,12 @@
     let isHovered = $state(false);
 </script>
 
-<NodeToolbar isVisible={isHovered}>
-    <p onmouseenter={() => (isHovered = true)}
-    onmouseleave={() => (isHovered = false)}>hi</p>
+<NodeToolbar isVisible={isHovered} >
+    <p>hi</p>
 </NodeToolbar>
 
-<div class="max-w-250 w-30">
+<div class="max-w-250 w-30" onmouseenter={() => (isHovered = true)}
+    onmouseleave={() => (isHovered = false)}>
     <a class="flex items-center" href="/">
         <img class="h-[1.2em] w-auto mx-0.5" alt="File icon"
             src={fileiconUrl} loading="lazy"/>
