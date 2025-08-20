@@ -9,4 +9,5 @@ export interface FileData {
     type?: string, // MIME type
     ext?: string, // File extension
     src: string, // Can be relative, assumed URI
+    name: string, // Name of the file
 }
