@@ -1,24 +1,35 @@
 <script lang="ts">
     import { NodeToolbar, Handle, Position, type NodeProps } from '@xyflow/svelte';
+	import { onDestroy } from 'svelte';
     import EntryNode from './EntryNode.svelte';
+	import FileModal from './FileModal.svelte';
     import type { FileNodeProps } from '$lib/types';
 
     let { id, data }: FileNodeProps = $props();
     let { file } = data as FileNodeProps;
 
     let fileiconUrl = `/fileicon/${file.ext ?? 'default'}.svg`;
-    let isHovered = $state(false);
+    let isVisible = $state(false);
+	let showModal = $state(false);
 </script>
 
-<NodeToolbar isVisible={isHovered} >
-    <div class="border-2 rounded-sm">{file.name}</div>
+<NodeToolbar {isVisible} >
+    <div class="bg-popover border-2 rounded-sm px-1">{file.name ?? '.' + file.ext ?? 'unknown'}</div>
 </NodeToolbar>
 
-<div class="max-w-250 w-30" onmouseenter={() => (isHovered = true)} onmouseleave={() => (isHovered = false)}
-    role="button" tabindex=-1>
-    <a class="flex items-center" href="/">
-        <img class="h-[1.2em] w-auto mx-0.5" alt="File icon"
+<div class="w-full overflow-hidden flex items-center"
+	onmouseenter={() => (isVisible = true)}
+	onmouseleave={() => (isVisible = false)}
+    role="button" tabindex=-1
+>
+    <button onclick={() => (showModal = true)}>
+        <img class="shrink-0 h-[1.2em] w-auto mx-0.5" alt="File icon"
             src={fileiconUrl} loading="lazy"/>
-        <div class="ml-1 font-bold">{data.label}</div>
-    </a>
+    </button>
+	<div class="text-left ml-1 truncate flex-1 font-bold">{data.label}</div>
 </div>
+
+<FileModal bind:showModal>
+
+</FileModal>
+
