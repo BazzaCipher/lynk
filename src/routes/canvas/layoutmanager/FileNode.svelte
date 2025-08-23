@@ -9,10 +9,10 @@
     let fileiconUrl = `/fileicon/${file.ext ?? 'default'}.svg`;
 </script>
 
-<div class="max-w-250 w-30">
+<div class="w-full">
     <a class="flex items-center" href="/">
         <img class="h-[1.2em] w-auto mx-0.5" alt="File icon"
             src={fileiconUrl} loading="lazy"/>
-        <div class="ml-1">{data.label}</div>
+        <div class="ml-1 font-bold">{data.label}</div>
     </a>
 </div>

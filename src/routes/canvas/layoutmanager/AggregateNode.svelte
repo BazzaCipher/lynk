@@ -5,4 +5,4 @@
 </script>
 
 <Handle type="target" position={Position.Left} />
-<div>Aggregate Node</div>
+<div class="w-full">Aggregate Node</div>
