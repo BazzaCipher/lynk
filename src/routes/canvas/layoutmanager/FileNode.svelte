@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Handle, Position, type NodeProps } from '@xyflow/svelte';
+    import { NodeToolbar, Handle, Position, type NodeProps } from '@xyflow/svelte';
     import EntryNode from './EntryNode.svelte';
     import type { FileNodeProps } from '$lib/types';
 
@@ -7,9 +7,15 @@
     let { file } = data as FileNodeProps;
 
     let fileiconUrl = `/fileicon/${file.ext ?? 'default'}.svg`;
+    let isHovered = $state(false);
 </script>
 
-<div class="w-full">
+<NodeToolbar isVisible={isHovered} >
+    <div class="border-2 rounded-sm">{file.name}</div>
+</NodeToolbar>
+
+<div class="max-w-250 w-30" onmouseenter={() => (isHovered = true)} onmouseleave={() => (isHovered = false)}
+    role="button" tabindex=-1>
     <a class="flex items-center" href="/">
         <img class="h-[1.2em] w-auto mx-0.5" alt="File icon"
             src={fileiconUrl} loading="lazy"/>
