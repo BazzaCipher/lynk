@@ -22,26 +22,9 @@
     }).format(Number.isInteger(data.value) ? data.value : 0)
 </script>
 
-<style>
-    .entry-node {
-        display: flex;
-        flex-direction: row;
-        justify-content: space-between;
-    }
-
-    .left {
-        min-width: 0;
-        color: var(--muted-foreground);
-    }
-
-    .right {
-        color: var(--primary);
-    }
-</style>
-
-<div class="entry-node flex flex-row w-full">
-    <div class="left text-left flex-1 min-w-0 truncate">{data.label}</div>
-    <div class="right shrink-0 font-bold ps-1">
+<div class="flex flex-row justify-between flex flex-row w-full">
+    <div class="text-muted-foreground text-left flex-1 min-w-0 truncate">{data.label}</div>
+    <div class="shrink-0 font-bold text-primary ps-1">
         {formattedValue}
     </div>
 </div>

@@ -20,12 +20,10 @@
 <div class="w-full overflow-hidden flex items-center"
 	onmouseenter={() => (isVisible = true)}
 	onmouseleave={() => (isVisible = false)}
-    role="button" tabindex=-1
+	ondblclick={() => (showModal = true)}
 >
-    <button onclick={() => (showModal = true)}>
-        <img class="shrink-0 h-[1.2em] w-auto mx-0.5" alt="File icon"
-            src={fileiconUrl} loading="lazy"/>
-    </button>
+	<img class="shrink-0 h-[1.2em] w-auto mx-0.5" alt="File icon"
+		src={fileiconUrl} loading="lazy"/>
 	<div class="text-left ml-1 truncate flex-1 font-bold">{data.label}</div>
 </div>
 
