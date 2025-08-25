@@ -11,6 +11,9 @@
     let fileiconUrl = `/fileicon/${file.ext ?? 'default'}.svg`;
     let isVisible = $state(false);
 	let showModal = $state(false);
+
+	// Timer for hiding
+	let hideTimer = $state(0);
 </script>
 
 <NodeToolbar {isVisible} >
@@ -18,8 +21,18 @@
 </NodeToolbar>
 
 <div class="w-full overflow-hidden flex items-center"
-	onmouseenter={() => (isVisible = true)}
-	onmouseleave={() => (isVisible = false)}
+	onmouseenter={() => {
+		hideTimer = setTimeout(() => {
+			isVisible = true;
+		}, 2000);
+	}}
+	onmouseleave={() => {
+		if (hideTimer) {
+			clearTimeout(hideTimer);
+			hideTimer = null;
+		}
+		isVisible = false;
+	}}
 	ondblclick={() => (showModal = true)}
 >
 	<img class="shrink-0 h-[1.2em] w-auto mx-0.5" alt="File icon"
