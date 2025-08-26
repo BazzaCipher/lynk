@@ -14,6 +14,12 @@
 
 	// Timer for hiding
 	let hideTimer = $state(0);
+
+	// Function for setting modal
+	function handleModalOpen(e) {
+		e.preventDefault();
+		showModal = true;
+	}
 </script>
 
 <NodeToolbar {isVisible} >
@@ -33,7 +39,7 @@
 		}
 		isVisible = false;
 	}}
-	ondblclick={() => (showModal = true)}
+	ondblclick={handleModalOpen}
 >
 	<img class="shrink-0 h-[1.2em] w-auto mx-0.5" alt="File icon"
 		src={fileiconUrl} loading="lazy"/>
@@ -44,3 +50,8 @@
 
 </FileModal>
 
+<style>
+	::backdrop {
+		
+	}
+</style>

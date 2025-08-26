@@ -1,28 +1,46 @@
-<script>
+<script lang="ts">
 	let { showModal = $bindable(), header, children } = $props();
 
-	let dialog = $state(); // HTMLDialogElement
+	let dialog: HTMLDialogElement = $state(); // HTMLDialogElement
 
 	$effect(() => {
-		if (showModal) dialog.showModal();
+		if (showModal && dialog) {
+			dialog.showModal();
+			console.log("showing modal");
+		} else if (!showModal && dialog) {
+			dialog.close();
+		}
 	});
 
-	function handleDragStart(e) {
+	function handleDragStart(e: DragEvent) {
 		console.log('dragging')
 		e.stopPropagation();
+	}
+
+	function handleClose() {
+		showModal = false;
+	}
+
+	function handleBackdropClick(e) {
+		// Only close if clicking directly on the dialog element (backdrop)
+		if (e.target === dialog) {
+			dialog.close();
+		}
 	}
 </script>
 
 <dialog
 	bind:this={dialog}
-	onclose={() => (showModal = false)}
-	onclick={(e) => { if (e.target === dialog) dialog.close(); }}
-	class="backdrop:bg-primary/50 m-auto max-w-3/4 w-5xl min-h-150 max-h-3/4 h-fit
+	draggable="true"
+	onclose={handleClose}
+	onclick={handleBackdropClick}
+	ondragstart={handleDragStart}
+	ondragend={()=>console.log("dragend")}
+	class="backdrop:bg-gray-900/50 m-auto max-w-3/4 w-5xl min-h-150 max-h-3/4 h-fit
 	rounded-xl"
 >
-	<div class="w-full h-full p-5" draggable="true"
-		ondragstart={handleDragStart}
-		ondragend={()=>console.log("dragend")}
+	<div class="size-full m-0 p-0"
+		aria-modal="true"
 	>
 		<p>Random ass text</p>
 		{@render header?.()}
