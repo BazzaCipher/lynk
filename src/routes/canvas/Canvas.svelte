@@ -83,11 +83,19 @@
 
         // Have to mention only allowed file types
         let droppedFiles = Array.from(event.dataTransfer.files);
-        if (layoutStateManager.dropFiles(droppedFiles) !== null)  {
-            // TODO: Implement a nice graphic
-            alert("Oops, that wasn't meant to happen")
-            console.log("File upload failed")
-        }
+		Promise.allSettled(droppedFiles.map((file) => layoutStateManager.dropFile(file)))
+			.then((results) => {
+				results.filter(({status}) => status == "rejected")
+					.forEach(console.log)
+				for (const result of results) {
+					if (result.status == "rejected") {
+						console.log(result.reason)
+					} else {
+						console.log("Successfully file dropped")
+					}
+				}
+			})
+			.catch(console.log)
     }
 
     function handleDragOver(event: DragEvent) {

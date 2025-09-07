@@ -31,6 +31,7 @@
 	},
 	"dependencies": {
 		"@xyflow/svelte": "1.2.2",
-		"d3-force": "^3.0.0"
+		"d3-force": "^3.0.0",
+		"idb-keyval": "^6.2.2"
 	}
 }

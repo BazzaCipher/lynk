@@ -7,10 +7,11 @@ import {
 	type Node,
 	type Edge,
 	useSvelteFlow,
-} from '@xyflow/svelte'
+} from '@xyflow/svelte';
 import * as d3Force from 'd3-force';
 import type { Simulation } from 'd3-force';
-//import { 'collide' } from 'd3-bboxCollide'
+//import { 'collide' } from 'd3-bboxCollide';
+import { importFile } from '$lib/import';
 import '@xyflow/svelte/dist/style.css'
 import './xy-theme.css'
 import { config } from '$lib/config'
@@ -193,33 +194,34 @@ export class LayoutStateManager {
 	}
 	
 	/// Returned string is NodeId; otherwise returns null
-	public dropFiles(files: File[]): string[] | null {
-		if (this.currentState !== 'grid') { return null }
-		
-		let newNodeIds = [];
-		for (let file of files) {
-			if (!this.filterAllowedFiles(file)) continue;
-			
-			let response = fetch('/canvas/upload', {
-				method: 'POST',
-				body: null// droppedFiles
-			})
-			
-			let newNodeId = this.nextFileNodeId()[0]
-			newNodeIds.push(newNodeId)
+	public async dropFile(file: File): Promise<string | null> {
+		if (this.currentState !== 'grid') return null;
+		if (!this.filterAllowedFiles(file)) return null;
+
+		let newNodeId;
+		try {
+			const fd = await importFile(file);
+
+			newNodeId = this.nextFileNodeId()[0];
 			this.#nodes.push({
 				id: newNodeId,
-				data: { label: file.name, breakdown: { name: "hi", amount: 1000, currency: "AUD" } },
+				height: 30, // Default
+				width: 200, // Default
+				data: {
+					label: fd.name.split('.').shift(),
+					file: fd,
+					breakdown: { name: "hi", amount: 1000, currency: "AUD" }
+				},
 				position: { x: 200, y: 100 },
-				type: 'fileNode'
-			})
-			console.log("Dropped: ", file.name)
+				type: "fileNode"
+			});
+
+			this.updateSimulation();
+			console.log("Dropped:", file.name);
+			return newNodeId;
+		} catch (err) {
+			throw new Error(`Could not upload file: ${file.name}`);
 		}
-		
-		console.log('Dropped files: ', files.length);
-		this.updateSimulation()
-		
-		return newNodeIds
 	}
 	
 	private filterAllowedFiles(file: File): boolean {
@@ -236,13 +238,28 @@ export class LayoutStateManager {
 	
 	/// Call to re-render simulation, use sparingly
 	public updateSimulation() {
-		
+		console.log("Updating simulation (required with d3Forces")
+		this.reinitialise();
 	}
 	
 	public initialise() {
 		if (!this.simulation) return;
 		console.log('starting initialisation')
+
+		this.reinitialise();
 		
+		this.setState('grid');
+		
+		console.log('finished initialising simulation')
+		
+		setTimeout(() => {
+			console.log('starting animation')
+			this.start()
+		}, 500)
+	}
+
+	/// Only updates the nodes as per the existing, rather than reset
+	public reinitialise() {
 		// Create a deep copy of nodes to avoid direct mutation
 		let simNodes = this.#nodes.map((node) => ({
 			...node,
@@ -261,17 +278,8 @@ export class LayoutStateManager {
 			target: edge.target,
 		}));
 		
-		// Reset the simulation with the current nodes and edges
+		// Set the simulation
 		this.simulation.nodes(simNodes);
-		
-		this.setState('grid');
-		
-		console.log('finished initialising simulation')
-		
-		setTimeout(() => {
-			console.log('starting animation')
-			this.start()
-		}, 500)
 	}
 	
 	private attractForceApplyTimeoutId = 0;
