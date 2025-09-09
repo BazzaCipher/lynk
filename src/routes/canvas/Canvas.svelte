@@ -79,6 +79,7 @@
 
     function handleDrop(event: DragEvent) {
         event.preventDefault();
+		isDragging = false;
         if(!event.dataTransfer) return;
 
         // Have to mention only allowed file types
@@ -127,30 +128,12 @@
     }
 </script>
 
-<style>
-    .drop-zone {
-        text-align: center;
-        color: #666;
-        border-radius: 10px;
-    }
-
-    .drop-zone.dragover {
-        border: 2px dashed #aaa;
-        border-color: #333;
-        background: #f9f9f9;
-    }
-</style>
-
-<div
-    class="drop-zone"
-    class:dragover={isDragging}
-    role="region"
-    aria-label="File upload drop zone"
-    ondragover={handleDragOver}
-    ondragleave={handleDragLeave}
-    ondrop={handleDrop}
-    >
-<div style:height = "100vh">
+<div class="flex-1 relative">
+{#if isDragging}
+	<div class="absolute inset-0 z-[1] border-3 border-dashed border-gray-500
+	bg-black/30 flex items-center justify-center font-semibold
+	pointer-events-none">Release to upload</div>
+{/if}
     <SvelteFlowProvider>
         <SvelteFlow
             bind:nodes
@@ -159,11 +142,15 @@
             fitView
             onnodedragstart={handleNodeDragStart}
             onnodedrag={handleNodeDrag}
-            onnodedragstop={handleNodeDragStop}>
+            onnodedragstop={handleNodeDragStop}
+			ondrop={handleDrop}
+			ondragover={handleDragOver}
+			ondragleave={handleDragLeave}
+			>
             <Controls />
             <Background />
             <MiniMap />
         </SvelteFlow>
     </SvelteFlowProvider>
 </div>
-</div>
+
