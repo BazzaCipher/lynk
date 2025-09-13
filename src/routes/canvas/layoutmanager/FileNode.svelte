@@ -5,12 +5,16 @@
 	import FileModal from './FileModal.svelte';
     import type { FileNodeProps } from '$lib/types';
 
+	// Import Viewer plugins
+	import PdfViewer from '../viewers/PdfViewer.plugin';
+
     let { id, data }: FileNodeProps = $props();
     let { file } = data as FileNodeProps;
 
     let fileiconUrl = `/fileicon/${file.ext ?? 'default'}.svg`;
     let isVisible = $state(false);
 	let showModal = $state(false);
+	let viewers = [PdfViewer];
 
 	// Timer for hiding
 	let hideTimer = $state(0);
@@ -46,12 +50,5 @@
 	<div class="text-left ml-1 truncate flex-1 font-bold">{data.label}</div>
 </div>
 
-<FileModal bind:showModal>
+<FileModal bind:showModal {file} {viewers} />
 
-</FileModal>
-
-<style>
-	::backdrop {
-		
-	}
-</style>

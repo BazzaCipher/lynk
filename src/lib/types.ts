@@ -22,8 +22,15 @@ export interface FileData {
 	hash?: string; // optional content hash for dedupe
 }
 
+// Interface for each Viewer plugin to accept
 export interface ViewerProps {
   file: File;
   onClose?: () => void;
+}
+
+// Interface for for modal to consume
+export interface ViewerPlugin {
+	supports: (file: FileData) => boolean;
+	load: () => Promise< { default: any }> // Async for optimisation purposes
 }
 
