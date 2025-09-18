@@ -24,7 +24,8 @@ export interface FileData {
 
 // Interface for each Viewer plugin to accept
 export interface ViewerProps {
-  file: File;
+  file: FileData;
+  isVisible: boolean;
   onClose?: () => void;
 }
 

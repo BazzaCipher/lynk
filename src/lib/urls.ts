@@ -59,6 +59,7 @@ export async function resolveFile(fd: FileData): Promise<File> {
 				dir = await dir.getDirectoryHandle(p);
 			}
 			const fh = await dir.getFileHandle(filename);
+			pdf
 			return fh.getFile();
 		}
 
