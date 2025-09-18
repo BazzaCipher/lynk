@@ -119,3 +119,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+.PdfHighlighter {
+	@apply bg-zinc-300
+}
+

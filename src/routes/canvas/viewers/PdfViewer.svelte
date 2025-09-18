@@ -166,7 +166,7 @@
 {/if}
 -->
 {#if (workerUrl !== null && highlightsStore !== null && pdfHighlighterUtils !== null)}
-<PdfLoader document={'https://arxiv.org/pdf/2203.11115'} worker={workerUrl} class="block size-full">
+<PdfLoader document={fileUrl} worker={workerUrl} class="block size-full">
 	{#snippet pdfHighlighterWrapper(pdfDocumentRef)}
 	<PdfHighlighter
 		{highlightsStore}

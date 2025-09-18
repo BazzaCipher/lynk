@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import Cross1 from 'svelte-radix/Cross1.svelte';
 	import { resolveFile } from '$lib/urls';
 
 	let { showModal = $bindable(), file, viewers, children }:
@@ -64,14 +65,22 @@
 	bind:this={dialog}
 	onclose={handleClose}
 	onclick={handleBackdropClick}
+	ondrag={silenceEvent}
+	ondragstart={silenceEvent}
 	class="backdrop:bg-gray-900/50 m-auto rounded-xl p-0 nodrag nowheel nopan
 		w-[75vw] max-w-5xl h-[75vh] min-h-[150px] overflow-hidden"
 >
-	<div class="size-full m-0 p-0"
-		aria-modal="true"
-	>
-		<p class="text-base font-semibold">File Viewer</p>
-		<div>
+	<div class="relative h-full flex flex-col">
+		<div class="relative items-center p-2">
+			<p class="absolute left-1/2 -translate-x-1/2 text-base font-semibold">File Viewer</p>
+			<div class="flex float-right content mr-1">
+				<button autofocus onclick={() => {showModal=false}}
+					class="rounded-sm p-1 hover:bg-(--xy-theme-hover)">
+					<Cross1 size="15" />
+				</button>
+			</div>
+		</div>
+		<div class="flex-1">
 			{@render children?.()}
 			<hr />
 			{#if !file}
@@ -86,8 +95,5 @@
 				<p class="text-chart-1">Unsupported file</p>
 			{/if}
 		</div>
-		<hr />
-		<!-- svelte-ignore a11y_autofocus -->
-		<button autofocus onclick={() => {showModal=false}}>close modal</button>
 	</div>
 </dialog>
