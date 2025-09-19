@@ -8,6 +8,7 @@
 		type PdfHighlightUtils as TPdfHighlightUtils
 	} from 'svelte-pdf-highlighter';
 	import Toolbar from './Toolbar.svelte';
+	import Sidebar from './Sidebar.svelte';
 	import ContextMenu from './ContextMenu.svelte';
 	import type { ContextMenuProps } from './ContextMenu.svelte';
 	import type { ViewerProps } from '$lib/types';
@@ -20,6 +21,7 @@
     const colours = ['#fcf151', '#ff659f', '#83f18d', '#67dfff', '#b581fe'];
 	const scrolledTo_color = 'red';
 	let sidebarVisible = $state(true);
+	let sidebarScrollToId: (id: string) => void;
 	let pdfHighlighterUtils: Partial<TPdfHighlighterUtils> | null = $state(null);
 	let contextMenu: ContextMenuProps | null = $state(null);
 
@@ -35,6 +37,7 @@
 		highlightsStore = new HighlightsModel(highlights_array ?? []);
 		/** subscribe to highlights model updates  */
 		unsubscribe = highlightsStore.subscribe((highlights)=>{
+			console.log("WHY NO")
 			console.log($state.snapshot(highlights));
 			if (true) return new Error('Failed to save highlights');
 		});
@@ -72,7 +75,7 @@
         pdfHighlighterUtils = {
             textSelectionDelay: 1500,
             selectedColorIndex: 0,
-            colours: colours,
+            colors: colours,
             scrolledTo_color: scrolledTo_color,
             currentScaleValue: 1,
         }
@@ -152,21 +155,19 @@
 		bind:sidebarVisible
 	/>
 {/if}
-<!--
+<div class="flex">
 {#if (sidebarVisible && highlightsStore !== null)}
 	<Sidebar
 		highlights={highlightsStore.highlights}
 		resetHighlights={highlightsStore.resetHighlights}
-		{toggleDocument}
 		editHighlight = {highlightsStore.editHighlight}
 		deleteHighlight = {highlightsStore.deleteHighlight}
 		sidebarScrollToId = {(callback: (id: string) => void) => sidebarScrollToId = callback}
 		bind:pdfHighlighterUtils = {pdfHighlighterUtils}
 	/> 
 {/if}
--->
 {#if (workerUrl !== null && highlightsStore !== null && pdfHighlighterUtils !== null)}
-<PdfLoader document={fileUrl} worker={workerUrl} class="block size-full">
+<PdfLoader document={fileUrl} workerSrc={workerUrl} class="block size-full">
 	{#snippet pdfHighlighterWrapper(pdfDocumentRef)}
 	<PdfHighlighter
 		{highlightsStore}
@@ -181,9 +182,10 @@
 				sidebarScrollToId(data.id);
 			}}
 		bind:pdfHighlighterUtils = {pdfHighlighterUtils}
-		<!-- onScrollAway={resetHash} -->
-		<!-- onHighlightsRendered={scrollToHighlightFromHash} -->
+		onScrollAway={resetHash}
+		onHighlightsRendered={scrollToHighlightFromHash}
 		scaleOnResize={false}
+		id="PdfHighlighter"
 	>
 		<!-- Custom highlight container (optional) -->
 		<!-- {#snippet highlightContainer()}
@@ -278,5 +280,13 @@
 	{/snippet}
 </PdfLoader>
 {/if}
+</div>
 {/if}
+
+<style>
+	:global(.PdfHighlighter) {
+		/* Tailwind apply due to 3rd party class */
+		background-color: var(--accent);
+	}
+</style>
 
