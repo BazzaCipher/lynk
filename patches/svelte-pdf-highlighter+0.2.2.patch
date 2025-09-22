@@ -1,0 +1,22 @@
+diff --git a/node_modules/svelte-pdf-highlighter/dist/components/PdfHighlighter.svelte b/node_modules/svelte-pdf-highlighter/dist/components/PdfHighlighter.svelte
+index 89646ef..e5dc458 100644
+--- a/node_modules/svelte-pdf-highlighter/dist/components/PdfHighlighter.svelte
++++ b/node_modules/svelte-pdf-highlighter/dist/components/PdfHighlighter.svelte
+@@ -199,6 +199,7 @@
+ 
+             //doc = containerNodeRef.ownerDocument;
+             eventBusRef.on('textlayerrendered', () => {
++				console.log("RENDERING HIGHLIGHT LAYER")
+                 renderHighlightLayers(); 
+                 //handleScaleValue();
+                 console.log('textlayerrendered');
+@@ -489,7 +490,9 @@
+     };
+ 
+     const renderHighlightLayers = () => {
++		console.log("IN THE FLOW")
+         if (!viewerRef) return;
++		console.log("DIDN'T EXIST")
+         for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber++) {
+             const highlightBindings = highlightBindingsRef[pageNumber];
+ 

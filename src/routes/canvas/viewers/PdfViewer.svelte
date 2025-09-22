@@ -155,7 +155,7 @@
 		bind:sidebarVisible
 	/>
 {/if}
-<div class="flex">
+<div class="relative">
 {#if (sidebarVisible && highlightsStore !== null)}
 	<Sidebar
 		highlights={highlightsStore.highlights}
