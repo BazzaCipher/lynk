@@ -9,6 +9,11 @@ import {
 } from '@xyflow/react';
 import type { LynkNode, LynkNodeData, LynkNodeType, CanvasState } from '../types';
 import { CanvasStateSchema } from '../schemas/canvas';
+import {
+  wouldCreateCycle,
+  getTopologicalOrder,
+  getDependentNodes,
+} from '../core/engine/dependencyGraph';
 
 // Highlighted region reference for source highlighting
 export interface HighlightedRegion {
@@ -36,8 +41,13 @@ interface CanvasStore {
   updateNodeData: (nodeId: string, data: Partial<LynkNodeData>) => void;
 
   // Edge actions
-  addEdge: (edge: Edge) => void;
+  addEdge: (edge: Edge) => boolean; // Returns false if would create cycle
   removeEdge: (edgeId: string) => void;
+  canAddEdge: (source: string, target: string) => boolean;
+
+  // Dependency graph selectors
+  getCalculationOrder: () => string[] | null;
+  getDependents: (nodeId: string) => string[];
 
   // Viewport actions
   setViewport: (viewport: Viewport) => void;
@@ -59,6 +69,48 @@ interface CanvasStore {
 let nodeIdCounter = 0;
 const generateNodeId = () => `node-${++nodeIdCounter}`;
 const generateCanvasId = () => `canvas-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+/**
+ * Validate node data updates for common issues.
+ * Returns true if valid, logs warnings for detected issues.
+ */
+function validateNodeDataUpdate(
+  nodeType: string,
+  update: Partial<LynkNodeData>
+): boolean {
+  let isValid = true;
+
+  // Type-specific validation
+  if (nodeType === 'calculation') {
+    // Validate precision is a reasonable number
+    if ('precision' in update && typeof update.precision === 'number') {
+      if (update.precision < 0 || update.precision > 10) {
+        console.warn(`Invalid precision value: ${update.precision}. Should be 0-10.`);
+        isValid = false;
+      }
+    }
+  }
+
+  if (nodeType === 'file') {
+    // Validate regions array if present
+    if ('regions' in update && update.regions) {
+      if (!Array.isArray(update.regions)) {
+        console.warn('Invalid regions: expected array');
+        isValid = false;
+      }
+    }
+  }
+
+  // Common validation: label should be a non-empty string if present
+  if ('label' in update && update.label !== undefined) {
+    if (typeof update.label !== 'string') {
+      console.warn(`Invalid label type: expected string, got ${typeof update.label}`);
+      isValid = false;
+    }
+  }
+
+  return isValid;
+}
 
 export const useCanvasStore = create<CanvasStore>((set, get) => ({
   // Initial state
@@ -106,24 +158,54 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   },
 
   updateNodeData: (nodeId, data) => {
+    const { nodes } = get();
+    const node = nodes.find((n) => n.id === nodeId);
+
+    // Validate update if node exists
+    if (node) {
+      validateNodeDataUpdate(node.type, data);
+    }
+
     set({
-      nodes: get().nodes.map((node) =>
-        node.id === nodeId
-          ? { ...node, data: { ...node.data, ...data } }
-          : node
+      nodes: nodes.map((n) =>
+        n.id === nodeId
+          ? { ...n, data: { ...n.data, ...data } }
+          : n
       ) as LynkNode[],
     });
   },
 
   // Edge actions
   addEdge: (edge) => {
-    set({ edges: [...get().edges, edge] });
+    const { edges } = get();
+    // Check for cycles before adding
+    if (wouldCreateCycle(edges, edge.source, edge.target)) {
+      console.warn(`Edge from ${edge.source} to ${edge.target} would create a cycle`);
+      return false;
+    }
+    set({ edges: [...edges, edge] });
+    return true;
   },
 
   removeEdge: (edgeId) => {
     set({
       edges: get().edges.filter((edge) => edge.id !== edgeId),
     });
+  },
+
+  canAddEdge: (source, target) => {
+    return !wouldCreateCycle(get().edges, source, target);
+  },
+
+  // Dependency graph selectors
+  getCalculationOrder: () => {
+    const { nodes, edges } = get();
+    const nodeIds = nodes.map((n) => n.id);
+    return getTopologicalOrder(nodeIds, edges);
+  },
+
+  getDependents: (nodeId) => {
+    return getDependentNodes(get().edges, nodeId);
   },
 
   // Viewport actions

@@ -13,10 +13,11 @@ const defaultFileData: FileNodeData = {
 
 const defaultCalculationData: CalculationNodeData = {
   label: 'Calculation',
-  operation: 'sum',
+  operation: 'sum',  // Default to sum (references operation registry)
   precision: 2,
   inputs: [],
   result: undefined,
+  inputCache: {},  // Initialize empty input cache for operation switching
 };
 
 const defaultSheetData: SheetNodeData = {

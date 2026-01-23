@@ -53,9 +53,9 @@ function parseExtractedText(text: string): DataValue {
     }
   }
 
-  // Default to text
+  // Default to string
   return {
-    type: 'text',
+    type: 'string',
     value: trimmed,
   };
 }

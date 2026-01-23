@@ -1,6 +1,6 @@
 import type { ExtractedRegion } from '../../../types';
 import { getColorForType } from '../../../utils/colors';
-import { useCanvasStore } from '../../../store/canvasStore';
+import { useExternalHighlight } from '../../../hooks/useHighlighting';
 
 interface HighlightOverlayProps {
   regions: ExtractedRegion[];
@@ -19,17 +19,8 @@ export function HighlightOverlay({
   interactive = true,
   nodeId,
 }: HighlightOverlayProps) {
-  // Subscribe to external highlight state
-  const highlightedRegion = useCanvasStore((state) => state.highlightedRegion);
-
-  // Check if a region is externally highlighted (from CalculationNode hover/click)
-  const isExternallyHighlighted = (regionId: string): boolean => {
-    if (!highlightedRegion || !nodeId) return false;
-    return (
-      highlightedRegion.nodeId === nodeId &&
-      highlightedRegion.regionId === regionId
-    );
-  };
+  // Use external highlight hook
+  const { isExternallyHighlighted } = useExternalHighlight(nodeId);
 
   // Filter regions for current page
   const boxRegions = regions.filter(
@@ -147,9 +138,10 @@ export function HighlightOverlay({
                 interactive ? 'pointer-events-auto cursor-pointer' : ''
               } ${isExternal ? 'animate-pulse' : ''}`}
               style={{
-                left: minX,
-                top: minY - 20,
+                left: `${minX}px`,
+                top: `${Math.max(0, minY - 22)}px`,
                 backgroundColor: colors.border,
+                zIndex: 10,
               }}
               onClick={interactive ? () => onRegionSelect(region.id) : undefined}
             >

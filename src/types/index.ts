@@ -3,10 +3,55 @@ import type { Node, Edge, Viewport } from '@xyflow/react';
 // Node type identifiers
 export type LynkNodeType = 'file' | 'calculation' | 'sheet' | 'label';
 
-// Simple data types
+// ═══════════════════════════════════════════════════════════════════════════════
+// UNIFIED DATA TYPE SYSTEM
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Core data types for simple values.
+ * Used throughout the application for region data types and calculations.
+ */
 export type SimpleDataType = 'string' | 'number' | 'boolean' | 'date' | 'currency';
 
-// Type-safe simple values
+/**
+ * Extended data types including complex/aggregate types.
+ * Used by DataValue for nested structures.
+ */
+export type ExtendedDataType = SimpleDataType | 'array' | 'table';
+
+/**
+ * Legacy type alias - 'text' maps to 'string'.
+ * @deprecated Use 'string' instead. Kept for backward compatibility with saved canvases.
+ */
+export type LegacyTextType = 'text';
+
+/**
+ * All data types including legacy aliases.
+ * Use this for parsing/validation, then normalize to ExtendedDataType.
+ */
+export type AnyDataType = ExtendedDataType | LegacyTextType;
+
+/**
+ * Normalize legacy type names to current types.
+ * Converts 'text' → 'string'.
+ */
+export function normalizeDataType(type: AnyDataType): ExtendedDataType {
+  if (type === 'text') return 'string';
+  return type;
+}
+
+/**
+ * Type guard to check if a type is a simple (non-aggregate) data type.
+ */
+export function isSimpleDataType(type: AnyDataType): type is SimpleDataType {
+  const normalized = normalizeDataType(type);
+  return ['string', 'number', 'boolean', 'date', 'currency'].includes(normalized);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TYPE-SAFE SIMPLE VALUES
+// ═══════════════════════════════════════════════════════════════════════════════
+
 export interface StringValue {
   type: 'string';
   value: string;
@@ -66,9 +111,14 @@ export interface DataSourceReference {
   confidence?: number;
 }
 
-// Core data value type with source tracking (legacy support)
+/**
+ * Core data value type with source tracking.
+ *
+ * Note: The 'type' field may contain legacy value 'text' which should be treated as 'string'.
+ * Use normalizeDataType() when comparing types.
+ */
 export interface DataValue {
-  type: 'number' | 'text' | 'date' | 'array' | 'table';
+  type: ExtendedDataType | LegacyTextType;
   value: number | string | Date | DataValue[];
   source?: DataSourceReference;
 }
@@ -84,6 +134,7 @@ export interface ExtractedRegion {
   extractedData: DataValue;
   dataType: SimpleDataType; // User-specified data type
   color: string;
+  valueCache?: Partial<Record<SimpleDataType, string>>; // Cached values per data type
 }
 
 // Base node data that all nodes share
@@ -101,12 +152,51 @@ export interface FileNodeData extends BaseNodeData {
   totalPages: number;
 }
 
-// Calculation node specific data
+/**
+ * Cached input state for an operation.
+ * Stores edge connections so they can be restored when switching back to this operation.
+ */
+export interface CachedOperationInputs {
+  /** The operation this cache is for */
+  operationId: string;
+  /** Edge IDs that were connected */
+  edgeIds: string[];
+  /** Timestamp of when this was cached */
+  cachedAt: string;
+}
+
+/**
+ * Result from a calculation operation with type information.
+ * The dataType may differ from inputs (e.g., count returns number regardless of input types).
+ */
+export interface CalculationResult {
+  /** The computed value */
+  value: number | string | Date;
+  /** The data type of the result (determines output handle color) */
+  dataType: SimpleDataType;
+  /** Optional source tracking for provenance */
+  source?: DataSourceReference;
+}
+
+/**
+ * Calculation node specific data.
+ * Uses extensible operation IDs from the operation registry.
+ */
 export interface CalculationNodeData extends BaseNodeData {
-  operation: 'sum' | 'average' | 'min' | 'max' | 'count';
+  /** Operation ID - references operationRegistry (e.g., 'sum', 'max', 'round') */
+  operation: string;
+  /** Decimal precision for result display */
   precision: number;
+  /** Input values (resolved from edges) - computed, not persisted */
   inputs: DataValue[];
-  result?: DataValue;
+  /** Computed result with type information */
+  result?: CalculationResult;
+  /**
+   * Cached inputs per operation.
+   * When user switches operations, we store current connections here.
+   * If they switch back, compatible connections can be restored.
+   */
+  inputCache?: Record<string, CachedOperationInputs>;
 }
 
 // Sheet column definition
@@ -123,9 +213,15 @@ export interface SheetNodeData extends BaseNodeData {
   rows: DataValue[][];
 }
 
+/**
+ * Display format options for label nodes.
+ * Note: 'text' is kept for backward compatibility, treated as 'string'.
+ */
+export type LabelFormat = 'number' | 'currency' | 'date' | 'text';
+
 // Label node specific data
 export interface LabelNodeData extends BaseNodeData {
-  format: 'number' | 'currency' | 'date' | 'text';
+  format: LabelFormat;
   value?: DataValue;
   fontSize: 'small' | 'medium' | 'large';
   alignment: 'left' | 'center' | 'right';

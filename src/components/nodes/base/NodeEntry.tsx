@@ -9,6 +9,12 @@ interface NodeEntryProps {
   className?: string;
   /** Allow multiple connections to this handle */
   allowMultiple?: boolean;
+  /**
+   * Handle color - use to indicate data type.
+   * Pass the color directly (e.g., region.color from getColorForType()).
+   * Defaults to gray (#6b7280) if not provided.
+   */
+  handleColor?: string;
 }
 
 export function NodeEntry({
@@ -18,6 +24,7 @@ export function NodeEntry({
   children,
   className = '',
   allowMultiple = false,
+  handleColor,
 }: NodeEntryProps) {
   return (
     <div className={`relative flex items-center min-h-8 px-2 ${className}`}>
@@ -32,6 +39,8 @@ export function NodeEntry({
           transform: 'translateY(-50%)',
           ...(handlePosition === Position.Left && { left: -6 }),
           ...(handlePosition === Position.Right && { right: -6 }),
+          // Apply handle color based on data type
+          backgroundColor: handleColor || '#6b7280',
         }}
         className={`w-3 h-3 border-2 border-white ${
           allowMultiple ? 'ring-2 ring-offset-1 ring-blue-300' : ''

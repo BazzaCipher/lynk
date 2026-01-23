@@ -1,4 +1,19 @@
 import { z } from 'zod';
+import { OPERATION_IDS } from '../core/operations/operationRegistry';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DATA TYPE SCHEMAS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Simple data types for region values and calculations */
+const SimpleDataTypeSchema = z.enum(['string', 'number', 'boolean', 'date', 'currency']);
+
+/** Extended data types including complex types and legacy 'text' alias */
+const ExtendedDataTypeSchema = z.enum(['string', 'number', 'boolean', 'date', 'currency', 'array', 'table', 'text']);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GEOMETRY SCHEMAS
+// ═══════════════════════════════════════════════════════════════════════════════
 
 // Region coordinates for box selections
 const RegionCoordinatesSchema = z.object({
@@ -27,13 +42,13 @@ const DataSourceReferenceSchema = z.object({
   confidence: z.number().optional(),
 });
 
-// Data value
+// Data value - supports all extended types including legacy 'text'
 const DataValueSchema: z.ZodType<{
-  type: 'number' | 'text' | 'date' | 'array' | 'table';
+  type: z.infer<typeof ExtendedDataTypeSchema>;
   value: unknown;
   source?: z.infer<typeof DataSourceReferenceSchema>;
 }> = z.object({
-  type: z.enum(['number', 'text', 'date', 'array', 'table']),
+  type: ExtendedDataTypeSchema,
   value: z.unknown(),
   source: DataSourceReferenceSchema.optional(),
 });
@@ -47,8 +62,9 @@ const ExtractedRegionSchema = z.object({
   textRange: TextRangeSchema.optional(),
   pageNumber: z.number(),
   extractedData: DataValueSchema,
-  dataType: z.enum(['string', 'number', 'boolean', 'date', 'currency']),
+  dataType: SimpleDataTypeSchema,
   color: z.string(),
+  valueCache: z.record(SimpleDataTypeSchema, z.string()).optional(),
 });
 
 // File node data
@@ -62,13 +78,28 @@ const FileNodeDataSchema = z.object({
   totalPages: z.number(),
 });
 
+// Calculation result - uses SimpleDataType (no complex types)
+const CalculationResultSchema = z.object({
+  value: z.union([z.number(), z.string()]),
+  dataType: SimpleDataTypeSchema,
+  source: DataSourceReferenceSchema.optional(),
+});
+
+// Cached operation inputs for operation switching
+const CachedOperationInputsSchema = z.object({
+  operationId: z.string(),
+  edgeIds: z.array(z.string()),
+  cachedAt: z.string(),
+});
+
 // Calculation node data
 const CalculationNodeDataSchema = z.object({
   label: z.string(),
-  operation: z.enum(['sum', 'average', 'min', 'max', 'count']),
+  operation: z.enum(OPERATION_IDS),
   precision: z.number(),
   inputs: z.array(DataValueSchema),
-  result: DataValueSchema.optional(),
+  result: CalculationResultSchema.optional(),
+  inputCache: z.record(z.string(), CachedOperationInputsSchema).optional(),
 });
 
 // Sheet column

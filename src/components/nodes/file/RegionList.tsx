@@ -1,8 +1,16 @@
+import React, { useState } from 'react';
 import { Position } from '@xyflow/react';
 import { NodeEntry } from '../base/NodeEntry';
-import { useCanvasStore } from '../../../store/canvasStore';
+import { useExternalHighlight } from '../../../hooks/useHighlighting';
 import type { ExtractedRegion, SimpleDataType } from '../../../types';
 import { getTypeBadgeClass, getTypeColorClass } from '../../../utils/colors';
+import {
+  formatValue,
+  formatDateForInput,
+  validateValue,
+  getLocaleCurrencySymbol,
+  parseBooleanValue,
+} from '../../../utils/formatting';
 
 interface RegionListProps {
   regions: ExtractedRegion[];
@@ -19,44 +27,28 @@ interface RegionListProps {
   nodeId?: string; // Node ID for comparing with external highlight
 }
 
-const DATA_TYPE_OPTIONS: { value: SimpleDataType; label: string; icon: string }[] = [
-  { value: 'string', label: 'Text', icon: 'Aa' },
-  { value: 'number', label: 'Number', icon: '#' },
-  { value: 'currency', label: 'Currency', icon: '$' },
-  { value: 'date', label: 'Date', icon: '📅' },
-  { value: 'boolean', label: 'Yes/No', icon: '?' },
-];
+// Date icon - replace this SVG with your custom icon
+const DateIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+  </svg>
+);
+
+function getDataTypeOptions(): { value: SimpleDataType; label: string; icon: React.ReactNode }[] {
+  return [
+    { value: 'string', label: 'Text', icon: 'Aa' },
+    { value: 'number', label: 'Number', icon: '#' },
+    { value: 'currency', label: 'Currency', icon: getLocaleCurrencySymbol() },
+    { value: 'date', label: 'Date', icon: <DateIcon /> },
+    { value: 'boolean', label: 'Yes/No', icon: '?' },
+  ];
+}
 
 const BOOLEAN_OPTIONS = [
   { value: 'unknown', label: 'Unknown' },
   { value: 'yes', label: 'Yes' },
   { value: 'no', label: 'No' },
 ];
-
-function formatValue(value: string | number | Date, dataType: SimpleDataType): string {
-  if (value === '' || value === null || value === undefined) return '';
-
-  const strValue = String(value);
-
-  switch (dataType) {
-    case 'currency':
-      const num = parseFloat(strValue.replace(/[^0-9.-]/g, ''));
-      return isNaN(num) ? strValue : `$${num.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-    case 'number':
-      const parsed = parseFloat(strValue.replace(/[^0-9.-]/g, ''));
-      return isNaN(parsed) ? strValue : parsed.toLocaleString();
-    case 'date':
-      const date = new Date(strValue);
-      return isNaN(date.getTime()) ? strValue : date.toLocaleDateString();
-    case 'boolean':
-      const lower = strValue.toLowerCase();
-      if (lower === 'yes' || lower === 'true' || lower === '1') return 'Yes';
-      if (lower === 'no' || lower === 'false' || lower === '0') return 'No';
-      return 'Unknown';
-    default:
-      return strValue;
-  }
-}
 
 function getRawValue(region: ExtractedRegion): string {
   if (region.extractedData.value !== '') {
@@ -75,10 +67,7 @@ function getDisplayValue(region: ExtractedRegion): string {
 }
 
 function getBooleanValue(region: ExtractedRegion): string {
-  const raw = getRawValue(region).toLowerCase();
-  if (raw === 'yes' || raw === 'true' || raw === '1') return 'yes';
-  if (raw === 'no' || raw === 'false' || raw === '0') return 'no';
-  return 'unknown';
+  return parseBooleanValue(getRawValue(region));
 }
 
 export function RegionList({
@@ -95,17 +84,11 @@ export function RegionList({
   compact = false,
   nodeId,
 }: RegionListProps) {
-  // Subscribe to external highlight state
-  const highlightedRegion = useCanvasStore((state) => state.highlightedRegion);
+  // Use external highlight hook
+  const { isExternallyHighlighted } = useExternalHighlight(nodeId);
 
-  // Check if a region is externally highlighted (from CalculationNode hover/click)
-  const isExternallyHighlighted = (regionId: string): boolean => {
-    if (!highlightedRegion || !nodeId) return false;
-    return (
-      highlightedRegion.nodeId === nodeId &&
-      highlightedRegion.regionId === regionId
-    );
-  };
+  // Collapsible view state for full view mode
+  const [collapsedView, setCollapsedView] = useState(false);
 
   if (regions.length === 0) {
     return (
@@ -130,6 +113,7 @@ export function RegionList({
               id={region.id}
               handleType="source"
               handlePosition={Position.Right}
+              handleColor={region.color}
               className={`group hover:bg-gray-50 cursor-pointer ${
                 selectedRegionId === region.id ? 'bg-blue-50' : ''
               } ${isExternal ? 'bg-blue-100 ring-1 ring-blue-400 animate-pulse' : ''}`}
@@ -163,159 +147,222 @@ export function RegionList({
   // Full view - editable with all controls
   return (
     <div className="divide-y divide-gray-100">
-      {regions.map((region) => {
-        const displayValue = getDisplayValue(region);
-        const rawValue = getRawValue(region);
-        const hasValue = rawValue !== '';
-        const needsOcr = region.selectionType === 'box' && !hasValue;
+      {/* Toggle header */}
+      <div className="flex justify-between px-3 py-2 bg-gray-50 border-b">
+        <span className="text-xs text-gray-500">
+          {collapsedView ? 'Compact' : 'Full'} view
+        </span>
+        <button
+          onClick={() => setCollapsedView(!collapsedView)}
+          className="text-xs text-blue-600 hover:text-blue-800"
+        >
+          {collapsedView ? 'Expand' : 'Collapse'}
+        </button>
+      </div>
 
-        return (
-          <div
-            key={region.id}
-            className={`p-3 hover:bg-gray-50 transition-colors cursor-pointer ${
-              selectedRegionId === region.id ? 'bg-blue-50 ring-2 ring-blue-200 ring-inset' : ''
-            }`}
-            onClick={() => onRegionSelect(region.id)}
-          >
-            {/* Header row: label + delete */}
-            <div className="flex items-center gap-2 mb-2">
-              <input
-                type="text"
-                value={region.label}
-                onChange={(e) => {
-                  e.stopPropagation();
-                  onRegionLabelChange(region.id, e.target.value);
-                }}
-                onClick={(e) => e.stopPropagation()}
-                className="flex-1 text-sm font-medium bg-transparent border-none outline-none focus:ring-0 p-0"
-                placeholder="Label..."
-              />
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRegionDelete(region.id);
-                }}
-                className="text-gray-400 hover:text-red-500 transition-colors p-1"
-                title="Delete"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </button>
+      {/* Collapsed view - name + value only */}
+      {collapsedView ? (
+        regions.map((region) => {
+          const displayValue = getDisplayValue(region);
+          const typeColor = getTypeBadgeClass(region.dataType);
+          const isExternal = isExternallyHighlighted(region.id);
+
+          return (
+            <div
+              key={region.id}
+              className={`px-3 py-2 hover:bg-gray-50 cursor-pointer flex items-center gap-2 ${
+                selectedRegionId === region.id ? 'bg-blue-50' : ''
+              } ${isExternal ? 'bg-blue-100 ring-1 ring-blue-400 animate-pulse' : ''}`}
+              onClick={() => onRegionSelect(region.id)}
+            >
+              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${typeColor}`} />
+              <span className="text-xs text-gray-500 truncate max-w-[80px]">
+                {region.label}
+              </span>
+              <span className={`text-sm font-medium truncate flex-1 ${
+                displayValue ? 'text-gray-900' : 'text-gray-300'
+              }`}>
+                {displayValue || '(empty)'}
+              </span>
             </div>
+          );
+        })
+      ) : (
+        /* Full editable view */
+        regions.map((region) => {
+          const displayValue = getDisplayValue(region);
+          const rawValue = getRawValue(region);
+          const hasValue = rawValue !== '';
+          const needsOcr = region.selectionType === 'box' && !hasValue;
+          const validation = validateValue(rawValue, region.dataType);
 
-            {/* Type selector */}
-            <div className="flex items-center gap-1 mb-2">
-              {DATA_TYPE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRegionDataTypeChange(region.id, opt.value);
-                  }}
-                  className={`px-2 py-1 text-xs rounded transition-colors ${
-                    region.dataType === opt.value
-                      ? getTypeColorClass(opt.value)
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
-                  title={opt.label}
-                >
-                  {opt.icon}
-                </button>
-              ))}
-            </div>
-
-            {/* Value display/input */}
-            <div className={`rounded p-2 ${getTypeColorClass(region.dataType)}`}>
-              {region.dataType === 'boolean' ? (
-                // Boolean: Yes/No/Unknown selector
-                <div className="flex gap-1">
-                  {BOOLEAN_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onValueChange?.(region.id, opt.value);
-                      }}
-                      className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
-                        getBooleanValue(region) === opt.value
-                          ? 'bg-white shadow-sm font-medium'
-                          : 'hover:bg-white/50'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              ) : onValueChange ? (
+          return (
+            <div
+              key={region.id}
+              className={`p-3 hover:bg-gray-50 transition-colors cursor-pointer ${
+                selectedRegionId === region.id ? 'bg-blue-50 ring-2 ring-blue-200 ring-inset' : ''
+              }`}
+              onClick={() => onRegionSelect(region.id)}
+            >
+              {/* Header row: label + delete */}
+              <div className="flex items-center gap-2 mb-2">
                 <input
                   type="text"
-                  value={rawValue}
+                  value={region.label}
                   onChange={(e) => {
                     e.stopPropagation();
-                    onValueChange(region.id, e.target.value);
+                    onRegionLabelChange(region.id, e.target.value);
                   }}
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full text-sm font-mono bg-transparent border-none outline-none focus:ring-0 p-0"
-                  placeholder="Enter value..."
+                  className="flex-1 text-sm font-medium bg-transparent border-none outline-none focus:ring-0 p-0"
+                  placeholder="Label..."
                 />
-              ) : (
-                <span className={`text-sm font-mono ${hasValue ? '' : 'opacity-50'}`}>
-                  {displayValue || '(no value)'}
-                </span>
-              )}
-            </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRegionDelete(region.id);
+                  }}
+                  className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                  title="Delete"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
 
-            {/* OCR button for box selections without value */}
-            {showOcrButton && needsOcr && onExtract && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onExtract(region.id);
-                }}
-                disabled={isExtracting}
-                className="mt-2 w-full px-3 py-1.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
-              >
-                {isExtracting ? (
+              {/* Type selector */}
+              <div className="flex items-center gap-1 mb-2">
+                {getDataTypeOptions().map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRegionDataTypeChange(region.id, opt.value);
+                    }}
+                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                      region.dataType === opt.value
+                        ? getTypeColorClass(opt.value)
+                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }`}
+                    title={opt.label}
+                  >
+                    {opt.icon}
+                  </button>
+                ))}
+              </div>
+
+              {/* Value display/input */}
+              <div className={`rounded p-2 ${getTypeColorClass(region.dataType)} ${
+                !validation.valid ? 'ring-2 ring-red-400' : ''
+              }`}>
+                {region.dataType === 'boolean' ? (
+                  // Boolean: Yes/No/Unknown selector
+                  <div className="flex gap-1">
+                    {BOOLEAN_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onValueChange?.(region.id, opt.value);
+                        }}
+                        className={`flex-1 px-2 py-1 text-xs rounded transition-colors ${
+                          getBooleanValue(region) === opt.value
+                            ? 'bg-white shadow-sm font-medium'
+                            : 'hover:bg-white/50'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : region.dataType === 'date' && onValueChange ? (
+                  // Date: native date picker
+                  <input
+                    type="date"
+                    value={formatDateForInput(rawValue)}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      onValueChange(region.id, e.target.value);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full text-sm bg-transparent border-none outline-none focus:ring-0 p-0"
+                  />
+                ) : onValueChange ? (
+                  <input
+                    type="text"
+                    value={rawValue}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      onValueChange(region.id, e.target.value);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full text-sm font-mono bg-transparent border-none outline-none focus:ring-0 p-0"
+                    placeholder="Enter value..."
+                  />
+                ) : (
+                  <span className={`text-sm font-mono ${hasValue ? '' : 'opacity-50'}`}>
+                    {displayValue || '(no value)'}
+                  </span>
+                )}
+              </div>
+
+              {/* Validation error message */}
+              {!validation.valid && (
+                <p className="mt-1 text-xs text-red-500">{validation.message}</p>
+              )}
+
+              {/* OCR button for box selections without value */}
+              {showOcrButton && needsOcr && onExtract && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onExtract(region.id);
+                  }}
+                  disabled={isExtracting}
+                  className="mt-2 w-full px-3 py-1.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                >
+                  {isExtracting ? (
+                    <>
+                      <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Extracting...
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                      </svg>
+                      Run OCR
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Selection type indicator */}
+              <div className="mt-2 flex items-center gap-1 text-xs text-gray-400">
+                {region.selectionType === 'text' ? (
                   <>
-                    <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
                     </svg>
-                    Extracting...
+                    Text selection
                   </>
                 ) : (
                   <>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                      <path d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zm0 2h10v10H5V5z" />
                     </svg>
-                    Run OCR
+                    Box selection
                   </>
                 )}
-              </button>
-            )}
-
-            {/* Selection type indicator */}
-            <div className="mt-2 flex items-center gap-1 text-xs text-gray-400">
-              {region.selectionType === 'text' ? (
-                <>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                  </svg>
-                  Text selection
-                </>
-              ) : (
-                <>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zm0 2h10v10H5V5z" />
-                  </svg>
-                  Box selection
-                </>
-              )}
+              </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })
+      )}
     </div>
   );
 }

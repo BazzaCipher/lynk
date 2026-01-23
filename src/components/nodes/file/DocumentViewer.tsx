@@ -18,6 +18,7 @@ interface DocumentViewerProps {
   onTextSelect?: (textRange: TextRange) => void;
   enableTextSelection?: boolean;
   width?: number;
+  scrollMode?: boolean; // Enable smooth scroll through all pages
 }
 
 export function DocumentViewer({
@@ -31,10 +32,12 @@ export function DocumentViewer({
   onTextSelect,
   enableTextSelection = true,
   width = 300,
+  scrollMode = false,
 }: DocumentViewerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null); // Ref for document content area only
 
   const handlePdfLoadSuccess = useCallback(
     ({ numPages }: { numPages: number }) => {
@@ -75,19 +78,19 @@ export function DocumentViewer({
       // Get the range
       const range = selection.getRangeAt(0);
 
-      // Check if selection is within our container
-      if (!containerRef.current?.contains(range.commonAncestorContainer)) return;
+      // Check if selection is within our content area
+      if (!contentRef.current?.contains(range.commonAncestorContainer)) return;
 
-      // Get bounding rectangles relative to container
-      const containerRect = containerRef.current.getBoundingClientRect();
+      // Get bounding rectangles relative to content area (not including nav bar)
+      const contentRect = contentRef.current.getBoundingClientRect();
       const clientRects = range.getClientRects();
       const rects: TextRange['rects'] = [];
 
       for (let i = 0; i < clientRects.length; i++) {
         const rect = clientRects[i];
         rects.push({
-          x: rect.left - containerRect.left,
-          y: rect.top - containerRect.top,
+          x: rect.left - contentRect.left,
+          y: rect.top - contentRect.top,
           width: rect.width,
           height: rect.height,
         });
@@ -106,11 +109,11 @@ export function DocumentViewer({
       selection.removeAllRanges();
     };
 
-    const container = containerRef.current;
-    container?.addEventListener('mouseup', handleMouseUp);
+    const content = contentRef.current;
+    content?.addEventListener('mouseup', handleMouseUp);
 
     return () => {
-      container?.removeEventListener('mouseup', handleMouseUp);
+      content?.removeEventListener('mouseup', handleMouseUp);
     };
   }, [enableTextSelection, onTextSelect]);
 
@@ -132,8 +135,8 @@ export function DocumentViewer({
 
   return (
     <div className="relative" ref={containerRef}>
-      {/* Document display */}
-      <div className="overflow-hidden bg-gray-100">
+      {/* Document display - contentRef for text selection coordinate calculations */}
+      <div className="overflow-hidden bg-gray-100" ref={contentRef}>
         {fileType === 'pdf' ? (
           <Document
             file={fileUrl}
@@ -145,12 +148,30 @@ export function DocumentViewer({
               </div>
             }
           >
-            <Page
-              pageNumber={currentPage}
-              width={width}
-              renderTextLayer={enableTextSelection}
-              renderAnnotationLayer={false}
-            />
+            {scrollMode && totalPages > 1 ? (
+              // Smooth scroll mode: render all pages
+              Array.from({ length: totalPages }, (_, i) => (
+                <div key={i + 1} className="mb-4 last:mb-0">
+                  <Page
+                    pageNumber={i + 1}
+                    width={width}
+                    renderTextLayer={enableTextSelection}
+                    renderAnnotationLayer={false}
+                  />
+                  <div className="text-center text-xs text-gray-400 py-1 bg-gray-200">
+                    Page {i + 1} of {totalPages}
+                  </div>
+                </div>
+              ))
+            ) : (
+              // Single page mode
+              <Page
+                pageNumber={currentPage}
+                width={width}
+                renderTextLayer={enableTextSelection}
+                renderAnnotationLayer={false}
+              />
+            )}
           </Document>
         ) : (
           <img
@@ -165,8 +186,8 @@ export function DocumentViewer({
         )}
       </div>
 
-      {/* Page navigation for PDFs */}
-      {fileType === 'pdf' && totalPages > 1 && (
+      {/* Page navigation for PDFs - only show in single page mode */}
+      {fileType === 'pdf' && totalPages > 1 && !scrollMode && (
         <div className="flex items-center justify-center gap-2 py-2 bg-gray-50 border-t border-gray-200">
           <button
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}

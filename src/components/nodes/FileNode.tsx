@@ -159,13 +159,26 @@ export function FileNode({ id, data, selected }: NodeProps<FileNodeType>) {
   );
 
   const handleRegionDataTypeChange = useCallback(
-    (regionId: string, dataType: SimpleDataType) => {
+    (regionId: string, newDataType: SimpleDataType) => {
       updateNodeData(id, {
-        regions: data.regions.map((r) =>
-          r.id === regionId
-            ? { ...r, dataType, color: getColorForType(dataType).border }
-            : r
-        ),
+        regions: data.regions.map((r) => {
+          if (r.id !== regionId) return r;
+
+          const currentValue = String(r.extractedData.value || '');
+          const updatedCache = { ...(r.valueCache || {}), [r.dataType]: currentValue };
+          const cachedValue = updatedCache[newDataType];
+
+          return {
+            ...r,
+            dataType: newDataType,
+            color: getColorForType(newDataType).border,
+            valueCache: updatedCache,
+            extractedData: {
+              ...r.extractedData,
+              value: cachedValue ?? currentValue,
+            },
+          };
+        }),
       });
     },
     [id, data.regions, updateNodeData]
@@ -378,6 +391,7 @@ export function FileNode({ id, data, selected }: NodeProps<FileNodeType>) {
                   onTextSelect={selectionMode === 'text' ? handleTextSelect : undefined}
                   enableTextSelection={selectionMode === 'text'}
                   width={VIEWER_WIDTH}
+                  scrollMode={true}
                 />
 
                 {/* Always show highlight overlay for existing regions */}

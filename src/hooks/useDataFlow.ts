@@ -5,7 +5,12 @@ import type {
   FileNode,
   CalculationNode,
   DataSourceReference,
+  SimpleDataType,
 } from '../types';
+import { parseNumericValue, getLocaleCurrency } from '../utils/formatting';
+
+// Re-export for backward compatibility
+export { parseNumericValue } from '../utils/formatting';
 
 export interface ResolvedInput {
   value: number | string;
@@ -13,23 +18,26 @@ export interface ResolvedInput {
   label: string;
   source: DataSourceReference | null;
   edgeId: string;
+  dataType?: SimpleDataType;
 }
 
 interface UseDataFlowOptions {
   nodeId: string;
-  targetHandle?: string; // Specific handle to filter by (optional)
+  targetHandle?: string;
+  acceptedTypes?: SimpleDataType[];
 }
 
 interface UseDataFlowResult {
   inputs: ResolvedInput[];
   hasInputs: boolean;
+  inputsBySource: Map<string, ResolvedInput[]>;
 }
 
 /**
  * Hook for resolving input values from connected edges.
  * Used by processing nodes (Calculation, Sheet, Label) to get their input data.
  */
-export function useDataFlow({ nodeId, targetHandle }: UseDataFlowOptions): UseDataFlowResult {
+export function useDataFlow({ nodeId, targetHandle, acceptedTypes }: UseDataFlowOptions): UseDataFlowResult {
   const edges = useEdges();
   const nodes = useNodes();
 
@@ -49,6 +57,10 @@ export function useDataFlow({ nodeId, targetHandle }: UseDataFlowOptions): UseDa
 
       const resolved = resolveNodeOutput(sourceNode, edge.sourceHandle);
       if (resolved) {
+        // Filter by accepted types if specified
+        if (acceptedTypes && resolved.dataType && !acceptedTypes.includes(resolved.dataType)) {
+          continue;
+        }
         resolvedInputs.push({
           ...resolved,
           edgeId: edge.id,
@@ -57,11 +69,24 @@ export function useDataFlow({ nodeId, targetHandle }: UseDataFlowOptions): UseDa
     }
 
     return resolvedInputs;
-  }, [edges, nodes, nodeId, targetHandle]);
+  }, [edges, nodes, nodeId, targetHandle, acceptedTypes]);
+
+  // Group inputs by source node
+  const inputsBySource = useMemo(() => {
+    const map = new Map<string, ResolvedInput[]>();
+    for (const input of inputs) {
+      const sourceId = input.source?.nodeId ?? 'unknown';
+      const existing = map.get(sourceId) ?? [];
+      existing.push(input);
+      map.set(sourceId, existing);
+    }
+    return map;
+  }, [inputs]);
 
   return {
     inputs,
     hasInputs: inputs.length > 0,
+    inputsBySource,
   };
 }
 
@@ -103,10 +128,7 @@ function resolveFileNodeOutput(
     numericValue = extractedValue;
   } else if (typeof extractedValue === 'string') {
     value = extractedValue;
-    // Try to parse as number, removing currency symbols and commas
-    const cleaned = extractedValue.replace(/[$€£,]/g, '').trim();
-    const parsed = parseFloat(cleaned);
-    numericValue = isNaN(parsed) ? null : parsed;
+    numericValue = parseNumericValue(extractedValue);
   } else {
     value = String(extractedValue);
   }
@@ -126,6 +148,7 @@ function resolveFileNodeOutput(
     numericValue,
     label: region.label,
     source,
+    dataType: region.dataType,
   };
 }
 
@@ -147,21 +170,11 @@ function resolveCalculationNodeOutput(
   const value = result.value as number;
   return {
     value,
-    numericValue: value,
+    numericValue: typeof value === 'number' ? value : parseNumericValue(value),
     label: node.data.label,
     source: result.source || null,
+    dataType: result.dataType,
   };
-}
-
-/**
- * Parse a string value to a number, handling currency and locale formats.
- */
-export function parseNumericValue(value: string | number): number | null {
-  if (typeof value === 'number') return value;
-
-  const cleaned = value.replace(/[$€£,]/g, '').trim();
-  const parsed = parseFloat(cleaned);
-  return isNaN(parsed) ? null : parsed;
 }
 
 /**
@@ -191,7 +204,7 @@ export function formatValue(
       if (isNaN(num)) return String(value);
       return num.toLocaleString(undefined, {
         style: 'currency',
-        currency: options?.currency ?? 'USD',
+        currency: options?.currency ?? getLocaleCurrency(),
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       });

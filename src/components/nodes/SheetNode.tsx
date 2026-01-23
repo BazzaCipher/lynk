@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import type { NodeProps } from '@xyflow/react';
-import { Position, useEdges, useNodes } from '@xyflow/react';
+import { Position } from '@xyflow/react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -9,11 +9,10 @@ import {
 } from '@tanstack/react-table';
 import { BaseNode } from './base/BaseNode';
 import { NodeEntry } from './base/NodeEntry';
-import { useCanvasStore } from '../../store/canvasStore';
+import { useDataFlow } from '../../hooks/useDataFlow';
+import { useHighlighting } from '../../hooks/useHighlighting';
 import type {
   SheetNode as SheetNodeType,
-  FileNode as FileNodeType,
-  CalculationNode as CalculationNodeType,
   DataSourceReference,
 } from '../../types';
 
@@ -30,105 +29,25 @@ type AggregationType = 'sum' | 'average' | 'min' | 'max' | 'count' | 'none';
 const columnHelper = createColumnHelper<RowData>();
 
 export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
-  const edges = useEdges();
-  const nodes = useNodes();
-  const setHighlightedRegion = useCanvasStore((state) => state.setHighlightedRegion);
-  const highlightedRegion = useCanvasStore((state) => state.highlightedRegion);
-
   // State for aggregation type
   const [aggregation, setAggregation] = useState<AggregationType>('sum');
 
-  // Find all edges connected to this node's rows handle
-  const connectedEdges = useMemo(() => {
-    return edges.filter(
-      (edge) => edge.target === id && edge.targetHandle === 'rows'
-    );
-  }, [edges, id]);
+  // Use the shared data flow hook for input resolution
+  const { inputs } = useDataFlow({ nodeId: id, targetHandle: 'rows' });
 
-  // Resolve row data from connected nodes (FileNode or CalculationNode)
+  // Use highlighting hook
+  const { isHighlighted, setHighlight, clearHighlight, toggleHighlight } = useHighlighting();
+
+  // Transform inputs to RowData format
   const rowData = useMemo((): RowData[] => {
-    const rows: RowData[] = [];
-
-    for (const edge of connectedEdges) {
-      const sourceNode = nodes.find((n) => n.id === edge.source);
-      if (!sourceNode) continue;
-
-      if (sourceNode.type === 'file') {
-        // Handle FileNode source
-        const fileNode = sourceNode as FileNodeType;
-        const regionId = edge.sourceHandle;
-        if (!regionId) continue;
-
-        const region = fileNode.data.regions.find((r) => r.id === regionId);
-        if (!region) continue;
-
-        const extractedValue = region.extractedData.value;
-        let value: string | number;
-        let numericValue: number | null = null;
-
-        if (typeof extractedValue === 'number') {
-          value = extractedValue;
-          numericValue = extractedValue;
-        } else if (typeof extractedValue === 'string') {
-          value = extractedValue;
-          const cleaned = extractedValue.replace(/[$€£,]/g, '').trim();
-          const parsed = parseFloat(cleaned);
-          numericValue = isNaN(parsed) ? null : parsed;
-        } else {
-          value = String(extractedValue);
-        }
-
-        rows.push({
-          id: `${fileNode.id}-${region.id}`,
-          value,
-          numericValue,
-          label: region.label,
-          source: {
-            nodeId: fileNode.id,
-            regionId: region.id,
-            pageNumber: region.pageNumber,
-            coordinates: region.coordinates,
-            textRange: region.textRange,
-            extractionMethod: region.extractedData.source?.extractionMethod || 'manual',
-            confidence: region.extractedData.source?.confidence,
-          },
-        });
-      } else if (sourceNode.type === 'calculation') {
-        // Handle CalculationNode source
-        const calcNode = sourceNode as CalculationNodeType;
-        if (edge.sourceHandle !== 'output') continue;
-
-        const result = calcNode.data.result;
-        if (!result) continue;
-
-        const resultValue = result.value;
-        let value: string | number;
-        let numericValue: number | null = null;
-
-        if (typeof resultValue === 'number') {
-          value = resultValue;
-          numericValue = resultValue;
-        } else if (typeof resultValue === 'string') {
-          value = resultValue;
-          const cleaned = resultValue.replace(/[$€£,]/g, '').trim();
-          const parsed = parseFloat(cleaned);
-          numericValue = isNaN(parsed) ? null : parsed;
-        } else {
-          value = String(resultValue);
-        }
-
-        rows.push({
-          id: `${calcNode.id}-output`,
-          value,
-          numericValue,
-          label: calcNode.data.label,
-          source: result.source || null,
-        });
-      }
-    }
-
-    return rows;
-  }, [connectedEdges, nodes]);
+    return inputs.map((input) => ({
+      id: input.source ? `${input.source.nodeId}-${input.source.regionId}` : input.edgeId,
+      value: input.value,
+      numericValue: input.numericValue,
+      label: input.label,
+      source: input.source,
+    }));
+  }, [inputs]);
 
   // Calculate aggregation
   const aggregatedValue = useMemo(() => {
@@ -156,40 +75,25 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
   }, [rowData, aggregation]);
 
   // Check if a row is highlighted
-  const isRowHighlighted = (row: RowData): boolean => {
-    if (!row.source || !highlightedRegion) return false;
-    return (
-      highlightedRegion.nodeId === row.source.nodeId &&
-      highlightedRegion.regionId === row.source.regionId
-    );
-  };
+  const isRowHighlighted = useCallback((row: RowData): boolean => {
+    if (!row.source) return false;
+    return isHighlighted(row.source.nodeId, row.source.regionId);
+  }, [isHighlighted]);
 
   // Handle hover on row
-  const handleRowHover = (row: RowData | null) => {
+  const handleRowHover = useCallback((row: RowData | null) => {
     if (row?.source) {
-      setHighlightedRegion({
-        nodeId: row.source.nodeId,
-        regionId: row.source.regionId,
-      });
+      setHighlight(row.source.nodeId, row.source.regionId);
     } else {
-      setHighlightedRegion(null);
+      clearHighlight();
     }
-  };
+  }, [setHighlight, clearHighlight]);
 
   // Handle click on row (toggle persistent highlight)
-  const handleRowClick = (row: RowData) => {
+  const handleRowClick = useCallback((row: RowData) => {
     if (!row.source) return;
-
-    const isHighlighted = isRowHighlighted(row);
-    if (isHighlighted) {
-      setHighlightedRegion(null);
-    } else {
-      setHighlightedRegion({
-        nodeId: row.source.nodeId,
-        regionId: row.source.regionId,
-      });
-    }
-  };
+    toggleHighlight(row.source.nodeId, row.source.regionId);
+  }, [toggleHighlight]);
 
   // Define table columns
   const columns = useMemo(

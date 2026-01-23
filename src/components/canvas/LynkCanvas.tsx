@@ -17,6 +17,8 @@ import { LabelNode } from '../nodes/LabelNode';
 import { Toolbar } from './Toolbar';
 import { useToast } from '../ui/Toast';
 import { wouldCreateCycle } from '../../core/engine/dependencyGraph';
+import { getOperation, isTypeCompatible } from '../../core/operations/operationRegistry';
+import type { FileNodeData, CalculationNodeData } from '../../types';
 
 const nodeTypes = {
   file: FileNode,
@@ -63,6 +65,35 @@ export function LynkCanvas() {
         return false;
       }
 
+      // Type compatibility check for CalculationNode targets
+      if (targetNode.type === 'calculation') {
+        const calcData = targetNode.data as CalculationNodeData;
+        const operation = getOperation(calcData.operation);
+
+        if (operation) {
+          // Check if source data type is compatible with the operation
+          if (sourceNode.type === 'file') {
+            const fileData = sourceNode.data as FileNodeData;
+            const regionId = connection.sourceHandle;
+            const region = fileData.regions.find((r) => r.id === regionId);
+
+            if (region && !isTypeCompatible(calcData.operation, region.dataType)) {
+              return false; // Incompatible type
+            }
+          }
+
+          // Check single-input operation limits
+          if (operation.maxInputs === 1) {
+            const existingInputs = edges.filter(
+              (e) => e.target === targetNode.id && e.targetHandle === 'inputs'
+            );
+            if (existingInputs.length >= 1) {
+              return false; // Already has an input
+            }
+          }
+        }
+      }
+
       return true;
     },
     [edges, nodes]
@@ -102,6 +133,41 @@ export function LynkCanvas() {
         return;
       }
 
+      // Type compatibility check for CalculationNode targets
+      if (targetNode.type === 'calculation') {
+        const calcData = targetNode.data as CalculationNodeData;
+        const operation = getOperation(calcData.operation);
+
+        if (operation) {
+          // Check if source data type is compatible with the operation
+          if (sourceNode.type === 'file') {
+            const fileData = sourceNode.data as FileNodeData;
+            const regionId = connection.sourceHandle;
+            const region = fileData.regions.find((r) => r.id === regionId);
+
+            if (region && !isTypeCompatible(calcData.operation, region.dataType)) {
+              showToast(
+                `${region.dataType} is not compatible with ${operation.label}. ` +
+                `Supported types: ${operation.compatibleTypes.join(', ')}`,
+                'warning'
+              );
+              return;
+            }
+          }
+
+          // Check single-input operation limits
+          if (operation.maxInputs === 1) {
+            const existingInputs = edges.filter(
+              (e) => e.target === targetNode.id && e.targetHandle === 'inputs'
+            );
+            if (existingInputs.length >= 1) {
+              showToast(`${operation.label} only accepts one input`, 'warning');
+              return;
+            }
+          }
+        }
+      }
+
       // Include handles in edge ID for uniqueness when multiple edges connect same nodes
       const edge = {
         id: `edge-${connection.source}-${connection.sourceHandle || 'default'}-${connection.target}-${connection.targetHandle || 'default'}`,
@@ -130,6 +196,13 @@ export function LynkCanvas() {
         fitView
         snapToGrid
         snapGrid={[16, 16]}
+        // Viewport controls - prevent page scroll, enable canvas zoom/pan
+        panOnScroll={true}
+        zoomOnScroll={true}
+        zoomOnPinch={true}
+        preventScrolling={true}
+        minZoom={0.1}
+        maxZoom={4}
       >
         <Background gap={16} size={1} />
         <Controls />
