@@ -106,46 +106,63 @@ export function HighlightOverlay({
         const isExternal = isExternallyHighlighted(region.id);
         const rects = region.textRange!.rects;
 
-        // Calculate bounding box for label positioning
-        const minX = Math.min(...rects.map((r) => r.x));
-        const minY = Math.min(...rects.map((r) => r.y));
+        // Use first rect for label positioning (where text actually starts)
+        const firstRect = rects[0];
+        if (!firstRect) return null;
 
         return (
           <div key={region.id} data-region-id={region.id}>
-            {/* Render each rect of the text selection */}
-            {rects.map((rect, index) => (
-              <div
-                key={`${region.id}-rect-${index}`}
-                className={`absolute transition-all duration-150 ${
-                  interactive ? 'pointer-events-auto cursor-pointer' : ''
-                } ${isExternal ? 'animate-pulse' : ''}`}
-                style={{
-                  left: rect.x,
-                  top: rect.y,
-                  width: rect.width,
-                  height: rect.height,
-                  backgroundColor: colors.bg,
-                  borderBottom: isSelected || isExternal ? `2px solid ${colors.border}` : 'none',
-                  boxShadow: isExternal ? `0 0 8px 2px ${colors.bg}` : 'none',
-                }}
-                onClick={interactive ? () => onRegionSelect(region.id) : undefined}
-              />
-            ))}
+            {/* Render highlight rects with marker-style effect */}
+            {rects.map((rect, index) => {
+              const isFirst = index === 0;
+              const isLast = index === rects.length - 1;
 
-            {/* Label positioned at the top-left of the first rect */}
+              return (
+                <div
+                  key={`${region.id}-rect-${index}`}
+                  className={`absolute transition-all duration-150 ${
+                    interactive ? 'pointer-events-auto cursor-pointer' : ''
+                  }`}
+                  style={{
+                    left: rect.x - 2,
+                    top: rect.y,
+                    width: rect.width + 4,
+                    height: rect.height,
+                    background: `linear-gradient(to bottom, ${colors.bg} 0%, ${colors.bg} 85%, ${colors.border}40 100%)`,
+                    borderRadius: isFirst && isLast ? '3px' : isFirst ? '3px 0 0 3px' : isLast ? '0 3px 3px 0' : '0',
+                    boxShadow: isSelected || isExternal
+                      ? `0 1px 3px ${colors.border}40`
+                      : 'none',
+                    opacity: isExternal ? 0.9 : 1,
+                  }}
+                  onClick={interactive ? () => onRegionSelect(region.id) : undefined}
+                />
+              );
+            })}
+
+            {/* Label positioned directly above the first rect */}
             <div
-              className={`absolute px-1.5 py-0.5 text-xs text-white rounded-t whitespace-nowrap font-medium ${
+              className={`absolute flex items-center gap-1 ${
                 interactive ? 'pointer-events-auto cursor-pointer' : ''
-              } ${isExternal ? 'animate-pulse' : ''}`}
+              }`}
               style={{
-                left: `${minX}px`,
-                top: `${Math.max(0, minY - 22)}px`,
-                backgroundColor: colors.border,
+                left: firstRect.x - 2,
+                top: Math.max(0, firstRect.y - 18),
                 zIndex: 10,
               }}
               onClick={interactive ? () => onRegionSelect(region.id) : undefined}
             >
-              {region.label}
+              <div
+                className="px-1.5 py-0.5 text-[10px] text-white rounded whitespace-nowrap font-medium shadow-sm"
+                style={{ backgroundColor: colors.border }}
+              >
+                {region.label}
+              </div>
+              {/* Small connector line */}
+              <div
+                className="w-px h-2 -ml-1"
+                style={{ backgroundColor: colors.border, opacity: 0.5 }}
+              />
             </div>
           </div>
         );

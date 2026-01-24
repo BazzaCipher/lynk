@@ -97,7 +97,7 @@ export function FileNode({ id, data, selected }: NodeProps<FileNodeType>) {
         selectionType: 'box',
         coordinates,
         pageNumber: data.currentPage,
-        extractedData: { type: 'text', value: '' },
+        extractedData: { type: 'string', value: '' },
         dataType: 'string',
         color: getColorForType('string').border,
       };
@@ -118,7 +118,7 @@ export function FileNode({ id, data, selected }: NodeProps<FileNodeType>) {
         selectionType: 'text',
         textRange,
         pageNumber: data.currentPage,
-        extractedData: { type: 'text', value: textRange.text },
+        extractedData: { type: 'string', value: textRange.text },
         dataType: 'string',
         color: getColorForType('string').border,
       };
@@ -392,28 +392,26 @@ export function FileNode({ id, data, selected }: NodeProps<FileNodeType>) {
                   enableTextSelection={selectionMode === 'text'}
                   width={VIEWER_WIDTH}
                   scrollMode={true}
-                />
-
-                {/* Always show highlight overlay for existing regions */}
-                {data.fileUrl && (
-                  <HighlightOverlay
-                    regions={data.regions}
-                    currentPage={data.currentPage}
-                    selectedRegionId={selectedRegionId}
-                    onRegionSelect={handleRegionSelect}
-                    interactive={selectionMode === 'box'}
-                    nodeId={id}
-                  />
-                )}
-
-                {/* Only show region selector (for drawing new boxes) in box mode */}
-                {data.fileUrl && selectionMode === 'box' && (
-                  <RegionSelector
-                    onRegionCreate={handleRegionCreate}
-                    width={VIEWER_WIDTH}
-                    height={viewerHeight}
-                  />
-                )}
+                >
+                  {/* Overlays rendered as children to share coordinate space with content */}
+                  {data.fileUrl && (
+                    <HighlightOverlay
+                      regions={data.regions}
+                      currentPage={data.currentPage}
+                      selectedRegionId={selectedRegionId}
+                      onRegionSelect={handleRegionSelect}
+                      interactive={selectionMode === 'box'}
+                      nodeId={id}
+                    />
+                  )}
+                  {data.fileUrl && selectionMode === 'box' && (
+                    <RegionSelector
+                      onRegionCreate={handleRegionCreate}
+                      width={VIEWER_WIDTH}
+                      height={viewerHeight}
+                    />
+                  )}
+                </DocumentViewer>
               </div>
             </div>
           </div>

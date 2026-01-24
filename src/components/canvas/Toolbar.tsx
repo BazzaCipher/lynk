@@ -22,8 +22,7 @@ const defaultCalculationData: CalculationNodeData = {
 
 const defaultSheetData: SheetNodeData = {
   label: 'Sheet',
-  columns: [],
-  rows: [],
+  subheaders: [],
 };
 
 const defaultLabelData: LabelNodeData = {

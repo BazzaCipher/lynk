@@ -102,25 +102,36 @@ const CalculationNodeDataSchema = z.object({
   inputCache: z.record(z.string(), CachedOperationInputsSchema).optional(),
 });
 
-// Sheet column
-const SheetColumnSchema = z.object({
+// Sheet entry - mini aggregator within a subheader
+const SheetEntrySchema = z.object({
   id: z.string(),
-  header: z.string(),
-  subheader: z.string().optional(),
-  aggregation: z.enum(['sum', 'average', 'min', 'max', 'count', 'none']),
+  label: z.string(),
+  operation: z.enum(OPERATION_IDS),
+  expanded: z.boolean().optional(),
 });
 
-// Sheet node data
+// Sheet subheader - groups entries and aggregates their outputs
+const SheetSubheaderSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  operation: z.enum(OPERATION_IDS),
+  entries: z.array(SheetEntrySchema),
+  collapsed: z.boolean().optional(),
+});
+
+// Sheet node data - hierarchical data aggregator
 const SheetNodeDataSchema = z.object({
   label: z.string(),
-  columns: z.array(SheetColumnSchema),
-  rows: z.array(z.array(DataValueSchema)),
+  subheaders: z.array(SheetSubheaderSchema),
+  // entryResults and subheaderResults are computed at runtime, not persisted
 });
 
 // Label node data
 const LabelNodeDataSchema = z.object({
   label: z.string(),
-  format: z.enum(['number', 'currency', 'date', 'text']),
+  format: z.enum(['number', 'currency', 'date', 'string', 'text']).transform(
+    (v) => v === 'text' ? 'string' : v
+  ),
   value: DataValueSchema.optional(),
   fontSize: z.enum(['small', 'medium', 'large']),
   alignment: z.enum(['left', 'center', 'right']),

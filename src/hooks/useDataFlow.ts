@@ -4,6 +4,7 @@ import type {
   LynkNode,
   FileNode,
   CalculationNode,
+  SheetNode,
   DataSourceReference,
   SimpleDataType,
 } from '../types';
@@ -13,12 +14,17 @@ import { parseNumericValue, getLocaleCurrency } from '../utils/formatting';
 export { parseNumericValue } from '../utils/formatting';
 
 export interface ResolvedInput {
-  value: number | string;
+  value: number | string | boolean | Date;
   numericValue: number | null;
   label: string;
   source: DataSourceReference | null;
   edgeId: string;
-  dataType?: SimpleDataType;
+  /** Data type of this input (always present for valid inputs) */
+  dataType: SimpleDataType;
+  /** Source node ID for direct access */
+  sourceNodeId: string;
+  /** Source region/handle ID for direct access */
+  sourceRegionId: string;
 }
 
 interface UseDataFlowOptions {
@@ -58,7 +64,7 @@ export function useDataFlow({ nodeId, targetHandle, acceptedTypes }: UseDataFlow
       const resolved = resolveNodeOutput(sourceNode, edge.sourceHandle);
       if (resolved) {
         // Filter by accepted types if specified
-        if (acceptedTypes && resolved.dataType && !acceptedTypes.includes(resolved.dataType)) {
+        if (acceptedTypes && !acceptedTypes.includes(resolved.dataType)) {
           continue;
         }
         resolvedInputs.push({
@@ -102,6 +108,8 @@ function resolveNodeOutput(
       return resolveFileNodeOutput(node as FileNode, sourceHandle);
     case 'calculation':
       return resolveCalculationNodeOutput(node as CalculationNode, sourceHandle);
+    case 'sheet':
+      return resolveSheetNodeOutput(node as SheetNode, sourceHandle);
     default:
       return null;
   }
@@ -120,10 +128,22 @@ function resolveFileNodeOutput(
   if (!region) return null;
 
   const extractedValue = region.extractedData.value;
-  let value: string | number;
+  let value: string | number | boolean | Date;
   let numericValue: number | null = null;
 
-  if (typeof extractedValue === 'number') {
+  // Handle different data types appropriately
+  if (region.dataType === 'boolean') {
+    // Convert to actual boolean
+    if (typeof extractedValue === 'boolean') {
+      value = extractedValue;
+    } else {
+      const strVal = String(extractedValue).toLowerCase();
+      value = strVal === 'yes' || strVal === 'true' || strVal === '1';
+    }
+  } else if (region.dataType === 'date') {
+    // Keep date as string for date operations
+    value = typeof extractedValue === 'string' ? extractedValue : String(extractedValue);
+  } else if (typeof extractedValue === 'number') {
     value = extractedValue;
     numericValue = extractedValue;
   } else if (typeof extractedValue === 'string') {
@@ -149,6 +169,8 @@ function resolveFileNodeOutput(
     label: region.label,
     source,
     dataType: region.dataType,
+    sourceNodeId: node.id,
+    sourceRegionId: region.id,
   };
 }
 
@@ -167,22 +189,102 @@ function resolveCalculationNodeOutput(
   const result = node.data.result;
   if (!result) return null;
 
-  const value = result.value as number;
+  const value = result.value;
+  // Only parse numeric value for number/string types, not Date
+  const numericValue = typeof value === 'number'
+    ? value
+    : typeof value === 'string'
+      ? parseNumericValue(value)
+      : null;
+
   return {
     value,
-    numericValue: typeof value === 'number' ? value : parseNumericValue(value),
+    numericValue,
     label: node.data.label,
     source: result.source || null,
     dataType: result.dataType,
+    sourceNodeId: node.id,
+    sourceRegionId: 'output',
   };
 }
 
 /**
- * Format a numeric value based on the specified format.
+ * Resolve output from a SheetNode (entry or subheader results).
+ * Handles:
+ * - Entry outputs: `entry-out-{subheaderId}-{entryId}`
+ * - Subheader outputs: `subheader-{subheaderId}`
+ */
+function resolveSheetNodeOutput(
+  node: SheetNode,
+  sourceHandle: string | null | undefined
+): Omit<ResolvedInput, 'edgeId'> | null {
+  if (!sourceHandle) return null;
+
+  // Entry output: return entry's computed result
+  if (sourceHandle.startsWith('entry-out-')) {
+    const parts = sourceHandle.replace('entry-out-', '').split('-');
+    const subheaderId = parts[0];
+    const entryId = parts.slice(1).join('-'); // Handle IDs with dashes
+
+    const subheader = node.data.subheaders.find((s) => s.id === subheaderId);
+    const entry = subheader?.entries.find((e) => e.id === entryId);
+    if (!entry) return null;
+
+    const result = node.data.entryResults?.[`${subheaderId}-${entryId}`];
+    if (!result) return null;
+
+    const numericValue = typeof result.value === 'number'
+      ? result.value
+      : typeof result.value === 'string'
+        ? parseNumericValue(result.value)
+        : null;
+
+    return {
+      value: result.value,
+      numericValue,
+      label: entry.label,
+      source: null,
+      dataType: result.dataType,
+      sourceNodeId: node.id,
+      sourceRegionId: `${subheaderId}-${entryId}`,
+    };
+  }
+
+  // Subheader output: return aggregated result
+  if (sourceHandle.startsWith('subheader-')) {
+    const subheaderId = sourceHandle.replace('subheader-', '');
+    const subheader = node.data.subheaders.find((s) => s.id === subheaderId);
+    if (!subheader) return null;
+
+    const result = node.data.subheaderResults?.[subheaderId];
+    if (!result) return null;
+
+    const numericValue = typeof result.value === 'number'
+      ? result.value
+      : typeof result.value === 'string'
+        ? parseNumericValue(result.value)
+        : null;
+
+    return {
+      value: result.value,
+      numericValue,
+      label: subheader.label,
+      source: null,
+      dataType: result.dataType,
+      sourceNodeId: node.id,
+      sourceRegionId: subheaderId,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Format a value based on the specified format.
  */
 export function formatValue(
-  value: number | string | null | undefined,
-  format: 'number' | 'currency' | 'date' | 'text',
+  value: number | string | boolean | Date | null | undefined,
+  format: 'number' | 'currency' | 'date' | 'string' | 'boolean',
   options?: {
     precision?: number;
     currency?: string;
@@ -210,11 +312,18 @@ export function formatValue(
       });
     }
     case 'date': {
-      const date = typeof value === 'string' ? new Date(value) : null;
-      if (!date || isNaN(date.getTime())) return String(value);
+      const date = value instanceof Date ? value : new Date(String(value));
+      if (isNaN(date.getTime())) return String(value);
       return date.toLocaleDateString();
     }
-    case 'text':
+    case 'boolean': {
+      if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+      const strVal = String(value).toLowerCase();
+      if (strVal === 'yes' || strVal === 'true' || strVal === '1') return 'Yes';
+      if (strVal === 'no' || strVal === 'false' || strVal === '0') return 'No';
+      return 'Unknown';
+    }
+    case 'string':
     default:
       return String(value);
   }

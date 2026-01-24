@@ -19,6 +19,7 @@ interface DocumentViewerProps {
   enableTextSelection?: boolean;
   width?: number;
   scrollMode?: boolean; // Enable smooth scroll through all pages
+  children?: React.ReactNode; // Overlays to render inside the content area (for correct coordinate alignment)
 }
 
 export function DocumentViewer({
@@ -33,6 +34,7 @@ export function DocumentViewer({
   enableTextSelection = true,
   width = 300,
   scrollMode = false,
+  children,
 }: DocumentViewerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,44 +71,59 @@ export function DocumentViewer({
     if (!enableTextSelection || !onTextSelect) return;
 
     const handleMouseUp = () => {
-      const selection = window.getSelection();
-      if (!selection || selection.isCollapsed) return;
+      // Wait for next frame to ensure selection rects are finalized after drag
+      requestAnimationFrame(() => {
+        const selection = window.getSelection();
+        if (!selection || selection.isCollapsed) return;
 
-      const text = selection.toString().trim();
-      if (!text) return;
+        const text = selection.toString().trim();
+        if (!text) return;
 
-      // Get the range
-      const range = selection.getRangeAt(0);
+        // Get the range
+        const range = selection.getRangeAt(0);
 
-      // Check if selection is within our content area
-      if (!contentRef.current?.contains(range.commonAncestorContainer)) return;
+        // Check if selection is within our content area
+        if (!contentRef.current?.contains(range.commonAncestorContainer)) return;
 
-      // Get bounding rectangles relative to content area (not including nav bar)
-      const contentRect = contentRef.current.getBoundingClientRect();
-      const clientRects = range.getClientRects();
-      const rects: TextRange['rects'] = [];
+        // Get bounding rectangles relative to content area (not including nav bar)
+        const contentRect = contentRef.current.getBoundingClientRect();
+        const clientRects = range.getClientRects();
+        const rects: TextRange['rects'] = [];
 
-      for (let i = 0; i < clientRects.length; i++) {
-        const rect = clientRects[i];
-        rects.push({
-          x: rect.left - contentRect.left,
-          y: rect.top - contentRect.top,
-          width: rect.width,
-          height: rect.height,
-        });
-      }
+        for (let i = 0; i < clientRects.length; i++) {
+          const rect = clientRects[i];
+          // Skip invalid rects (zero dimensions or at origin which indicates unrendered elements)
+          if (rect.width <= 0 || rect.height <= 0) continue;
 
-      const textRange: TextRange = {
-        startOffset: range.startOffset,
-        endOffset: range.endOffset,
-        text,
-        rects,
-      };
+          const x = rect.left - contentRect.left;
+          const y = rect.top - contentRect.top;
 
-      onTextSelect(textRange);
+          // Skip rects with negative coordinates (outside content area)
+          if (x < 0 || y < 0) continue;
 
-      // Clear selection after capturing
-      selection.removeAllRanges();
+          rects.push({
+            x,
+            y,
+            width: rect.width,
+            height: rect.height,
+          });
+        }
+
+        // If no valid rects, don't create the selection
+        if (rects.length === 0) return;
+
+        const textRange: TextRange = {
+          startOffset: range.startOffset,
+          endOffset: range.endOffset,
+          text,
+          rects,
+        };
+
+        onTextSelect(textRange);
+
+        // Clear selection after capturing
+        selection.removeAllRanges();
+      });
     };
 
     const content = contentRef.current;
@@ -136,7 +153,8 @@ export function DocumentViewer({
   return (
     <div className="relative" ref={containerRef}>
       {/* Document display - contentRef for text selection coordinate calculations */}
-      <div className="overflow-hidden bg-gray-100" ref={contentRef}>
+      {/* Children (overlays) are rendered inside this container to share the same coordinate space */}
+      <div className="relative overflow-hidden bg-gray-100" ref={contentRef}>
         {fileType === 'pdf' ? (
           <Document
             file={fileUrl}
@@ -184,6 +202,8 @@ export function DocumentViewer({
             onError={handleImageError}
           />
         )}
+        {/* Render overlays inside content area for correct coordinate alignment */}
+        {children}
       </div>
 
       {/* Page navigation for PDFs - only show in single page mode */}

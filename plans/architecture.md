@@ -30,16 +30,27 @@ Lynk is a web-based visual node canvas application for extracting data from PDFs
 - Multiple inputs → single output
 - Configurable precision
 
-### 3. Sheet Node (Sink)
-- Tabular display with configurable columns
-- Subheaders per column
-- Per-column aggregation (default: sum)
-- TanStack Table for rendering
+### 3. Sheet Node (Hierarchical Aggregator)
+- **Subheaders**: Groups that aggregate entry outputs with an operation
+- **Entries**: Mini CalculationNodes that accept multiple inputs
+- Each entry has input handle (left, multiple) and output handle (right)
+- Each subheader has output handle (right) for aggregated result
+- Operations: sum, average, min, max, count, round (from registry)
+- Expandable entries to see connected inputs
 
 ### 4. Label Node (Sink)
 - Single value display
 - Formatting options (number, currency, date, text)
 - Font size and alignment
+
+### 5. Image Node (Visual)
+- Standalone image display (PNG, JPG, GIF, WebP)
+- NOT a FileNode - no region extraction, just visual reference
+- Supports drag-and-drop upload or file picker
+- Resizable within canvas
+- No input/output handles (purely decorative/reference)
+- Stores image as base64 data URL for persistence
+- Use case: Screenshots, diagrams, reference images alongside data extraction work
 
 ## Project Structure
 
@@ -108,17 +119,28 @@ interface ExtractedRegion {
 File Node ──[region]──→ Calculation Node ──[result]──→ Label Node
     │                         │
     │                         ↓
-    └──[region]──────→ Sheet Node (columns)
+    └──[region]──→ Sheet Node (entry) ──[entry-out]──→ Calculation Node
+                       │
+                       └──[subheader]──→ Label Node
 ```
+
+### Sheet Node Handle Patterns
+| Handle | Type | Pattern | Purpose |
+|--------|------|---------|---------|
+| Entry Input | target | `entry-in-{subheaderId}-{entryId}` | Receives multiple values |
+| Entry Output | source | `entry-out-{subheaderId}-{entryId}` | Entry's aggregated result |
+| Subheader Output | source | `subheader-{subheaderId}` | Subheader's aggregated result |
 
 - **DataFlowEngine**: Manages data propagation through the graph
 - **DependencyGraph**: Tracks node connections, prevents cycles
 - When a source node changes, downstream nodes recalculate automatically
 
-## Persistence
+## Persistence & Storage
 
+### File Export (`.lynk.json`)
 - Save canvas to `.lynk.json` files
 - Zod validation on load/save
+- **Complete export** - File contains everything needed for full restore
 - Structure:
   ```json
   {
@@ -126,9 +148,55 @@ File Node ──[region]──→ Calculation Node ──[result]──→ Label
     "metadata": { "id", "name", "createdAt", "updatedAt" },
     "nodes": [...],
     "edges": [...],
-    "viewport": { "x", "y", "zoom" }
+    "viewport": { "x", "y", "zoom" },
+    "embeddedFiles": {
+      "fileId": {
+        "filename": "document.pdf",
+        "mimeType": "application/pdf",
+        "data": "<base64-encoded-file-content>"
+      }
+    },
+    "embeddedImages": {
+      "imageId": {
+        "filename": "screenshot.png",
+        "mimeType": "image/png",
+        "data": "<base64-data-url>"
+      }
+    }
   }
   ```
+
+### Export Data Validation
+- **Pre-export checks**: Validate all required data is present before export
+- **File embedding**: All PDFs/images embedded as base64 (no external references)
+- **Integrity verification**: Hash check to detect corruption
+- **Schema validation**: Zod validates structure on both save and load
+- **Missing data warnings**: Alert user if any nodes reference missing files
+
+### LocalStorage Auto-Save
+- **Auto-save interval**: Save to localStorage every 30 seconds (configurable)
+- **Save on change**: Debounced save on any node/edge modification
+- **Key structure**: `lynk:canvas:{canvasId}` for canvas data
+- **Session recovery**: On app load, check for unsaved work in localStorage
+- **Storage quota handling**: Warn user if localStorage is near capacity
+- **Clear on explicit save**: Clear localStorage draft when user saves to file
+
+### LocalStorage Keys
+```
+lynk:canvas:current      - Current working canvas state
+lynk:canvas:backup       - Previous state (for recovery)
+lynk:settings            - User preferences
+lynk:recent-files        - List of recently opened files
+```
+
+### Import Process
+1. Read and parse JSON file
+2. Validate with Zod schema
+3. Extract embedded files to memory/blob URLs
+4. Restore nodes with proper file references
+5. Restore edges and viewport
+6. Verify all connections are valid
+7. Display any warnings (missing data, schema migrations)
 
 ## Environment
 
@@ -166,12 +234,39 @@ File Node ──[region]──→ Calculation Node ──[result]──→ Label
 
 **Status**: COMPLETE
 
-### Phase 4: Integration & Polish
-- [ ] Wire up data flow between all node types
-- [ ] Implement save/load to JSON files
-- [ ] Add source highlighting (click label → highlight source region)
-- [ ] Error handling and validation UI
-- [ ] Testing
+### Phase 4: Processing Nodes - COMPLETE
+- [x] CalculationNode with operation registry
+- [x] SheetNode hierarchical aggregator (entries + subheaders)
+- [x] LabelNode with formatting
+- [x] Data flow resolution between all node types
+- [x] Save/load to JSON files with Zod validation
+- [x] Source highlighting (hover/click to highlight source regions)
+
+### Phase 5: Persistence & Storage - NOT STARTED
+- [ ] Embed files as base64 in export
+- [ ] LocalStorage auto-save (30s interval + debounced on change)
+- [ ] Session recovery from localStorage on app load
+- [ ] Export data validation (pre-export checks)
+- [ ] Import with embedded file extraction
+- [ ] Storage quota warnings
+
+### Phase 6: Image Node - NOT STARTED
+- [ ] Create ImageNode component (no handles, display only)
+- [ ] Drag-and-drop image upload
+- [ ] File picker for images
+- [ ] Resize controls
+- [ ] Store as base64 for persistence
+
+### Phase 7: Polish & UX - IN PROGRESS
+- [ ] Edge deletion UI
+- [ ] Error boundaries for nodes
+- [ ] Keyboard shortcuts
+- [ ] Performance optimizations
+
+### Phase 8: Testing
+- [ ] Unit tests for utilities and hooks
+- [ ] Integration tests for data flow
+- [ ] E2E tests for user workflows
 
 ## Key Implementation Details
 

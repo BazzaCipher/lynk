@@ -14,37 +14,27 @@
 
 import { useMemo, useEffect, useCallback, useState, useRef } from 'react';
 import type { NodeProps } from '@xyflow/react';
-import { Position, useEdges, useNodes } from '@xyflow/react';
+import { Position, useEdges } from '@xyflow/react';
 import { BaseNode } from './base/BaseNode';
 import { NodeEntry } from './base/NodeEntry';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useHighlighting } from '../../hooks/useHighlighting';
+import { useDataFlow, type ResolvedInput } from '../../hooks/useDataFlow';
 import {
   getOperation,
   getOperationsByCategory,
   isTypeCompatible,
   CATEGORY_LABELS,
-  type OperationInput,
 } from '../../core/operations/operationRegistry';
 import { DATA_TYPE_COLORS } from '../../utils/colors';
-import { formatValue, parseNumericValue, toBoolean } from '../../utils/formatting';
+import { formatValue } from '../../utils/formatting';
 import type {
   CalculationNode as CalculationNodeType,
-  FileNode as FileNodeType,
-  CalculationNode as CalcNodeType,
   CalculationResult,
-  DataSourceReference,
   SimpleDataType,
 } from '../../types';
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════════════════════════════════
-
-interface ResolvedInput extends OperationInput {
-  /** Data source reference for highlighting */
-  source: DataSourceReference | null;
-}
+// ResolvedInput type imported from useDataFlow
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // OPERATION DROPDOWN COMPONENT
@@ -153,7 +143,6 @@ function OperationDropdown({ currentOperation, onSelect, disabled }: OperationDr
 
 export function CalculationNode({ id, data, selected }: NodeProps<CalculationNodeType>) {
   const edges = useEdges();
-  const nodes = useNodes();
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
   const removeEdge = useCanvasStore((state) => state.removeEdge);
 
@@ -163,97 +152,16 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
   const currentOperation = getOperation(data.operation);
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // INPUT RESOLUTION
+  // INPUT RESOLUTION (using shared useDataFlow hook)
   // ─────────────────────────────────────────────────────────────────────────────
 
-  // Find all edges connected to this node's inputs handle
+  // Use the shared data flow hook - don't filter by type here so we can show warnings
+  const { inputs: resolvedInputs } = useDataFlow({ nodeId: id, targetHandle: 'inputs' });
+
+  // Find all edges connected to this node's inputs handle (for operation change handling)
   const connectedEdges = useMemo(() => {
     return edges.filter((edge) => edge.target === id && edge.targetHandle === 'inputs');
   }, [edges, id]);
-
-  /**
-   * Resolve input values from connected nodes, including data type info.
-   * This converts edge connections into structured OperationInput objects.
-   */
-  const resolvedInputs = useMemo((): ResolvedInput[] => {
-    const inputs: ResolvedInput[] = [];
-
-    for (const edge of connectedEdges) {
-      const sourceNode = nodes.find((n) => n.id === edge.source);
-      if (!sourceNode) continue;
-
-      if (sourceNode.type === 'file') {
-        // Handle FileNode source
-        const fileNode = sourceNode as FileNodeType;
-        const regionId = edge.sourceHandle;
-        if (!regionId) continue;
-
-        const region = fileNode.data.regions.find((r) => r.id === regionId);
-        if (!region) continue;
-
-        // Extract value based on data type
-        const extractedValue = region.extractedData.value;
-        let resolvedValue: number | string | boolean | Date;
-
-        if (region.dataType === 'date') {
-          // Keep date as string for date operations
-          resolvedValue = typeof extractedValue === 'string' ? extractedValue : String(extractedValue);
-        } else if (region.dataType === 'boolean') {
-          resolvedValue = toBoolean(extractedValue);
-        } else {
-          // For number/currency, parse to number
-          if (typeof extractedValue === 'number') {
-            resolvedValue = extractedValue;
-          } else if (typeof extractedValue === 'string') {
-            const parsed = parseNumericValue(extractedValue);
-            if (parsed === null) continue; // Skip invalid numeric values
-            resolvedValue = parsed;
-          } else {
-            continue;
-          }
-        }
-
-        const source: DataSourceReference = {
-          nodeId: fileNode.id,
-          regionId: region.id,
-          pageNumber: region.pageNumber,
-          coordinates: region.coordinates,
-          textRange: region.textRange,
-          extractionMethod: region.extractedData.source?.extractionMethod || 'manual',
-          confidence: region.extractedData.source?.confidence,
-        };
-
-        inputs.push({
-          value: resolvedValue,
-          dataType: region.dataType,
-          label: region.label,
-          sourceNodeId: fileNode.id,
-          sourceRegionId: region.id,
-          edgeId: edge.id,
-          source,
-        });
-      } else if (sourceNode.type === 'calculation') {
-        // Handle CalculationNode source
-        const calcNode = sourceNode as CalcNodeType;
-        if (edge.sourceHandle !== 'output') continue;
-
-        const result = calcNode.data.result;
-        if (!result) continue;
-
-        inputs.push({
-          value: result.value,
-          dataType: result.dataType,
-          label: calcNode.data.label,
-          sourceNodeId: calcNode.id,
-          sourceRegionId: 'output',
-          edgeId: edge.id,
-          source: result.source || null,
-        });
-      }
-    }
-
-    return inputs;
-  }, [connectedEdges, nodes]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // INPUT FILTERING BY TYPE COMPATIBILITY
