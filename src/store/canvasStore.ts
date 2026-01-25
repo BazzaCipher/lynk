@@ -14,6 +14,8 @@ import {
   getTopologicalOrder,
   getDependentNodes,
 } from '../core/engine/dependencyGraph';
+import { clearLocalStorageDraft } from '../hooks/useLocalStorageSync';
+import { CanvasExporter, CanvasImporter, CanvasValidator, type ValidationResult } from './canvasPersistence';
 
 // Highlighted region reference for source highlighting
 export interface HighlightedRegion {
@@ -62,7 +64,8 @@ interface CanvasStore {
   // Persistence actions
   exportCanvas: () => CanvasState;
   importCanvas: (state: CanvasState) => { success: boolean; error?: string };
-  saveToFile: () => void;
+  validateCanvas: () => ValidationResult;
+  saveToFile: () => Promise<{ success: boolean; warnings: string[] }>;
   loadFromFile: () => Promise<{ success: boolean; error?: string }>;
 }
 
@@ -96,6 +99,22 @@ function validateNodeDataUpdate(
     if ('regions' in update && update.regions) {
       if (!Array.isArray(update.regions)) {
         console.warn('Invalid regions: expected array');
+        isValid = false;
+      }
+    }
+  }
+
+  if (nodeType === 'image') {
+    // Validate dimensions are positive numbers
+    if ('width' in update && typeof update.width === 'number') {
+      if (update.width <= 0) {
+        console.warn(`Invalid width value: ${update.width}. Should be positive.`);
+        isValid = false;
+      }
+    }
+    if ('height' in update && typeof update.height === 'number') {
+      if (update.height <= 0) {
+        console.warn(`Invalid height value: ${update.height}. Should be positive.`);
         isValid = false;
       }
     }
@@ -266,9 +285,12 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
 
     const validState = result.data;
 
+    // Extract embedded files and restore blob URLs
+    const restoredState = CanvasImporter.importWithExtractedFiles(validState as CanvasState);
+
     // Find the highest node ID number to continue from
     let maxNodeId = 0;
-    for (const node of validState.nodes) {
+    for (const node of restoredState.nodes) {
       const match = node.id.match(/^node-(\d+)$/);
       if (match) {
         const num = parseInt(match[1], 10);
@@ -278,21 +300,37 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     nodeIdCounter = maxNodeId;
 
     set({
-      nodes: validState.nodes as LynkNode[],
-      edges: validState.edges,
-      viewport: validState.viewport,
-      canvasName: validState.metadata.name,
-      canvasId: validState.metadata.id,
-      lastSaved: validState.metadata.updatedAt,
+      nodes: restoredState.nodes as LynkNode[],
+      edges: restoredState.edges,
+      viewport: restoredState.viewport,
+      canvasName: restoredState.metadata.name,
+      canvasId: restoredState.metadata.id,
+      lastSaved: restoredState.metadata.updatedAt,
       highlightedRegion: null,
     });
 
     return { success: true };
   },
 
-  saveToFile: () => {
+  validateCanvas: () => {
     const state = get().exportCanvas();
-    const json = JSON.stringify(state, null, 2);
+    return CanvasValidator.validateForExport(state);
+  },
+
+  saveToFile: async () => {
+    const state = get().exportCanvas();
+
+    // Validate before saving
+    const validation = CanvasValidator.validateForExport(state);
+    if (!validation.valid) {
+      console.error('Canvas validation failed:', validation.errors);
+      return { success: false, warnings: validation.errors };
+    }
+
+    // Embed all files as base64
+    const stateWithFiles = await CanvasExporter.exportWithEmbeddedFiles(state);
+
+    const json = JSON.stringify(stateWithFiles, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
 
@@ -305,6 +343,11 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     URL.revokeObjectURL(url);
 
     set({ lastSaved: state.metadata.updatedAt });
+
+    // Clear localStorage draft since we've saved to file
+    clearLocalStorageDraft();
+
+    return { success: true, warnings: validation.warnings };
   },
 
   loadFromFile: () => {

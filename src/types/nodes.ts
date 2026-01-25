@@ -14,7 +14,7 @@ import type { ExtractedRegion } from './regions';
 // NODE TYPE IDENTIFIERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export type LynkNodeType = 'file' | 'calculation' | 'sheet' | 'label';
+export type LynkNodeType = 'file' | 'calculation' | 'sheet' | 'label' | 'image';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // BASE NODE DATA
@@ -33,7 +33,10 @@ export interface BaseNodeData extends Record<string, unknown> {
 export interface FileNodeData extends BaseNodeData {
   fileType: 'pdf' | 'image';
   fileName?: string;
+  /** Runtime blob URL - not persisted, regenerated from embedded file on load */
   fileUrl?: string;
+  /** Reference to embedded file in CanvasState.embeddedFiles */
+  fileId?: string;
   regions: ExtractedRegion[];
   currentPage: number;
   totalPages: number;
@@ -156,6 +159,26 @@ export interface LabelNodeData extends BaseNodeData {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// IMAGE NODE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Image node specific data - display-only visual reference */
+export interface ImageNodeData extends BaseNodeData {
+  /** Runtime blob URL - not persisted, regenerated from embedded file on load */
+  imageUrl?: string;
+  /** Reference to embedded file in CanvasState.embeddedFiles */
+  fileId?: string;
+  /** Original file name */
+  fileName?: string;
+  /** Display width in pixels */
+  width: number;
+  /** Display height in pixels */
+  height: number;
+  /** Whether aspect ratio is locked during resize */
+  aspectLocked: boolean;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // NODE DATA UNION
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -164,7 +187,8 @@ export type LynkNodeData =
   | FileNodeData
   | CalculationNodeData
   | SheetNodeData
-  | LabelNodeData;
+  | LabelNodeData
+  | ImageNodeData;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // REACT FLOW NODE TYPES
@@ -175,6 +199,7 @@ export type FileNode = Node<FileNodeData, 'file'>;
 export type CalculationNode = Node<CalculationNodeData, 'calculation'>;
 export type SheetNode = Node<SheetNodeData, 'sheet'>;
 export type LabelNode = Node<LabelNodeData, 'label'>;
+export type ImageNode = Node<ImageNodeData, 'image'>;
 
 /** Union type for all node types */
-export type LynkNode = FileNode | CalculationNode | SheetNode | LabelNode;
+export type LynkNode = FileNode | CalculationNode | SheetNode | LabelNode | ImageNode;

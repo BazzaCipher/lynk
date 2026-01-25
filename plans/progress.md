@@ -9,8 +9,8 @@
 | Phase 2.5: Modal Viewer | ✅ Complete | Modal-based document viewer, collapsible panel |
 | Phase 3: Code Refactoring | ✅ Complete | Utilities, hooks, type consolidation |
 | Phase 4: Processing Nodes | ✅ Complete | CalculationNode, SheetNode (hierarchical), LabelNode |
-| Phase 5: Persistence & Storage | ❌ Not Started | LocalStorage, complete export/import, embedded files |
-| Phase 6: Image Node | ❌ Not Started | Standalone image display node |
+| Phase 5: Persistence & Storage | ✅ Complete | LocalStorage, complete export/import, embedded files |
+| Phase 6: Image Node | ✅ Complete | Standalone image display node |
 | Phase 7: Polish & UX | 🔄 In Progress | See below |
 | Phase 8: Testing & Docs | ❌ Not Started | Unit tests, integration tests |
 
@@ -50,38 +50,38 @@ SheetNode
 
 ---
 
-## Phase 5: Persistence & Storage (Next Priority)
+## Phase 5: Persistence & Storage (COMPLETE)
 
 ### 5.1 LocalStorage Auto-Save
 
 | Task | Priority | Status | Notes |
 |------|----------|--------|-------|
-| Debounced save on change | High | ❌ | Save to localStorage when nodes/edges change |
-| Auto-save interval (30s) | High | ❌ | Periodic background save |
-| Session recovery prompt | High | ❌ | On load, detect unsaved work and offer to restore |
-| Storage quota monitoring | Medium | ❌ | Warn user when near localStorage limit |
-| Clear draft on file save | Medium | ❌ | Remove localStorage draft when user saves to file |
+| Debounced save on change | High | ✅ | Save to localStorage when nodes/edges change |
+| Auto-save interval (30s) | High | ✅ | Periodic background save |
+| Session recovery prompt | High | ✅ | On load, detect unsaved work and offer to restore |
+| Storage quota monitoring | Medium | ✅ | Warn user when near localStorage limit |
+| Clear draft on file save | Medium | ✅ | Remove localStorage draft when user saves to file |
 
 ### 5.2 Complete Export (Everything Included)
 
 | Task | Priority | Status | Notes |
 |------|----------|--------|-------|
-| Embed PDFs as base64 | High | ❌ | Store file content in export JSON |
-| Embed images as base64 | High | ❌ | Store ImageNode images in export |
-| Embed FileNode images | High | ❌ | Store images used in FileNode |
-| Pre-export validation | High | ❌ | Check all data present before export |
-| Missing data warnings | Medium | ❌ | Alert user if nodes reference missing files |
+| Embed PDFs as base64 | High | ✅ | Store file content in export JSON |
+| Embed images as base64 | High | ✅ | Store ImageNode images in export |
+| Embed FileNode images | High | ✅ | Store images used in FileNode |
+| Pre-export validation | High | ✅ | Check all data present before export |
+| Missing data warnings | Medium | ✅ | Alert user if nodes reference missing files |
 | Export size estimation | Low | ❌ | Show estimated file size before save |
 
 ### 5.3 Complete Import (Full Restore)
 
 | Task | Priority | Status | Notes |
 |------|----------|--------|-------|
-| Extract embedded files | High | ❌ | Convert base64 back to blob URLs |
-| Restore node file references | High | ❌ | Link nodes to extracted files |
+| Extract embedded files | High | ✅ | Convert base64 back to blob URLs |
+| Restore node file references | High | ✅ | Link nodes to extracted files |
 | Schema migration support | Medium | ❌ | Handle older file versions |
-| Import validation | High | ❌ | Verify all connections valid after load |
-| Import error reporting | Medium | ❌ | User-friendly error messages on failure |
+| Import validation | High | ✅ | Verify all connections valid after load |
+| Import error reporting | Medium | ✅ | User-friendly error messages on failure |
 
 ### 5.4 Storage Keys & Structure
 
@@ -92,6 +92,25 @@ LocalStorage Keys:
 ├── lynk:settings           - User preferences (auto-save interval, etc.)
 └── lynk:recent-files       - List of recently opened files
 ```
+
+### 5.5 Implementation Details (Jan 26, 2025)
+
+**Files Added/Modified:**
+- `src/hooks/useLocalStorageSync.ts` - Auto-save hook with debounce + interval
+- `src/store/canvasPersistence.ts` - BlobRegistry, CanvasExporter, CanvasImporter, CanvasValidator
+- `src/components/SessionRecovery.tsx` - Recovery modal on app load
+- `src/types/canvas.ts` - Added EmbeddedFile type
+- `src/types/nodes.ts` - Added fileId to FileNodeData
+- `src/schemas/canvas.ts` - Updated Zod schemas for embedded files
+- `src/store/canvasStore.ts` - Integrated persistence utilities
+- `src/components/nodes/FileNode.tsx` - Register files with BlobRegistry
+- `src/components/canvas/Toolbar.tsx` - Handle save validation results
+
+**Key Patterns:**
+- `BlobRegistry` - In-memory registry tracking blob URLs and file data
+- `CanvasExporter.exportWithEmbeddedFiles()` - Converts blobs to base64 for export
+- `CanvasImporter.importWithExtractedFiles()` - Restores blob URLs from base64
+- Files stored without embedded data in localStorage (5MB limit)
 
 ---
 
@@ -217,21 +236,19 @@ These are potential future features, not required for MVP:
 
 ## Immediate Next Steps
 
-### Priority 1: Persistence & Storage (Phase 5)
-1. **LocalStorage auto-save** - Debounced save on node/edge changes + 30s interval
-2. **Session recovery** - Detect unsaved work on app load, prompt to restore
-3. **Embed files in export** - Store PDFs/images as base64 in `.lynk.json`
-4. **Complete import** - Extract embedded files and restore full canvas state
-5. **Pre-export validation** - Verify all data is present before save
+### Priority 1: Image Node (Phase 6)
+1. **ImageNode component** - Display-only image node (no handles)
+2. **Drag-and-drop upload** - Drop image onto canvas to create ImageNode
+3. **Base64 storage** - Store image data for persistence
 
-### Priority 2: Image Node (Phase 6)
-6. **ImageNode component** - Display-only image node (no handles)
-7. **Drag-and-drop upload** - Drop image onto canvas to create ImageNode
-8. **Base64 storage** - Store image data for persistence
+### Priority 2: Polish (Phase 7)
+4. **Edge deletion** - Add ability to delete edges (right-click menu or select + delete)
+5. **Error boundaries** - Wrap nodes in error boundaries to prevent crashes
+6. **Keyboard shortcuts** - Delete, Esc, Ctrl+S, Ctrl+Z
 
-### Priority 3: Polish (Phase 7)
-9. **Edge deletion** - Add ability to delete edges (right-click menu or select + delete)
-10. **Error boundaries** - Wrap nodes in error boundaries to prevent crashes
+### Priority 3: Testing (Phase 8)
+7. **Unit tests** - Test operation registry, formatValue, parseNumericValue
+8. **Integration tests** - Test data flow between nodes, save/load roundtrip
 
 ---
 

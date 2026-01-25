@@ -1,5 +1,5 @@
 import { useCanvasStore } from '../../store/canvasStore';
-import type { FileNodeData, CalculationNodeData, SheetNodeData, LabelNodeData } from '../../types';
+import type { FileNodeData, CalculationNodeData, SheetNodeData, LabelNodeData, ImageNodeData } from '../../types';
 
 const defaultFileData: FileNodeData = {
   label: 'File',
@@ -33,6 +33,16 @@ const defaultLabelData: LabelNodeData = {
   alignment: 'center',
 };
 
+const defaultImageData: ImageNodeData = {
+  label: 'Image',
+  imageUrl: undefined,
+  fileId: undefined,
+  fileName: undefined,
+  width: 300,
+  height: 200,
+  aspectLocked: true,
+};
+
 export function Toolbar() {
   const addNode = useCanvasStore((state) => state.addNode);
   const saveToFile = useCanvasStore((state) => state.saveToFile);
@@ -42,8 +52,8 @@ export function Toolbar() {
   const setCanvasName = useCanvasStore((state) => state.setCanvasName);
 
   const handleAddNode = (
-    type: 'file' | 'calculation' | 'sheet' | 'label',
-    data: FileNodeData | CalculationNodeData | SheetNodeData | LabelNodeData
+    type: 'file' | 'calculation' | 'sheet' | 'label' | 'image',
+    data: FileNodeData | CalculationNodeData | SheetNodeData | LabelNodeData | ImageNodeData
   ) => {
     // Add node at a random position in the viewport
     const position = {
@@ -51,6 +61,15 @@ export function Toolbar() {
       y: 100 + Math.random() * 200,
     };
     addNode(type, position, data);
+  };
+
+  const handleSave = async () => {
+    const result = await saveToFile();
+    if (!result.success) {
+      alert('Save failed:\n' + result.warnings.join('\n'));
+    } else if (result.warnings.length > 0) {
+      alert('Saved with warnings:\n' + result.warnings.join('\n'));
+    }
   };
 
   const handleLoad = async () => {
@@ -108,12 +127,19 @@ export function Toolbar() {
       >
         + Label
       </button>
+      <button
+        onClick={() => handleAddNode('image', defaultImageData)}
+        className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+        title="Add Image Node"
+      >
+        + Image
+      </button>
 
       <div className="w-px h-6 bg-gray-200" />
 
       {/* File operations */}
       <button
-        onClick={saveToFile}
+        onClick={handleSave}
         className="px-3 py-1.5 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors"
         title="Save canvas to file"
       >

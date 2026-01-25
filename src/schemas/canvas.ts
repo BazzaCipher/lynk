@@ -73,6 +73,7 @@ const FileNodeDataSchema = z.object({
   fileType: z.enum(['pdf', 'image']),
   fileName: z.string().optional(),
   fileUrl: z.string().optional(),
+  fileId: z.string().optional(),
   regions: z.array(ExtractedRegionSchema),
   currentPage: z.number(),
   totalPages: z.number(),
@@ -137,6 +138,17 @@ const LabelNodeDataSchema = z.object({
   alignment: z.enum(['left', 'center', 'right']),
 });
 
+// Image node data - display-only visual reference
+const ImageNodeDataSchema = z.object({
+  label: z.string(),
+  imageUrl: z.string().optional(),
+  fileId: z.string().optional(),
+  fileName: z.string().optional(),
+  width: z.number(),
+  height: z.number(),
+  aspectLocked: z.boolean(),
+});
+
 // Position
 const PositionSchema = z.object({
   x: z.number(),
@@ -169,6 +181,12 @@ const NodeSchema = z.discriminatedUnion('type', [
     position: PositionSchema,
     data: LabelNodeDataSchema,
   }),
+  z.object({
+    id: z.string(),
+    type: z.literal('image'),
+    position: PositionSchema,
+    data: ImageNodeDataSchema,
+  }),
 ]);
 
 // Edge schema
@@ -195,6 +213,13 @@ const MetadataSchema = z.object({
   updatedAt: z.string(),
 });
 
+// Embedded file schema
+const EmbeddedFileSchema = z.object({
+  filename: z.string(),
+  mimeType: z.string(),
+  data: z.string(),
+});
+
 // Full canvas state schema
 export const CanvasStateSchema = z.object({
   version: z.string(),
@@ -202,6 +227,7 @@ export const CanvasStateSchema = z.object({
   nodes: z.array(NodeSchema),
   edges: z.array(EdgeSchema),
   viewport: ViewportSchema,
+  embeddedFiles: z.record(z.string(), EmbeddedFileSchema).optional(),
 });
 
 export type ValidatedCanvasState = z.infer<typeof CanvasStateSchema>;

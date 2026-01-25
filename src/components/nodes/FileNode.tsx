@@ -9,6 +9,7 @@ import { Modal } from '../ui/Modal';
 import { CollapsiblePanel } from '../ui/CollapsiblePanel';
 import { extractTextFromRegion } from '../../core/extraction/ocrExtractor';
 import { useCanvasStore } from '../../store/canvasStore';
+import { BlobRegistry } from '../../store/canvasPersistence';
 import { getColorForType } from '../../utils/colors';
 import type {
   FileNode as FileNodeType,
@@ -34,11 +35,13 @@ export function FileNode({ id, data, selected }: NodeProps<FileNodeType>) {
       const file = e.target.files?.[0];
       if (!file) return;
 
-      const fileUrl = URL.createObjectURL(file);
+      // Register file with BlobRegistry for persistence
+      const { fileId, blobUrl } = BlobRegistry.register(file);
       const fileType = file.type.startsWith('image/') ? 'image' : 'pdf';
 
       updateNodeData(id, {
-        fileUrl,
+        fileUrl: blobUrl,
+        fileId,
         fileName: file.name,
         fileType,
         currentPage: 1,
@@ -55,11 +58,13 @@ export function FileNode({ id, data, selected }: NodeProps<FileNodeType>) {
       const file = e.dataTransfer.files?.[0];
       if (!file) return;
 
-      const fileUrl = URL.createObjectURL(file);
+      // Register file with BlobRegistry for persistence
+      const { fileId, blobUrl } = BlobRegistry.register(file);
       const fileType = file.type.startsWith('image/') ? 'image' : 'pdf';
 
       updateNodeData(id, {
-        fileUrl,
+        fileUrl: blobUrl,
+        fileId,
         fileName: file.name,
         fileType,
         currentPage: 1,

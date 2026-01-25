@@ -47,13 +47,15 @@ export type {
   SheetNodeData,
   LabelFormat,
   LabelNodeData,
+  ImageNodeData,
   LynkNodeData,
   FileNode,
   CalculationNode,
   SheetNode,
   LabelNode,
+  ImageNode,
   LynkNode,
 } from './nodes';
 
 // Canvas state
-export type { CanvasMetadata, CanvasState } from './canvas';
+export type { CanvasMetadata, CanvasState, EmbeddedFile } from './canvas';

@@ -14,6 +14,7 @@ import { FileNode } from '../nodes/FileNode';
 import { CalculationNode } from '../nodes/CalculationNode';
 import { SheetNode } from '../nodes/SheetNode';
 import { LabelNode } from '../nodes/LabelNode';
+import { ImageNode } from '../nodes/ImageNode';
 import { Toolbar } from './Toolbar';
 import { useToast } from '../ui/Toast';
 import { wouldCreateCycle } from '../../core/engine/dependencyGraph';
@@ -25,6 +26,7 @@ const nodeTypes = {
   calculation: CalculationNode,
   sheet: SheetNode,
   label: LabelNode,
+  image: ImageNode,
 };
 
 export function LynkCanvas() {
