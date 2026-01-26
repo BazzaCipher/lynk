@@ -1,7 +1,10 @@
-export { FileNode } from './FileNode';
+export { DisplayNode } from './DisplayNode';
+export { ExtractorNode } from './ExtractorNode';
 export { CalculationNode } from './CalculationNode';
 export { SheetNode } from './SheetNode';
 export { LabelNode } from './LabelNode';
-export { ImageNode } from './ImageNode';
+export { GroupNode } from './GroupNode';
 export { BaseNode } from './base/BaseNode';
 export { NodeEntry } from './base/NodeEntry';
+export { NodeErrorBoundary } from './base/NodeErrorBoundary';
+export { withErrorBoundary } from './base/withErrorBoundary';

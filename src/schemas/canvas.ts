@@ -67,8 +67,72 @@ const ExtractedRegionSchema = z.object({
   valueCache: z.record(SimpleDataTypeSchema, z.string()).optional(),
 });
 
-// File node data
-const FileNodeDataSchema = z.object({
+// ═══════════════════════════════════════════════════════════════════════════════
+// VIEW SCHEMAS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// View rectangle (normalized coordinates 0-1)
+const ViewRectSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  height: z.number(),
+});
+
+// View target - what part of document is being viewed
+const ViewTargetSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('page'), pageNumber: z.number() }),
+  z.object({ type: z.literal('image') }),
+  z.object({ type: z.literal('sheet'), sheetName: z.string() }),
+  z.object({ type: z.literal('slide'), slideNumber: z.number() }),
+  z.object({ type: z.literal('range'), sheet: z.string(), range: z.string() }),
+]);
+
+// Document view - complete viewport configuration
+const DocumentViewSchema = z.object({
+  viewport: ViewRectSchema,
+  target: ViewTargetSchema,
+  nodeSize: z.object({ width: z.number(), height: z.number() }),
+  aspectLocked: z.boolean(),
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EDGE CACHE SCHEMA
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Cached edge for node type conversion
+const CachedEdgeSchema = z.object({
+  id: z.string(),
+  target: z.string(),
+  targetHandle: z.string().optional(),
+  sourceHandle: z.string(),
+});
+
+// Cached extractor edges when converting to display node
+const CachedExtractorEdgesSchema = z.object({
+  edges: z.array(CachedEdgeSchema),
+  regions: z.array(ExtractedRegionSchema),
+  cachedAt: z.string(),
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NODE DATA SCHEMAS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Display node data - visual reference for images and PDFs
+const DisplayNodeDataSchema = z.object({
+  label: z.string(),
+  fileType: z.enum(['pdf', 'image']),
+  fileUrl: z.string().optional(),
+  fileId: z.string().optional(),
+  fileName: z.string().optional(),
+  view: DocumentViewSchema,
+  totalPages: z.number(),
+  cachedExtractorEdges: CachedExtractorEdgesSchema.optional(),
+});
+
+// Extractor node data - data extraction with regions
+const ExtractorNodeDataSchema = z.object({
   label: z.string(),
   fileType: z.enum(['pdf', 'image']),
   fileName: z.string().optional(),
@@ -134,19 +198,18 @@ const LabelNodeDataSchema = z.object({
     (v) => v === 'text' ? 'string' : v
   ),
   value: DataValueSchema.optional(),
+  manualValue: z.string().optional(),
+  isManualMode: z.boolean().optional(),
   fontSize: z.enum(['small', 'medium', 'large']),
   alignment: z.enum(['left', 'center', 'right']),
 });
 
-// Image node data - display-only visual reference
-const ImageNodeDataSchema = z.object({
+// Group node data
+const GroupNodeDataSchema = z.object({
   label: z.string(),
-  imageUrl: z.string().optional(),
-  fileId: z.string().optional(),
-  fileName: z.string().optional(),
   width: z.number(),
   height: z.number(),
-  aspectLocked: z.boolean(),
+  backgroundColor: z.string().optional(),
 });
 
 // Position
@@ -159,33 +222,44 @@ const PositionSchema = z.object({
 const NodeSchema = z.discriminatedUnion('type', [
   z.object({
     id: z.string(),
-    type: z.literal('file'),
+    type: z.literal('display'),
     position: PositionSchema,
-    data: FileNodeDataSchema,
+    parentId: z.string().optional(),
+    data: DisplayNodeDataSchema,
+  }),
+  z.object({
+    id: z.string(),
+    type: z.literal('extractor'),
+    position: PositionSchema,
+    parentId: z.string().optional(),
+    data: ExtractorNodeDataSchema,
   }),
   z.object({
     id: z.string(),
     type: z.literal('calculation'),
     position: PositionSchema,
+    parentId: z.string().optional(),
     data: CalculationNodeDataSchema,
   }),
   z.object({
     id: z.string(),
     type: z.literal('sheet'),
     position: PositionSchema,
+    parentId: z.string().optional(),
     data: SheetNodeDataSchema,
   }),
   z.object({
     id: z.string(),
     type: z.literal('label'),
     position: PositionSchema,
+    parentId: z.string().optional(),
     data: LabelNodeDataSchema,
   }),
   z.object({
     id: z.string(),
-    type: z.literal('image'),
+    type: z.literal('group'),
     position: PositionSchema,
-    data: ImageNodeDataSchema,
+    data: GroupNodeDataSchema,
   }),
 ]);
 

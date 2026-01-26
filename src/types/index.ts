@@ -33,11 +33,22 @@ export type {
 // Extracted regions
 export type { ExtractedRegion } from './regions';
 
+// View types
+export type {
+  ViewRect,
+  ViewTarget,
+  DocumentView,
+} from './view';
+
+export { DEFAULT_VIEW, createImageView, createPdfView } from './view';
+
 // Node types
 export type {
   LynkNodeType,
   BaseNodeData,
-  FileNodeData,
+  CachedExtractorEdges,
+  DisplayNodeData,
+  ExtractorNodeData,
   CachedOperationInputs,
   CalculationResult,
   CalculationNodeData,
@@ -47,15 +58,20 @@ export type {
   SheetNodeData,
   LabelFormat,
   LabelNodeData,
-  ImageNodeData,
+  GroupNodeData,
   LynkNodeData,
-  FileNode,
+  DisplayNode,
+  ExtractorNode,
   CalculationNode,
   SheetNode,
   LabelNode,
-  ImageNode,
+  GroupNode,
   LynkNode,
 } from './nodes';
 
 // Canvas state
 export type { CanvasMetadata, CanvasState, EmbeddedFile } from './canvas';
+
+// Node categories
+export { SourceNode, TransformNode } from './categories';
+export type { SourceNodeData, TransformNodeData } from './categories';

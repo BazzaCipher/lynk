@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useCanvasStore } from '../store/canvasStore';
 import type { CanvasState } from '../types';
+import { SourceNode } from '../types';
 
 // localStorage keys
 export const STORAGE_KEYS = {
@@ -30,12 +31,14 @@ export interface StoredCanvasData {
  * Prepare canvas for localStorage (strip embedded files, track missing)
  */
 function prepareForStorage(canvas: CanvasState): { stripped: CanvasState; missingFileIds: string[] } {
+  // Collect file IDs from all Source nodes
   const missingFileIds: string[] = [];
-
-  // Find all file nodes that have fileId references
   for (const node of canvas.nodes) {
-    if (node.type === 'file' && node.data.fileId) {
-      missingFileIds.push(node.data.fileId);
+    if (SourceNode.is(node)) {
+      const fileId = SourceNode.getFileId(node);
+      if (fileId) {
+        missingFileIds.push(fileId);
+      }
     }
   }
 

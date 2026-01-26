@@ -23,6 +23,14 @@ export interface HighlightedRegion {
   regionId: string;
 }
 
+// History snapshot for undo/redo
+interface HistorySnapshot {
+  nodes: LynkNode[];
+  edges: Edge[];
+}
+
+const MAX_HISTORY_SIZE = 50;
+
 interface CanvasStore {
   // State
   nodes: LynkNode[];
@@ -33,6 +41,10 @@ interface CanvasStore {
   canvasId: string;
   lastSaved: string | null;
 
+  // History state
+  history: HistorySnapshot[];
+  historyIndex: number;
+
   // React Flow change handlers
   onNodesChange: (changes: NodeChange<LynkNode>[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
@@ -41,10 +53,12 @@ interface CanvasStore {
   addNode: (type: LynkNodeType, position: { x: number; y: number }, data: LynkNodeData) => string;
   removeNode: (nodeId: string) => void;
   updateNodeData: (nodeId: string, data: Partial<LynkNodeData>) => void;
+  replaceNode: (nodeId: string, newType: LynkNodeType, newData: LynkNodeData) => void;
 
   // Edge actions
   addEdge: (edge: Edge) => boolean; // Returns false if would create cycle
   removeEdge: (edgeId: string) => void;
+  removeEdgesToTarget: (targetNodeId: string, targetHandle?: string) => void;
   canAddEdge: (source: string, target: string) => boolean;
 
   // Dependency graph selectors
@@ -56,6 +70,22 @@ interface CanvasStore {
 
   // Highlight actions
   setHighlightedRegion: (region: HighlightedRegion | null) => void;
+
+  // Group actions
+  createGroup: (nodeIds: string[]) => string | null;
+  ungroupNodes: (groupId: string) => void;
+  getSelectedNodes: () => LynkNode[];
+  getSelectedEdges: () => Edge[];
+  removeSelectedNodes: () => void;
+  removeSelectedEdges: () => void;
+  clearSelection: () => void;
+
+  // History actions
+  pushHistory: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
 
   // Canvas actions
   clearCanvas: () => void;
@@ -94,7 +124,7 @@ function validateNodeDataUpdate(
     }
   }
 
-  if (nodeType === 'file') {
+  if (nodeType === 'extractor') {
     // Validate regions array if present
     if ('regions' in update && update.regions) {
       if (!Array.isArray(update.regions)) {
@@ -104,18 +134,19 @@ function validateNodeDataUpdate(
     }
   }
 
-  if (nodeType === 'image') {
-    // Validate dimensions are positive numbers
-    if ('width' in update && typeof update.width === 'number') {
-      if (update.width <= 0) {
-        console.warn(`Invalid width value: ${update.width}. Should be positive.`);
-        isValid = false;
-      }
-    }
-    if ('height' in update && typeof update.height === 'number') {
-      if (update.height <= 0) {
-        console.warn(`Invalid height value: ${update.height}. Should be positive.`);
-        isValid = false;
+  if (nodeType === 'display') {
+    // Validate view nodeSize dimensions are positive numbers
+    if ('view' in update && update.view) {
+      const view = update.view as { nodeSize?: { width?: number; height?: number } };
+      if (view.nodeSize) {
+        if (typeof view.nodeSize.width === 'number' && view.nodeSize.width <= 0) {
+          console.warn(`Invalid view width value: ${view.nodeSize.width}. Should be positive.`);
+          isValid = false;
+        }
+        if (typeof view.nodeSize.height === 'number' && view.nodeSize.height <= 0) {
+          console.warn(`Invalid view height value: ${view.nodeSize.height}. Should be positive.`);
+          isValid = false;
+        }
       }
     }
   }
@@ -140,6 +171,8 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   canvasName: 'Untitled Canvas',
   canvasId: generateCanvasId(),
   lastSaved: null,
+  history: [],
+  historyIndex: -1,
 
   // React Flow change handlers
   onNodesChange: (changes) => {
@@ -194,6 +227,20 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
     });
   },
 
+  replaceNode: (nodeId, newType, newData) => {
+    const node = get().nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+
+    // Replace node type and data while preserving position and id
+    set((state) => ({
+      nodes: state.nodes.map((n) =>
+        n.id === nodeId
+          ? { ...n, type: newType, data: newData }
+          : n
+      ) as LynkNode[],
+    }));
+  },
+
   // Edge actions
   addEdge: (edge) => {
     const { edges } = get();
@@ -209,6 +256,16 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   removeEdge: (edgeId) => {
     set({
       edges: get().edges.filter((edge) => edge.id !== edgeId),
+    });
+  },
+
+  removeEdgesToTarget: (targetNodeId, targetHandle) => {
+    set({
+      edges: get().edges.filter((edge) => {
+        if (edge.target !== targetNodeId) return true;
+        if (targetHandle !== undefined && edge.targetHandle !== targetHandle) return true;
+        return false;
+      }),
     });
   },
 
@@ -235,6 +292,230 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   // Highlight actions
   setHighlightedRegion: (region) => {
     set({ highlightedRegion: region });
+  },
+
+  // Group actions
+  createGroup: (nodeIds) => {
+    const { nodes } = get();
+    const selectedNodes = nodes.filter((n) => nodeIds.includes(n.id) && n.type !== 'group');
+
+    if (selectedNodes.length < 2) return null;
+
+    // Calculate bounding box of selected nodes
+    const padding = 20;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    for (const node of selectedNodes) {
+      const x = node.position.x;
+      const y = node.position.y;
+      // Estimate node dimensions (default to 200x100 if unknown)
+      const width = (node as { width?: number }).width ?? 200;
+      const height = (node as { height?: number }).height ?? 100;
+
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + width);
+      maxY = Math.max(maxY, y + height);
+    }
+
+    const groupId = generateNodeId();
+    const groupPosition = { x: minX - padding, y: minY - padding };
+    const groupWidth = maxX - minX + padding * 2;
+    const groupHeight = maxY - minY + padding * 2;
+
+    // Create group node
+    const groupNode: LynkNode = {
+      id: groupId,
+      type: 'group',
+      position: groupPosition,
+      data: {
+        label: 'Group',
+        width: groupWidth,
+        height: groupHeight,
+      },
+    } as LynkNode;
+
+    // Update selected nodes to have parentId and relative positions
+    const updatedNodes = nodes.map((node) => {
+      if (nodeIds.includes(node.id) && node.type !== 'group') {
+        return {
+          ...node,
+          parentId: groupId,
+          position: {
+            x: node.position.x - groupPosition.x,
+            y: node.position.y - groupPosition.y,
+          },
+        };
+      }
+      return node;
+    });
+
+    set({ nodes: [groupNode, ...updatedNodes] as LynkNode[] });
+    return groupId;
+  },
+
+  ungroupNodes: (groupId) => {
+    const { nodes } = get();
+    const groupNode = nodes.find((n) => n.id === groupId && n.type === 'group');
+    if (!groupNode) return;
+
+    const groupPosition = groupNode.position;
+
+    // Update children to have absolute positions and remove parentId
+    const updatedNodes = nodes
+      .filter((n) => n.id !== groupId)
+      .map((node) => {
+        if (node.parentId === groupId) {
+          const { parentId: _parentId, ...rest } = node as LynkNode & { parentId?: string };
+          return {
+            ...rest,
+            position: {
+              x: node.position.x + groupPosition.x,
+              y: node.position.y + groupPosition.y,
+            },
+          };
+        }
+        return node;
+      });
+
+    set({ nodes: updatedNodes as LynkNode[] });
+  },
+
+  getSelectedNodes: () => {
+    return get().nodes.filter((n) => n.selected);
+  },
+
+  getSelectedEdges: () => {
+    return get().edges.filter((e) => e.selected);
+  },
+
+  removeSelectedEdges: () => {
+    const { edges } = get();
+    set({
+      edges: edges.filter((e) => !e.selected),
+    });
+  },
+
+  clearSelection: () => {
+    const { nodes, edges } = get();
+    set({
+      nodes: nodes.map((n) => ({ ...n, selected: false })) as LynkNode[],
+      edges: edges.map((e) => ({ ...e, selected: false })),
+    });
+  },
+
+  removeSelectedNodes: () => {
+    const { nodes, edges } = get();
+    const selectedIds = nodes.filter((n) => n.selected).map((n) => n.id);
+
+    // Also remove children of selected groups
+    const allIdsToRemove = new Set(selectedIds);
+    for (const node of nodes) {
+      if (node.parentId && allIdsToRemove.has(node.parentId)) {
+        allIdsToRemove.add(node.id);
+      }
+    }
+
+    set({
+      nodes: nodes.filter((n) => !allIdsToRemove.has(n.id)),
+      edges: edges.filter(
+        (e) => !allIdsToRemove.has(e.source) && !allIdsToRemove.has(e.target)
+      ),
+    });
+  },
+
+  // History actions
+  pushHistory: () => {
+    const { nodes, edges, history, historyIndex } = get();
+
+    // Create snapshot
+    const snapshot: HistorySnapshot = {
+      nodes: JSON.parse(JSON.stringify(nodes)),
+      edges: JSON.parse(JSON.stringify(edges)),
+    };
+
+    // Remove any future history if we're not at the end
+    const newHistory = history.slice(0, historyIndex + 1);
+
+    // Add new snapshot
+    newHistory.push(snapshot);
+
+    // Limit history size
+    if (newHistory.length > MAX_HISTORY_SIZE) {
+      newHistory.shift();
+    }
+
+    set({
+      history: newHistory,
+      historyIndex: newHistory.length - 1,
+    });
+  },
+
+  undo: () => {
+    const { history, historyIndex, nodes, edges } = get();
+
+    // If this is the first undo, save current state first
+    if (historyIndex === history.length - 1 || history.length === 0) {
+      const currentSnapshot: HistorySnapshot = {
+        nodes: JSON.parse(JSON.stringify(nodes)),
+        edges: JSON.parse(JSON.stringify(edges)),
+      };
+
+      // Push current state if not already in history
+      const newHistory = [...history, currentSnapshot];
+      if (newHistory.length > MAX_HISTORY_SIZE) {
+        newHistory.shift();
+      }
+
+      if (newHistory.length < 2) return; // Nothing to undo
+
+      const newIndex = newHistory.length - 2;
+      const snapshot = newHistory[newIndex];
+
+      set({
+        nodes: snapshot.nodes as LynkNode[],
+        edges: snapshot.edges,
+        history: newHistory,
+        historyIndex: newIndex,
+      });
+      return;
+    }
+
+    if (historyIndex <= 0) return; // Nothing to undo
+
+    const newIndex = historyIndex - 1;
+    const snapshot = history[newIndex];
+
+    set({
+      nodes: snapshot.nodes as LynkNode[],
+      edges: snapshot.edges,
+      historyIndex: newIndex,
+    });
+  },
+
+  redo: () => {
+    const { history, historyIndex } = get();
+
+    if (historyIndex >= history.length - 1) return; // Nothing to redo
+
+    const newIndex = historyIndex + 1;
+    const snapshot = history[newIndex];
+
+    set({
+      nodes: snapshot.nodes as LynkNode[],
+      edges: snapshot.edges,
+      historyIndex: newIndex,
+    });
+  },
+
+  canUndo: () => {
+    const { history, historyIndex } = get();
+    return history.length > 0 && historyIndex >= 0;
+  },
+
+  canRedo: () => {
+    const { history, historyIndex } = get();
+    return historyIndex < history.length - 1;
   },
 
   // Canvas actions

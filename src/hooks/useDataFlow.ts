@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useEdges, useNodes } from '@xyflow/react';
 import type {
   LynkNode,
-  FileNode,
+  ExtractorNode,
   CalculationNode,
   SheetNode,
   DataSourceReference,
@@ -104,8 +104,8 @@ function resolveNodeOutput(
   sourceHandle: string | null | undefined
 ): Omit<ResolvedInput, 'edgeId'> | null {
   switch (node.type) {
-    case 'file':
-      return resolveFileNodeOutput(node as FileNode, sourceHandle);
+    case 'extractor':
+      return resolveExtractorNodeOutput(node as ExtractorNode, sourceHandle);
     case 'calculation':
       return resolveCalculationNodeOutput(node as CalculationNode, sourceHandle);
     case 'sheet':
@@ -116,10 +116,10 @@ function resolveNodeOutput(
 }
 
 /**
- * Resolve output from a FileNode (region data).
+ * Resolve output from an ExtractorNode (region data).
  */
-function resolveFileNodeOutput(
-  node: FileNode,
+function resolveExtractorNodeOutput(
+  node: ExtractorNode,
   sourceHandle: string | null | undefined
 ): Omit<ResolvedInput, 'edgeId'> | null {
   if (!sourceHandle) return null;

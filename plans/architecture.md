@@ -18,19 +18,37 @@ Lynk is a web-based visual node canvas application for extracting data from PDFs
 
 ## Node Types
 
-### 1. File Node (Source)
-- Renders PDFs and images
-- Region selection with bounding boxes
-- Manual selection + OCR extraction
-- Each region becomes an output handle
-- Tracks source coordinates for highlighting
+### Node Categories (`src/types/categories.ts`)
 
-### 2. Calculation Node (Processor)
+Nodes are divided into two mutually exclusive categories based on data source:
+
+| Category | Nodes | Description |
+|----------|-------|-------------|
+| **SourceNode** | display, extractor | Entry points - data comes from files (no input handles) |
+| **TransformNode** | calculation, sheet, label | Processors - data comes from edges (has input handles) |
+
+### 1. DisplayNode (Source)
+- Visual reference for PDFs and images
+- NO data extraction, NO output handles
+- Supports resizing with aspect lock
+- Page navigation for PDFs
+- Can convert to ExtractorNode (with edge caching)
+
+### 2. ExtractorNode (Source)
+- Data extraction from PDFs and images
+- Region selection with bounding boxes (box mode)
+- Direct text selection (text mode)
+- OCR integration for box selections
+- Each region becomes an output handle
+- Can convert to DisplayNode (caches edges for restoration)
+
+### 3. CalculationNode (Transform)
 - Operations: sum, average, min, max, count
 - Multiple inputs → single output
 - Configurable precision
+- Operation registry for extensibility
 
-### 3. Sheet Node (Hierarchical Aggregator)
+### 4. SheetNode (Transform - Hierarchical Aggregator)
 - **Subheaders**: Groups that aggregate entry outputs with an operation
 - **Entries**: Mini CalculationNodes that accept multiple inputs
 - Each entry has input handle (left, multiple) and output handle (right)
@@ -38,44 +56,61 @@ Lynk is a web-based visual node canvas application for extracting data from PDFs
 - Operations: sum, average, min, max, count, round (from registry)
 - Expandable entries to see connected inputs
 
-### 4. Label Node (Sink)
+### 5. LabelNode (Transform)
 - Single value display
-- Formatting options (number, currency, date, text)
+- Formatting options (number, currency, date, string)
 - Font size and alignment
+- Manual value entry mode
 
-### 5. Image Node (Visual)
-- Standalone image display (PNG, JPG, GIF, WebP)
-- NOT a FileNode - no region extraction, just visual reference
-- Supports drag-and-drop upload or file picker
-- Resizable within canvas
-- No input/output handles (purely decorative/reference)
-- Stores image as base64 data URL for persistence
-- Use case: Screenshots, diagrams, reference images alongside data extraction work
+### 6. GroupNode (Visual)
+- Visual container for organizing nodes
+- Resizable with corner handles
+- Optional background color
+- No handles (purely organizational)
 
 ## Project Structure
 
 ```
 lynk/
 ├── src/
-│   ├── app/                    # App shell, providers
+│   ├── App.tsx                # Main app component
 │   ├── components/
-│   │   ├── canvas/             # LynkCanvas, controls, toolbar
+│   │   ├── canvas/
+│   │   │   ├── LynkCanvas.tsx     # React Flow canvas wrapper
+│   │   │   └── Toolbar.tsx        # Node creation toolbar
 │   │   ├── nodes/
-│   │   │   ├── base/           # BaseNode, NodeHeader, NodeHandle
-│   │   │   ├── file/           # FileNode, PdfViewer, ImageViewer, RegionSelector
-│   │   │   ├── calculation/    # CalculationNode
-│   │   │   ├── sheet/          # SheetNode, SheetTable
-│   │   │   └── label/          # LabelNode
-│   │   ├── edges/              # DataEdge
-│   │   └── ui/                 # Shared UI components
+│   │   │   ├── base/              # BaseNode, NodeHeader, NodeHandle
+│   │   │   ├── file/              # DocumentViewer, RegionSelector, HighlightOverlay
+│   │   │   ├── DisplayNode.tsx    # Visual reference node
+│   │   │   ├── ExtractorNode.tsx  # Data extraction node
+│   │   │   ├── CalculationNode.tsx
+│   │   │   ├── SheetNode.tsx
+│   │   │   ├── LabelNode.tsx
+│   │   │   ├── GroupNode.tsx
+│   │   │   └── index.ts           # Node type registry
+│   │   └── ui/                    # Modal, CollapsiblePanel, etc.
 │   ├── core/
-│   │   ├── engine/             # DataFlowEngine, DependencyGraph
-│   │   ├── extraction/         # ExtractionService, OcrExtractor
-│   │   └── calculations/       # CalculationEngine, operations
-│   ├── store/                  # Zustand stores (canvas, selection, ui)
-│   ├── hooks/                  # useDataFlow, useOcr, useCanvasPersistence
-│   ├── types/                  # TypeScript interfaces
-│   └── schemas/                # Zod validation schemas
+│   │   ├── extraction/            # OcrExtractor
+│   │   └── calculations/          # Operation registry
+│   ├── store/
+│   │   ├── canvasStore.ts         # Zustand store for canvas state
+│   │   └── canvasPersistence.ts   # BlobRegistry, export/import
+│   ├── hooks/
+│   │   ├── useDataFlow.ts         # Data propagation through graph
+│   │   └── useLocalStorageSync.ts # Auto-save functionality
+│   ├── types/
+│   │   ├── index.ts               # Re-exports all types
+│   │   ├── nodes.ts               # Node data interfaces
+│   │   ├── categories.ts          # SourceNode/TransformNode classes
+│   │   ├── view.ts                # DocumentView, ViewTarget, ViewRect
+│   │   ├── data.ts                # DataValue, SimpleDataType
+│   │   ├── regions.ts             # ExtractedRegion, TextRange
+│   │   └── geometry.ts            # RegionCoordinates, DataSourceReference
+│   ├── schemas/                   # Zod validation schemas
+│   └── utils/                     # formatValue, parseNumericValue, colors
+├── plans/
+│   ├── architecture.md            # This file
+│   └── progress.md                # Development progress tracker
 ├── package.json
 ├── tsconfig.json
 ├── vite.config.ts
@@ -84,12 +119,45 @@ lynk/
 
 ## Core Data Types
 
+### Document View System (`src/types/view.ts`)
+
 ```typescript
+// Rectangular viewport into a document (normalized 0-1 coordinates)
+interface ViewRect {
+  x: number;      // Left offset (0 = left edge, 1 = right edge)
+  y: number;      // Top offset (0 = top edge, 1 = bottom edge)
+  width: number;  // Viewport width (1 = full width)
+  height: number; // Viewport height (1 = full height)
+}
+
+// What part of the document we're viewing
+type ViewTarget =
+  | { type: 'page'; pageNumber: number }      // PDF page
+  | { type: 'image' }                         // Full image
+  | { type: 'sheet'; sheetName: string }      // Excel sheet (future)
+  | { type: 'slide'; slideNumber: number }    // Slides (future)
+  | { type: 'range'; sheet: string; range: string }; // Excel range (future)
+
+// Complete document view configuration
+interface DocumentView {
+  viewport: ViewRect;
+  target: ViewTarget;
+  nodeSize: { width: number; height: number };
+  aspectLocked: boolean;
+}
+```
+
+### Data Value System
+
+```typescript
+// Simple data types for region values
+type SimpleDataType = 'number' | 'currency' | 'date' | 'string';
+
 // Data value with source tracking
 interface DataValue {
-  type: 'number' | 'text' | 'date' | 'array' | 'table';
-  value: number | string | Date | DataValue[];
-  source?: DataSourceReference;  // Links back to file region
+  type: SimpleDataType;
+  value: number | string | Date;
+  source?: DataSourceReference;
 }
 
 // Source tracking for highlighting
@@ -97,18 +165,21 @@ interface DataSourceReference {
   nodeId: string;
   regionId: string;
   pageNumber?: number;
-  coordinates: RegionCoordinates;
+  coordinates?: RegionCoordinates;
   extractionMethod: 'manual' | 'ocr' | 'ai';
   confidence?: number;
 }
 
-// Region in a file node
+// Region in an extractor node
 interface ExtractedRegion {
   id: string;
   label: string;
-  coordinates: RegionCoordinates;
+  selectionType: 'box' | 'text';
+  coordinates?: RegionCoordinates;  // For box selection
+  textRange?: TextRange;            // For text selection
   pageNumber: number;
   extractedData: DataValue;
+  dataType: SimpleDataType;
   color: string;
 }
 ```
@@ -116,72 +187,63 @@ interface ExtractedRegion {
 ## Data Flow Architecture
 
 ```
-File Node ──[region]──→ Calculation Node ──[result]──→ Label Node
-    │                         │
-    │                         ↓
-    └──[region]──→ Sheet Node (entry) ──[entry-out]──→ Calculation Node
+ExtractorNode ──[region]──→ CalculationNode ──[result]──→ LabelNode
+    │                            │
+    │                            ↓
+    └──[region]──→ SheetNode (entry) ──[entry-out]──→ CalculationNode
                        │
-                       └──[subheader]──→ Label Node
+                       └──[subheader]──→ LabelNode
+```
+
+### DisplayNode ↔ ExtractorNode Conversion
+
+When switching between Display and Extractor modes, edges are cached:
+
+```typescript
+// Cached when converting ExtractorNode → DisplayNode
+interface CachedExtractorEdges {
+  edges: Array<{
+    id: string;
+    target: string;
+    targetHandle?: string;
+    sourceHandle: string;
+  }>;
+  regions: ExtractedRegion[];
+  cachedAt: string;
+}
 ```
 
 ### Sheet Node Handle Patterns
+
 | Handle | Type | Pattern | Purpose |
 |--------|------|---------|---------|
 | Entry Input | target | `entry-in-{subheaderId}-{entryId}` | Receives multiple values |
 | Entry Output | source | `entry-out-{subheaderId}-{entryId}` | Entry's aggregated result |
 | Subheader Output | source | `subheader-{subheaderId}` | Subheader's aggregated result |
 
-- **DataFlowEngine**: Manages data propagation through the graph
-- **DependencyGraph**: Tracks node connections, prevents cycles
-- When a source node changes, downstream nodes recalculate automatically
-
 ## Persistence & Storage
 
 ### File Export (`.lynk.json`)
-- Save canvas to `.lynk.json` files
-- Zod validation on load/save
-- **Complete export** - File contains everything needed for full restore
-- Structure:
-  ```json
-  {
-    "version": "1.0.0",
-    "metadata": { "id", "name", "createdAt", "updatedAt" },
-    "nodes": [...],
-    "edges": [...],
-    "viewport": { "x", "y", "zoom" },
-    "embeddedFiles": {
-      "fileId": {
-        "filename": "document.pdf",
-        "mimeType": "application/pdf",
-        "data": "<base64-encoded-file-content>"
-      }
-    },
-    "embeddedImages": {
-      "imageId": {
-        "filename": "screenshot.png",
-        "mimeType": "image/png",
-        "data": "<base64-data-url>"
-      }
+
+```json
+{
+  "version": "1.0.0",
+  "metadata": { "id", "name", "createdAt", "updatedAt" },
+  "nodes": [...],
+  "edges": [...],
+  "viewport": { "x", "y", "zoom" },
+  "embeddedFiles": {
+    "fileId": {
+      "filename": "document.pdf",
+      "mimeType": "application/pdf",
+      "data": "<base64-encoded-file-content>"
     }
   }
-  ```
-
-### Export Data Validation
-- **Pre-export checks**: Validate all required data is present before export
-- **File embedding**: All PDFs/images embedded as base64 (no external references)
-- **Integrity verification**: Hash check to detect corruption
-- **Schema validation**: Zod validates structure on both save and load
-- **Missing data warnings**: Alert user if any nodes reference missing files
+}
+```
 
 ### LocalStorage Auto-Save
-- **Auto-save interval**: Save to localStorage every 30 seconds (configurable)
-- **Save on change**: Debounced save on any node/edge modification
-- **Key structure**: `lynk:canvas:{canvasId}` for canvas data
-- **Session recovery**: On app load, check for unsaved work in localStorage
-- **Storage quota handling**: Warn user if localStorage is near capacity
-- **Clear on explicit save**: Clear localStorage draft when user saves to file
 
-### LocalStorage Keys
 ```
 lynk:canvas:current      - Current working canvas state
 lynk:canvas:backup       - Previous state (for recovery)
@@ -189,125 +251,61 @@ lynk:settings            - User preferences
 lynk:recent-files        - List of recently opened files
 ```
 
-### Import Process
-1. Read and parse JSON file
-2. Validate with Zod schema
-3. Extract embedded files to memory/blob URLs
-4. Restore nodes with proper file references
-5. Restore edges and viewport
-6. Verify all connections are valid
-7. Display any warnings (missing data, schema migrations)
+### BlobRegistry Pattern
+
+```typescript
+// In-memory registry for blob URLs
+class BlobRegistry {
+  static register(file: File): { fileId: string; blobUrl: string }
+  static get(fileId: string): { file: File; blobUrl: string } | null
+  static registerFromBase64(data: string, filename: string, mimeType: string): { fileId: string; blobUrl: string }
+}
+```
+
+## Implementation Phases
+
+### Phase 1-4: Foundation & Core Nodes ✅
+- React + TypeScript + Vite setup
+- React Flow canvas with Zustand state
+- PDF/Image viewing with region selection
+- OCR integration with Tesseract.js
+- CalculationNode, SheetNode, LabelNode
+
+### Phase 5: Persistence ✅
+- LocalStorage auto-save with debounce
+- Complete export with embedded files
+- Import with file extraction
+- Session recovery
+
+### Phase 6-6.5: Architecture Refactor ✅
+- Split FileNode → DisplayNode + ExtractorNode
+- Merged ImageNode into Display/Extractor
+- Categories system (SourceNode/TransformNode)
+- DocumentView viewport abstraction
+- GroupNode for visual organization
+
+### Phase 7: Polish & UX 🔄
+- Edge deletion (Delete key)
+- Keyboard shortcuts (Delete, Escape, Ctrl+S)
+- Error boundaries for nodes
+- Connection validation feedback
+- Performance optimizations
+
+### Phase 8: Testing ❌
+- Unit tests for utilities
+- Integration tests for data flow
+- E2E tests for workflows
 
 ## Environment
 
 - **Node.js**: v24 (via nvm)
 - **npm**: v11.6.2
 
-## Implementation Phases
-
-### Phase 1: Foundation
-- [x] Initialize Vite + React + TypeScript project
-- [x] Install dependencies (@xyflow/react, zustand, tailwindcss, etc.)
-- [x] Set up Zustand canvas store
-- [x] Create LynkCanvas component with React Flow
-- [x] Implement BaseNode component pattern
-
-**Status**: COMPLETE
-
-### Phase 2: File Node
-- [x] Integrate react-pdf for PDF rendering
-- [x] Build image viewer component
-- [x] Implement region selection overlay (canvas-based)
-- [x] Integrate Tesseract.js for OCR
-- [x] Create dynamic output handles per region
-- [x] Modal-based document viewer with collapsible side panel
-- [x] Text selection mode (direct text highlighting)
-- [x] Simple datatypes for highlights
-
-**Status**: COMPLETE
-
-### Phase 3: Processing & Display Nodes
-- [x] Implement CalculationNode with operations
-- [x] Build DataFlowEngine for propagation
-- [x] Implement SheetNode with TanStack Table
-- [x] Implement LabelNode with formatting
-
-**Status**: COMPLETE
-
-### Phase 4: Processing Nodes - COMPLETE
-- [x] CalculationNode with operation registry
-- [x] SheetNode hierarchical aggregator (entries + subheaders)
-- [x] LabelNode with formatting
-- [x] Data flow resolution between all node types
-- [x] Save/load to JSON files with Zod validation
-- [x] Source highlighting (hover/click to highlight source regions)
-
-### Phase 5: Persistence & Storage - NOT STARTED
-- [ ] Embed files as base64 in export
-- [ ] LocalStorage auto-save (30s interval + debounced on change)
-- [ ] Session recovery from localStorage on app load
-- [ ] Export data validation (pre-export checks)
-- [ ] Import with embedded file extraction
-- [ ] Storage quota warnings
-
-### Phase 6: Image Node - NOT STARTED
-- [ ] Create ImageNode component (no handles, display only)
-- [ ] Drag-and-drop image upload
-- [ ] File picker for images
-- [ ] Resize controls
-- [ ] Store as base64 for persistence
-
-### Phase 7: Polish & UX - IN PROGRESS
-- [ ] Edge deletion UI
-- [ ] Error boundaries for nodes
-- [ ] Keyboard shortcuts
-- [ ] Performance optimizations
-
-### Phase 8: Testing
-- [ ] Unit tests for utilities and hooks
-- [ ] Integration tests for data flow
-- [ ] E2E tests for user workflows
-
-## Key Implementation Details
-
-### Region Selection
-- Canvas overlay on PDF/image viewer
-- Draw rectangles to select regions
-- Store coordinates relative to document (not screen)
-- Transform coordinates when zooming/panning
-
-### OCR Integration
-- Tesseract.js worker initialized on mount
-- Crop image to region before OCR
-- Parse result to detect data type (number/date/text)
-- Store confidence score for display
-
-### Source Highlighting
-- Every DataValue tracks its source region
-- When hovering/clicking a value in Sheet/Label, highlight source
-- Use the stored coordinates to draw highlight box on File Node
-
-### Extensibility
-- Node registry pattern for adding new node types
-- Each node type defines: component, category, default data, ports
-- New nodes just register with the registry
-
-## Verification Plan
-
-1. **Create a test PDF** with numbers in known locations
-2. **Add File Node** → load PDF → verify rendering
-3. **Draw regions** → verify coordinates are captured
-4. **Run OCR** → verify text extraction
-5. **Connect to Calculation Node** → verify sum/avg/etc work
-6. **Connect to Sheet Node** → verify data displays in table
-7. **Connect to Label Node** → verify single value display
-8. **Save canvas** → reload → verify state restored
-9. **Click value in Sheet** → verify source region highlights in File Node
-
----
-
 ## Run Commands
+
 ```bash
-source ~/.nvm/nvm.sh && npm run dev    # Start dev server
-npm run build                           # Verify TypeScript compiles
+npm run dev      # Start dev server
+npm run build    # Production build
+npm run lint     # Run ESLint
+npm run test     # Run tests (once configured)
 ```

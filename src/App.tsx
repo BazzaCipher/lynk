@@ -1,3 +1,4 @@
+import { ReactFlowProvider } from '@xyflow/react';
 import { LynkCanvas } from './components/canvas/LynkCanvas';
 import { ToastProvider } from './components/ui/Toast';
 import { SessionRecovery } from './components/SessionRecovery';
@@ -9,10 +10,12 @@ function App() {
 
   return (
     <ToastProvider>
-      <div className="w-screen h-screen">
-        <LynkCanvas />
-        <SessionRecovery />
-      </div>
+      <ReactFlowProvider>
+        <div className="w-screen h-screen">
+          <LynkCanvas />
+          <SessionRecovery />
+        </div>
+      </ReactFlowProvider>
     </ToastProvider>
   );
 }

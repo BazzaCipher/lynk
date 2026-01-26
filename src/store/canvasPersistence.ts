@@ -7,7 +7,8 @@
  * - Blob URL registry for tracking files in memory
  */
 
-import type { CanvasState, EmbeddedFile, LynkNode, FileNodeData, ImageNodeData } from '../types';
+import type { CanvasState, EmbeddedFile, LynkNode } from '../types';
+import { SourceNode } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // BLOB REGISTRY
@@ -98,24 +99,12 @@ function base64ToBlob(base64: string, mimeType: string): Blob {
  */
 export const CanvasExporter = {
   /**
-   * Collect all file IDs from FileNodes and ImageNodes in the canvas
+   * Collect all file IDs from Source nodes (ExtractorNodes and DisplayNodes)
    */
   collectFileIds(nodes: LynkNode[]): string[] {
-    const fileIds: string[] = [];
-    for (const node of nodes) {
-      if (node.type === 'file') {
-        const data = node.data as FileNodeData;
-        if (data.fileId) {
-          fileIds.push(data.fileId);
-        }
-      } else if (node.type === 'image') {
-        const data = node.data as ImageNodeData;
-        if (data.fileId) {
-          fileIds.push(data.fileId);
-        }
-      }
-    }
-    return fileIds;
+    return SourceNode.filter(nodes)
+      .map(node => SourceNode.getFileId(node))
+      .filter((id): id is string => id !== undefined);
   },
 
   /**
@@ -193,49 +182,28 @@ export const CanvasImporter = {
   },
 
   /**
-   * Restore blob URLs in FileNodes and ImageNodes from embedded files
+   * Restore blob URLs in Source nodes from embedded files
    */
   restoreFileUrls(nodes: LynkNode[], fileIdToUrl: Record<string, string>): LynkNode[] {
     return nodes.map((node) => {
-      if (node.type === 'file') {
-        const data = node.data as FileNodeData;
-        if (!data.fileId) return node;
+      if (!SourceNode.is(node)) return node;
 
-        const blobUrl = fileIdToUrl[data.fileId];
-        if (!blobUrl) {
-          console.warn(`CanvasImporter: no blob URL for file ${data.fileId}`);
-          return node;
-        }
+      const fileId = SourceNode.getFileId(node);
+      if (!fileId) return node;
 
-        return {
-          ...node,
-          data: {
-            ...data,
-            fileUrl: blobUrl,
-          },
-        };
+      const blobUrl = fileIdToUrl[fileId];
+      if (!blobUrl) {
+        console.warn(`CanvasImporter: no blob URL for file ${fileId}`);
+        return node;
       }
 
-      if (node.type === 'image') {
-        const data = node.data as ImageNodeData;
-        if (!data.fileId) return node;
-
-        const blobUrl = fileIdToUrl[data.fileId];
-        if (!blobUrl) {
-          console.warn(`CanvasImporter: no blob URL for image ${data.fileId}`);
-          return node;
-        }
-
-        return {
-          ...node,
-          data: {
-            ...data,
-            imageUrl: blobUrl,
-          },
-        };
-      }
-
-      return node;
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          fileUrl: blobUrl,
+        },
+      };
     }) as LynkNode[];
   },
 
@@ -276,40 +244,24 @@ export const CanvasValidator = {
     const errors: string[] = [];
 
     for (const node of canvas.nodes) {
-      if (node.type === 'file') {
-        const data = node.data as FileNodeData;
+      if (SourceNode.is(node)) {
+        const fileUrl = SourceNode.getFileUrl(node);
+        const fileId = SourceNode.getFileId(node);
+        const label = node.data.label;
+        const nodeTypeName = node.type === 'extractor' ? 'ExtractorNode' : 'DisplayNode';
 
         // Check if file has URL but no fileId (blob URL that won't persist)
-        if (data.fileUrl && !data.fileId) {
+        if (fileUrl && !fileId) {
           warnings.push(
-            `FileNode "${data.label}" has a file loaded but it won't be saved. ` +
+            `${nodeTypeName} "${label}" has a file loaded but it won't be saved. ` +
             `Re-import the file to include it in the export.`
           );
         }
 
         // Check if file has fileId but blob not in registry
-        if (data.fileId && !BlobRegistry.getBlob(data.fileId)) {
+        if (fileId && !BlobRegistry.getBlob(fileId)) {
           errors.push(
-            `FileNode "${data.label}" references file ${data.fileId} but file data is missing.`
-          );
-        }
-      }
-
-      if (node.type === 'image') {
-        const data = node.data as ImageNodeData;
-
-        // Check if image has URL but no fileId (blob URL that won't persist)
-        if (data.imageUrl && !data.fileId) {
-          warnings.push(
-            `ImageNode "${data.label}" has an image loaded but it won't be saved. ` +
-            `Re-import the image to include it in the export.`
-          );
-        }
-
-        // Check if image has fileId but blob not in registry
-        if (data.fileId && !BlobRegistry.getBlob(data.fileId)) {
-          errors.push(
-            `ImageNode "${data.label}" references file ${data.fileId} but file data is missing.`
+            `${nodeTypeName} "${label}" references file ${fileId} but file data is missing.`
           );
         }
       }

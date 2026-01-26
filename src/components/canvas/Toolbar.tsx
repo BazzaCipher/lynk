@@ -1,13 +1,24 @@
 import { useCanvasStore } from '../../store/canvasStore';
-import type { FileNodeData, CalculationNodeData, SheetNodeData, LabelNodeData, ImageNodeData } from '../../types';
+import type { DisplayNodeData, ExtractorNodeData, CalculationNodeData, SheetNodeData, LabelNodeData } from '../../types';
+import { createImageView } from '../../types';
 
-const defaultFileData: FileNodeData = {
-  label: 'File',
+const defaultExtractorData: ExtractorNodeData = {
+  label: 'Extractor',
   fileType: 'pdf',
   fileName: undefined,
   fileUrl: undefined,
   regions: [],
   currentPage: 1,
+  totalPages: 1,
+};
+
+const defaultDisplayData: DisplayNodeData = {
+  label: 'Display',
+  fileType: 'image',
+  fileUrl: undefined,
+  fileId: undefined,
+  fileName: undefined,
+  view: createImageView(300, 200),
   totalPages: 1,
 };
 
@@ -33,16 +44,6 @@ const defaultLabelData: LabelNodeData = {
   alignment: 'center',
 };
 
-const defaultImageData: ImageNodeData = {
-  label: 'Image',
-  imageUrl: undefined,
-  fileId: undefined,
-  fileName: undefined,
-  width: 300,
-  height: 200,
-  aspectLocked: true,
-};
-
 export function Toolbar() {
   const addNode = useCanvasStore((state) => state.addNode);
   const saveToFile = useCanvasStore((state) => state.saveToFile);
@@ -52,8 +53,8 @@ export function Toolbar() {
   const setCanvasName = useCanvasStore((state) => state.setCanvasName);
 
   const handleAddNode = (
-    type: 'file' | 'calculation' | 'sheet' | 'label' | 'image',
-    data: FileNodeData | CalculationNodeData | SheetNodeData | LabelNodeData | ImageNodeData
+    type: 'display' | 'extractor' | 'calculation' | 'sheet' | 'label',
+    data: DisplayNodeData | ExtractorNodeData | CalculationNodeData | SheetNodeData | LabelNodeData
   ) => {
     // Add node at a random position in the viewport
     const position = {
@@ -100,11 +101,18 @@ export function Toolbar() {
 
       {/* Node creation buttons */}
       <button
-        onClick={() => handleAddNode('file', defaultFileData)}
+        onClick={() => handleAddNode('extractor', defaultExtractorData)}
         className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-        title="Add File Node"
+        title="Add Extractor Node - Extract data from documents"
       >
-        + File
+        + Extractor
+      </button>
+      <button
+        onClick={() => handleAddNode('display', defaultDisplayData)}
+        className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+        title="Add Display Node - Visual reference for images and PDFs"
+      >
+        + Display
       </button>
       <button
         onClick={() => handleAddNode('calculation', defaultCalculationData)}
@@ -126,13 +134,6 @@ export function Toolbar() {
         title="Add Label Node"
       >
         + Label
-      </button>
-      <button
-        onClick={() => handleAddNode('image', defaultImageData)}
-        className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-        title="Add Image Node"
-      >
-        + Image
       </button>
 
       <div className="w-px h-6 bg-gray-200" />

@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import type { NodeProps } from '@xyflow/react';
+import { useEdges } from '@xyflow/react';
 import { BaseNode } from './base/BaseNode';
 import { DocumentViewer } from './file/DocumentViewer';
 import { RegionSelector } from './file/RegionSelector';
@@ -12,17 +13,22 @@ import { useCanvasStore } from '../../store/canvasStore';
 import { BlobRegistry } from '../../store/canvasPersistence';
 import { getColorForType } from '../../utils/colors';
 import type {
-  FileNode as FileNodeType,
+  ExtractorNode as ExtractorNodeType,
   RegionCoordinates,
   ExtractedRegion,
   TextRange,
   SimpleDataType,
+  DisplayNodeData,
+  CachedExtractorEdges,
 } from '../../types';
 
 const VIEWER_WIDTH = 500;
 
-export function FileNode({ id, data, selected }: NodeProps<FileNodeType>) {
+export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeType>) {
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
+  const replaceNode = useCanvasStore((state) => state.replaceNode);
+  const removeEdge = useCanvasStore((state) => state.removeEdge);
+  const edges = useEdges();
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [viewerHeight, setViewerHeight] = useState(400);
@@ -258,6 +264,49 @@ export function FileNode({ id, data, selected }: NodeProps<FileNodeType>) {
     setIsModalOpen(false);
   }, []);
 
+  // Convert to DisplayNode
+  const convertToDisplay = useCallback(() => {
+    // Cache current edges and regions
+    const outgoingEdges = edges.filter((e) => e.source === id);
+    const cachedExtractorEdges: CachedExtractorEdges = {
+      edges: outgoingEdges.map((e) => ({
+        id: e.id,
+        target: e.target,
+        targetHandle: e.targetHandle ?? undefined,
+        sourceHandle: e.sourceHandle ?? '',
+      })),
+      regions: data.regions,
+      cachedAt: new Date().toISOString(),
+    };
+
+    // Create DisplayNode with view from current page
+    const displayData: DisplayNodeData = {
+      label: data.label,
+      fileType: data.fileType,
+      fileUrl: data.fileUrl,
+      fileId: data.fileId,
+      fileName: data.fileName,
+      view: {
+        viewport: { x: 0, y: 0, width: 1, height: 1 },
+        target: data.fileType === 'pdf'
+          ? { type: 'page', pageNumber: data.currentPage }
+          : { type: 'image' },
+        nodeSize: { width: 400, height: 300 },
+        aspectLocked: true,
+      },
+      totalPages: data.totalPages,
+      cachedExtractorEdges,
+    };
+
+    // Remove outgoing edges (DisplayNode has no outputs)
+    for (const edge of outgoingEdges) {
+      removeEdge(edge.id);
+    }
+
+    // Replace node
+    replaceNode(id, 'display', displayData);
+  }, [id, data, edges, replaceNode, removeEdge]);
+
   return (
     <>
       <BaseNode label={data.label} selected={selected} className="w-[280px]">
@@ -295,17 +344,28 @@ export function FileNode({ id, data, selected }: NodeProps<FileNodeType>) {
                 </div>
               </div>
 
-              {/* Open viewer button */}
-              <button
-                onClick={openModal}
-                className="w-full px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                  <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                </svg>
-                Open Document
-              </button>
+              {/* Action buttons */}
+              <div className="flex gap-2">
+                <button
+                  onClick={openModal}
+                  className="flex-1 px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                  </svg>
+                  Open
+                </button>
+                <button
+                  onClick={convertToDisplay}
+                  className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors flex items-center justify-center gap-1"
+                  title="Convert to Display Node"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
             </div>
           ) : (
             <label className="flex flex-col items-center justify-center h-28 cursor-pointer hover:bg-gray-50 transition-colors">

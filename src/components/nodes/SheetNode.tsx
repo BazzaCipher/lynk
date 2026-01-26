@@ -27,7 +27,7 @@ import type {
   SheetComputedResult,
   SimpleDataType,
   LynkNode,
-  FileNode,
+  ExtractorNode,
   CalculationNode,
   DataSourceReference,
 } from '../../types';
@@ -739,9 +739,9 @@ function resolveNodeOutputLocal(
 ): Omit<ResolvedInput, 'edgeId'> | null {
   if (!sourceHandle) return null;
 
-  if (node.type === 'file') {
-    const fileNode = node as FileNode;
-    const region = fileNode.data.regions.find((r) => r.id === sourceHandle);
+  if (node.type === 'extractor') {
+    const extractorNode = node as ExtractorNode;
+    const region = extractorNode.data.regions.find((r) => r.id === sourceHandle);
     if (!region) return null;
 
     const extractedValue = region.extractedData.value;

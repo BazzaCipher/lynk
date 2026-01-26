@@ -10,13 +10,81 @@
 | Phase 3: Code Refactoring | ✅ Complete | Utilities, hooks, type consolidation |
 | Phase 4: Processing Nodes | ✅ Complete | CalculationNode, SheetNode (hierarchical), LabelNode |
 | Phase 5: Persistence & Storage | ✅ Complete | LocalStorage, complete export/import, embedded files |
-| Phase 6: Image Node | ✅ Complete | Standalone image display node |
+| Phase 6: Display/Extractor Split | ✅ Complete | Replaced FileNode+ImageNode with DisplayNode+ExtractorNode |
+| Phase 6.5: Architecture Refactor | ✅ Complete | Categories system, DocumentView abstraction, GroupNode |
 | Phase 7: Polish & UX | 🔄 In Progress | See below |
 | Phase 8: Testing & Docs | ❌ Not Started | Unit tests, integration tests |
 
 ---
 
+## Current Architecture
+
+### Node Types
+
+| Node | Purpose | Handles | Category |
+|------|---------|---------|----------|
+| **DisplayNode** | Visual reference for PDFs/images (read-only) | None | Source |
+| **ExtractorNode** | Data extraction with OCR/region selection | Output per region | Source |
+| **CalculationNode** | Math operations (sum, avg, min, max, count) | Multi-input, single output | Transform |
+| **SheetNode** | Hierarchical aggregation (entries + subheaders) | Entry inputs, entry/subheader outputs | Transform |
+| **LabelNode** | Formatted value display | Single input | Transform |
+| **GroupNode** | Visual container for organizing nodes | None | N/A |
+
+### Type System
+
+**`src/types/categories.ts`** - Node classification:
+- `SourceNode`: display, extractor (brings data in from files)
+- `TransformNode`: calculation, sheet, label (processes data from edges)
+
+**`src/types/view.ts`** - Document viewport system:
+- `DocumentView`: Flexible viewport for PDFs, images, future sheets/slides
+- `ViewTarget`: Page, image, sheet, slide, range targets
+- `ViewRect`: Normalized coordinates (0-1) for viewport regions
+
+### Key Architectural Changes (Jan 27, 2025)
+
+| Before | After |
+|--------|-------|
+| `FileNode.tsx` (combined) | Split into `DisplayNode.tsx` + `ExtractorNode.tsx` |
+| `ImageNode.tsx` (separate) | Merged into Display/Extractor nodes (handle both PDF and images) |
+| No categories | `categories.ts` with SourceNode/TransformNode classes |
+| Basic page tracking | `view.ts` with DocumentView abstraction |
+| No grouping | `GroupNode.tsx` for visual organization |
+
+---
+
 ## Completed Work
+
+### Phase 6 + 6.5: Architecture Refactor (Jan 27, 2025)
+
+Completely restructured node system for better separation of concerns:
+
+**DisplayNode** (`src/components/nodes/DisplayNode.tsx`):
+- Visual reference only, no data extraction
+- Supports PDF and images
+- Resizable with aspect lock
+- Page navigation for PDFs
+- Converts to ExtractorNode with edge caching
+
+**ExtractorNode** (`src/components/nodes/ExtractorNode.tsx`):
+- Data extraction with regions and OCR
+- Box selection and text selection modes
+- Output handles per region
+- Converts to DisplayNode with edge caching
+
+**GroupNode** (`src/components/nodes/GroupNode.tsx`):
+- Visual container for organizing nodes
+- Resizable with NodeResizer
+- No handles, purely organizational
+
+**Files Added/Modified:**
+- `src/components/nodes/DisplayNode.tsx` - New visual reference node
+- `src/components/nodes/ExtractorNode.tsx` - Refactored from FileNode
+- `src/components/nodes/GroupNode.tsx` - New grouping node
+- `src/types/categories.ts` - SourceNode/TransformNode classes
+- `src/types/view.ts` - DocumentView, ViewTarget, ViewRect types
+- `src/types/nodes.ts` - Updated all node data types
+- `src/components/nodes/index.ts` - Updated exports
 
 ### Phase 4: SheetNode Hierarchical Restructure (Jan 25, 2025)
 
@@ -41,13 +109,6 @@ SheetNode
 | Entry output | source | `entry-out-{subheaderId}-{entryId}` |
 | Subheader output | source | `subheader-{subheaderId}` |
 
-**Files Modified:**
-- `src/types/nodes.ts` - New types: SheetEntry, SheetSubheader, SheetComputedResult
-- `src/schemas/canvas.ts` - Updated Zod schemas
-- `src/hooks/useDataFlow.ts` - Added resolveSheetNodeOutput
-- `src/components/nodes/SheetNode.tsx` - Complete rewrite (~880 lines)
-- `src/components/canvas/Toolbar.tsx` - Updated default data
-
 ---
 
 ## Phase 5: Persistence & Storage (COMPLETE)
@@ -67,8 +128,7 @@ SheetNode
 | Task | Priority | Status | Notes |
 |------|----------|--------|-------|
 | Embed PDFs as base64 | High | ✅ | Store file content in export JSON |
-| Embed images as base64 | High | ✅ | Store ImageNode images in export |
-| Embed FileNode images | High | ✅ | Store images used in FileNode |
+| Embed images as base64 | High | ✅ | Store images in export |
 | Pre-export validation | High | ✅ | Check all data present before export |
 | Missing data warnings | Medium | ✅ | Alert user if nodes reference missing files |
 | Export size estimation | Low | ❌ | Show estimated file size before save |
@@ -93,83 +153,33 @@ LocalStorage Keys:
 └── lynk:recent-files       - List of recently opened files
 ```
 
-### 5.5 Implementation Details (Jan 26, 2025)
-
-**Files Added/Modified:**
-- `src/hooks/useLocalStorageSync.ts` - Auto-save hook with debounce + interval
-- `src/store/canvasPersistence.ts` - BlobRegistry, CanvasExporter, CanvasImporter, CanvasValidator
-- `src/components/SessionRecovery.tsx` - Recovery modal on app load
-- `src/types/canvas.ts` - Added EmbeddedFile type
-- `src/types/nodes.ts` - Added fileId to FileNodeData
-- `src/schemas/canvas.ts` - Updated Zod schemas for embedded files
-- `src/store/canvasStore.ts` - Integrated persistence utilities
-- `src/components/nodes/FileNode.tsx` - Register files with BlobRegistry
-- `src/components/canvas/Toolbar.tsx` - Handle save validation results
-
-**Key Patterns:**
-- `BlobRegistry` - In-memory registry tracking blob URLs and file data
-- `CanvasExporter.exportWithEmbeddedFiles()` - Converts blobs to base64 for export
-- `CanvasImporter.importWithExtractedFiles()` - Restores blob URLs from base64
-- Files stored without embedded data in localStorage (5MB limit)
-
----
-
-## Phase 6: Image Node
-
-### 6.1 ImageNode Component
-
-| Task | Priority | Status | Notes |
-|------|----------|--------|-------|
-| Create ImageNode component | High | ❌ | Display-only node, no handles |
-| Base64 storage for images | High | ❌ | Store as data URL for persistence |
-| Drag-and-drop upload | High | ❌ | Drop image onto canvas to create node |
-| File picker button | High | ❌ | Alternative to drag-drop |
-| Resize controls | Medium | ❌ | Corner handles to resize image |
-| Aspect ratio lock option | Low | ❌ | Maintain proportions when resizing |
-
-### 6.2 ImageNode Features
-
-| Task | Priority | Status | Notes |
-|------|----------|--------|-------|
-| Image preview in node | High | ❌ | Show scaled image within node bounds |
-| Full-size view on click | Medium | ❌ | Modal to view full resolution |
-| Image label/caption | Low | ❌ | Optional text label below image |
-| Supported formats | High | ❌ | PNG, JPG, GIF, WebP |
-
-**Key Distinction from FileNode:**
-- ImageNode: Visual reference only, no data extraction, no handles
-- FileNode: Data extraction with regions, OCR, output handles
-
 ---
 
 ## Phase 7: Polish & UX (Current)
 
-### 7.1 Visual Feedback & UX Improvements
+### 7.1 Edge Management
 
 | Task | Priority | Status | Notes |
 |------|----------|--------|-------|
-| Edge deletion UI | High | ❌ | Right-click or select + delete key |
-| Node deletion confirmation | Medium | ❌ | Warn if node has connections |
+| Edge deletion UI | High | ✅ | Select + Delete key |
 | Connection validation feedback | Medium | ❌ | Visual feedback for invalid connections |
-| Keyboard shortcuts | Medium | ❌ | Delete, Esc, Ctrl+S, Ctrl+Z |
-| Canvas zoom controls | Low | ❌ | Zoom buttons, fit-to-view |
 
-### 7.2 Data Type Handling
+### 7.2 Keyboard Shortcuts
 
 | Task | Priority | Status | Notes |
 |------|----------|--------|-------|
-| Type coercion warnings | Medium | ❌ | Warn when connecting incompatible types |
-| Currency formatting consistency | Medium | ❌ | Locale-aware currency display |
-| Date formatting options | Low | ❌ | User-configurable date formats |
+| Delete key for nodes/edges | High | ✅ | Delete selected elements |
+| Escape to deselect | High | ✅ | Clear selection |
+| Ctrl+S to save | High | ✅ | Trigger save action |
+| Ctrl+Z for undo | Low | ❌ | Requires undo stack |
 
 ### 7.3 Error Handling
 
 | Task | Priority | Status | Notes |
 |------|----------|--------|-------|
-| Error boundaries for nodes | High | ❌ | Prevent single node crash from breaking canvas |
+| Error boundaries for nodes | High | ✅ | Prevent single node crash from breaking canvas |
 | OCR error display | Medium | ❌ | Show OCR failures in UI |
 | Invalid edge handling | Medium | ❌ | Graceful handling of broken connections |
-| Save/load error messages | Medium | ❌ | User-friendly error messages |
 
 ### 7.4 Performance
 
@@ -177,7 +187,6 @@ LocalStorage Keys:
 |------|----------|--------|-------|
 | Large file handling | Medium | ❌ | Progress indicator for big PDFs |
 | Memoization audit | Low | ❌ | Prevent unnecessary re-renders |
-| Edge batching | Low | ❌ | Batch updates for multiple connections |
 
 ---
 
@@ -190,30 +199,20 @@ LocalStorage Keys:
 | Operation registry | High | ❌ |
 | formatValue utility | High | ❌ |
 | parseNumericValue | High | ❌ |
+| Category classification | High | ❌ |
+| DocumentView helpers | Medium | ❌ |
 | Zod schemas | Medium | ❌ |
-| useDataFlow hook | Medium | ❌ |
 
 ### 8.2 Integration Tests
 
 | Scenario | Priority | Status |
 |----------|----------|--------|
-| FileNode → CalculationNode data flow | High | ❌ |
-| FileNode → SheetNode entry aggregation | High | ❌ |
-| SheetNode → CalculationNode chaining | High | ❌ |
-| Save → Load roundtrip | High | ❌ |
-| Export with embedded files | High | ❌ |
-| Import restores all data | High | ❌ |
+| ExtractorNode → CalculationNode data flow | High | ❌ |
+| ExtractorNode → SheetNode aggregation | High | ❌ |
+| DisplayNode ↔ ExtractorNode conversion | High | ❌ |
+| Save/load roundtrip with embedded files | High | ❌ |
 | LocalStorage auto-save | High | ❌ |
 | Session recovery | Medium | ❌ |
-| Multi-page PDF navigation | Medium | ❌ |
-
-### 8.3 E2E Tests
-
-| Scenario | Priority | Status |
-|----------|----------|--------|
-| Create node workflow | Medium | ❌ |
-| Region selection on PDF | Medium | ❌ |
-| Full data flow pipeline | Low | ❌ |
 
 ---
 
@@ -236,19 +235,16 @@ These are potential future features, not required for MVP:
 
 ## Immediate Next Steps
 
-### Priority 1: Image Node (Phase 6)
-1. **ImageNode component** - Display-only image node (no handles)
-2. **Drag-and-drop upload** - Drop image onto canvas to create ImageNode
-3. **Base64 storage** - Store image data for persistence
+### Priority 1: Phase 7 Completion
+1. ~~Edge deletion~~ ✅
+2. ~~Keyboard shortcuts~~ ✅
+3. ~~Error boundaries~~ ✅
+4. Connection validation feedback
+5. OCR error display
 
-### Priority 2: Polish (Phase 7)
-4. **Edge deletion** - Add ability to delete edges (right-click menu or select + delete)
-5. **Error boundaries** - Wrap nodes in error boundaries to prevent crashes
-6. **Keyboard shortcuts** - Delete, Esc, Ctrl+S, Ctrl+Z
-
-### Priority 3: Testing (Phase 8)
-7. **Unit tests** - Test operation registry, formatValue, parseNumericValue
-8. **Integration tests** - Test data flow between nodes, save/load roundtrip
+### Priority 2: Testing (Phase 8)
+6. **Unit tests** - Test operation registry, formatValue, parseNumericValue, categories
+7. **Integration tests** - Test data flow between nodes, save/load roundtrip
 
 ---
 

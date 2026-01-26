@@ -2,19 +2,21 @@
  * Node Types
  *
  * Defines all node types for the canvas graph including
- * file, calculation, sheet, and label nodes.
+ * display, extractor, calculation, sheet, and label nodes.
  */
 
 import type { Node } from '@xyflow/react';
 import type { DataValue, SimpleDataType } from './data';
 import type { DataSourceReference } from './geometry';
 import type { ExtractedRegion } from './regions';
+import type { DocumentView } from './view';
+import type { SourceNodeData, TransformNodeData } from './categories';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // NODE TYPE IDENTIFIERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export type LynkNodeType = 'file' | 'calculation' | 'sheet' | 'label' | 'image';
+export type LynkNodeType = 'display' | 'extractor' | 'calculation' | 'sheet' | 'label' | 'group';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // BASE NODE DATA
@@ -26,11 +28,54 @@ export interface BaseNodeData extends Record<string, unknown> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// FILE NODE
+// EDGE CACHING (for node type conversion)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** File node specific data */
-export interface FileNodeData extends BaseNodeData {
+/**
+ * Cached edge state when converting from ExtractorNode to DisplayNode.
+ * Stores edge connections so they can be restored when switching back.
+ */
+export interface CachedExtractorEdges {
+  /** Edges that were connected from this node */
+  edges: Array<{
+    id: string;
+    target: string;
+    targetHandle?: string;
+    sourceHandle: string;
+  }>;
+  /** Preserve region definitions for restoration */
+  regions: ExtractedRegion[];
+  /** Timestamp of when this was cached */
+  cachedAt: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DISPLAY NODE (visual reference for images and PDFs)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Display node specific data - visual reference with no data output */
+export interface DisplayNodeData extends BaseNodeData, SourceNodeData {
+  fileType: 'pdf' | 'image';
+  /** Runtime blob URL - not persisted, regenerated from embedded file on load */
+  fileUrl?: string;
+  /** Reference to embedded file in CanvasState.embeddedFiles */
+  fileId?: string;
+  /** Original file name */
+  fileName?: string;
+  /** View configuration - defines what portion of document is shown */
+  view: DocumentView;
+  /** Total pages in document (1 for images) */
+  totalPages: number;
+  /** Edge cache when switching from ExtractorNode */
+  cachedExtractorEdges?: CachedExtractorEdges;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// EXTRACTOR NODE (data extraction with regions and OCR)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Extractor node specific data - data extraction with output handles */
+export interface ExtractorNodeData extends BaseNodeData, SourceNodeData {
   fileType: 'pdf' | 'image';
   fileName?: string;
   /** Runtime blob URL - not persisted, regenerated from embedded file on load */
@@ -76,7 +121,7 @@ export interface CalculationResult {
  * Calculation node specific data.
  * Uses extensible operation IDs from the operation registry.
  */
-export interface CalculationNodeData extends BaseNodeData {
+export interface CalculationNodeData extends BaseNodeData, TransformNodeData {
   /** Operation ID - references operationRegistry (e.g., 'sum', 'max', 'round') */
   operation: string;
   /** Decimal precision for result display */
@@ -132,7 +177,7 @@ export interface SheetComputedResult {
 }
 
 /** Sheet node specific data */
-export interface SheetNodeData extends BaseNodeData {
+export interface SheetNodeData extends BaseNodeData, TransformNodeData {
   subheaders: SheetSubheader[];
   /** Computed entry results (for entry output handles) - runtime only */
   entryResults?: Record<string, SheetComputedResult | null>;
@@ -151,31 +196,29 @@ export interface SheetNodeData extends BaseNodeData {
 export type LabelFormat = 'number' | 'currency' | 'date' | 'string';
 
 /** Label node specific data */
-export interface LabelNodeData extends BaseNodeData {
+export interface LabelNodeData extends BaseNodeData, TransformNodeData {
   format: LabelFormat;
   value?: DataValue;
+  /** User-entered value when in manual mode */
+  manualValue?: string;
+  /** True when using manual input instead of connected edge */
+  isManualMode?: boolean;
   fontSize: 'small' | 'medium' | 'large';
   alignment: 'left' | 'center' | 'right';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// IMAGE NODE
+// GROUP NODE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** Image node specific data - display-only visual reference */
-export interface ImageNodeData extends BaseNodeData {
-  /** Runtime blob URL - not persisted, regenerated from embedded file on load */
-  imageUrl?: string;
-  /** Reference to embedded file in CanvasState.embeddedFiles */
-  fileId?: string;
-  /** Original file name */
-  fileName?: string;
-  /** Display width in pixels */
+/** Group node specific data - container for grouping other nodes */
+export interface GroupNodeData extends BaseNodeData {
+  /** Width of the group container */
   width: number;
-  /** Display height in pixels */
+  /** Height of the group container */
   height: number;
-  /** Whether aspect ratio is locked during resize */
-  aspectLocked: boolean;
+  /** Background color (optional, defaults to transparent) */
+  backgroundColor?: string;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -184,22 +227,24 @@ export interface ImageNodeData extends BaseNodeData {
 
 /** Union type for all node data types */
 export type LynkNodeData =
-  | FileNodeData
+  | DisplayNodeData
+  | ExtractorNodeData
   | CalculationNodeData
   | SheetNodeData
   | LabelNodeData
-  | ImageNodeData;
+  | GroupNodeData;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // REACT FLOW NODE TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /** Typed React Flow nodes */
-export type FileNode = Node<FileNodeData, 'file'>;
+export type DisplayNode = Node<DisplayNodeData, 'display'>;
+export type ExtractorNode = Node<ExtractorNodeData, 'extractor'>;
 export type CalculationNode = Node<CalculationNodeData, 'calculation'>;
 export type SheetNode = Node<SheetNodeData, 'sheet'>;
 export type LabelNode = Node<LabelNodeData, 'label'>;
-export type ImageNode = Node<ImageNodeData, 'image'>;
+export type GroupNode = Node<GroupNodeData, 'group'>;
 
 /** Union type for all node types */
-export type LynkNode = FileNode | CalculationNode | SheetNode | LabelNode | ImageNode;
+export type LynkNode = DisplayNode | ExtractorNode | CalculationNode | SheetNode | LabelNode | GroupNode;
