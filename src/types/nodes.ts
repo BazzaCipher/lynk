@@ -10,7 +10,7 @@ import type { DataValue, SimpleDataType } from './data';
 import type { DataSourceReference } from './geometry';
 import type { ExtractedRegion } from './regions';
 import type { DocumentView } from './view';
-import type { SourceNodeData, TransformNodeData } from './categories';
+import type { FileNodeData, Exportable, Importable } from './categories';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // NODE TYPE IDENTIFIERS
@@ -54,14 +54,7 @@ export interface CachedExtractorEdges {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /** Display node specific data - visual reference with no data output */
-export interface DisplayNodeData extends BaseNodeData, SourceNodeData {
-  fileType: 'pdf' | 'image';
-  /** Runtime blob URL - not persisted, regenerated from embedded file on load */
-  fileUrl?: string;
-  /** Reference to embedded file in CanvasState.embeddedFiles */
-  fileId?: string;
-  /** Original file name */
-  fileName?: string;
+export interface DisplayNodeData extends BaseNodeData, FileNodeData {
   /** View configuration - defines what portion of document is shown */
   view: DocumentView;
   /** Total pages in document (1 for images) */
@@ -75,13 +68,7 @@ export interface DisplayNodeData extends BaseNodeData, SourceNodeData {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /** Extractor node specific data - data extraction with output handles */
-export interface ExtractorNodeData extends BaseNodeData, SourceNodeData {
-  fileType: 'pdf' | 'image';
-  fileName?: string;
-  /** Runtime blob URL - not persisted, regenerated from embedded file on load */
-  fileUrl?: string;
-  /** Reference to embedded file in CanvasState.embeddedFiles */
-  fileId?: string;
+export interface ExtractorNodeData extends BaseNodeData, FileNodeData, Exportable {
   regions: ExtractedRegion[];
   currentPage: number;
   totalPages: number;
@@ -121,7 +108,7 @@ export interface CalculationResult {
  * Calculation node specific data.
  * Uses extensible operation IDs from the operation registry.
  */
-export interface CalculationNodeData extends BaseNodeData, TransformNodeData {
+export interface CalculationNodeData extends BaseNodeData, Importable, Exportable {
   /** Operation ID - references operationRegistry (e.g., 'sum', 'max', 'round') */
   operation: string;
   /** Decimal precision for result display */
@@ -177,7 +164,7 @@ export interface SheetComputedResult {
 }
 
 /** Sheet node specific data */
-export interface SheetNodeData extends BaseNodeData, TransformNodeData {
+export interface SheetNodeData extends BaseNodeData, Importable, Exportable {
   subheaders: SheetSubheader[];
   /** Computed entry results (for entry output handles) - runtime only */
   entryResults?: Record<string, SheetComputedResult | null>;
@@ -196,7 +183,7 @@ export interface SheetNodeData extends BaseNodeData, TransformNodeData {
 export type LabelFormat = 'number' | 'currency' | 'date' | 'string';
 
 /** Label node specific data */
-export interface LabelNodeData extends BaseNodeData, TransformNodeData {
+export interface LabelNodeData extends BaseNodeData, Importable, Exportable {
   format: LabelFormat;
   value?: DataValue;
   /** User-entered value when in manual mode */

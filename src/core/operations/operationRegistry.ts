@@ -98,6 +98,23 @@ export interface OperationDefinition {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// INPUT VALIDATION HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Safely convert a value to a number, handling strings with currency/formatting.
+ * Returns null if the value cannot be converted to a valid number.
+ */
+function toSafeNumber(value: number | string | boolean | Date): number | null {
+  if (typeof value === 'number') return isNaN(value) ? null : value;
+  if (typeof value === 'string') {
+    const parsed = parseFloat(value.replace(/[,$]/g, ''));
+    return isNaN(parsed) ? null : parsed;
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // OPERATION DEFINITIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -114,7 +131,9 @@ export const OPERATIONS: OperationDefinition[] = [
     compatibleTypes: ['number', 'currency'],
     minInputs: 1,
     calculate: (inputs, precision) => {
-      const sum = inputs.reduce((acc, inp) => acc + (inp.value as number), 0);
+      const numbers = inputs.map(inp => toSafeNumber(inp.value)).filter((n): n is number => n !== null);
+      if (numbers.length === 0) return null;
+      const sum = numbers.reduce((acc, n) => acc + n, 0);
       return {
         value: Number(sum.toFixed(precision)),
         dataType: 'number',
@@ -143,9 +162,10 @@ export const OPERATIONS: OperationDefinition[] = [
     compatibleTypes: ['number', 'currency'],
     minInputs: 1,
     calculate: (inputs, precision) => {
-      if (inputs.length === 0) return null;
-      const sum = inputs.reduce((acc, inp) => acc + (inp.value as number), 0);
-      const avg = sum / inputs.length;
+      const numbers = inputs.map(inp => toSafeNumber(inp.value)).filter((n): n is number => n !== null);
+      if (numbers.length === 0) return null;
+      const sum = numbers.reduce((acc, n) => acc + n, 0);
+      const avg = sum / numbers.length;
       return {
         value: Number(avg.toFixed(precision)),
         dataType: 'number',
@@ -180,9 +200,10 @@ export const OPERATIONS: OperationDefinition[] = [
       }
 
       // Numeric comparison
-      const max = Math.max(...inputs.map((inp) => inp.value as number));
+      const numbers = inputs.map(inp => toSafeNumber(inp.value)).filter((n): n is number => n !== null);
+      if (numbers.length === 0) return null;
       return {
-        value: max,
+        value: Math.max(...numbers),
         dataType: 'number',
       };
     },
@@ -215,9 +236,10 @@ export const OPERATIONS: OperationDefinition[] = [
       }
 
       // Numeric comparison
-      const min = Math.min(...inputs.map((inp) => inp.value as number));
+      const numbers = inputs.map(inp => toSafeNumber(inp.value)).filter((n): n is number => n !== null);
+      if (numbers.length === 0) return null;
       return {
-        value: min,
+        value: Math.min(...numbers),
         dataType: 'number',
       };
     },
@@ -237,8 +259,10 @@ export const OPERATIONS: OperationDefinition[] = [
     maxInputs: 1,
     calculate: (inputs, precision) => {
       if (inputs.length === 0) return null;
+      const num = toSafeNumber(inputs[0].value);
+      if (num === null) return null;
       const factor = Math.pow(10, precision);
-      const rounded = Math.round((inputs[0].value as number) * factor) / factor;
+      const rounded = Math.round(num * factor) / factor;
       return {
         value: rounded,
         dataType: 'number',

@@ -17,11 +17,11 @@ html, body, #root {
 /* Toast animation */
 @keyframes slide-in {
   from {
-    transform: translateX(100%);
+    transform: translateX(-50%) translateY(-100%);
     opacity: 0;
   }
   to {
-    transform: translateX(0);
+    transform: translateX(-50%) translateY(0);
     opacity: 1;
   }
 }

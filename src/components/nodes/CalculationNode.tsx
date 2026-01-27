@@ -197,7 +197,7 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
     };
   }, [compatibleInputs, currentOperation, data.precision]);
 
-  // Store result in node data for downstream nodes to access
+  // Store result and outputs in node data for downstream nodes to access
   useEffect(() => {
     const currentValue = data.result?.value;
     const newValue = result?.value;
@@ -205,9 +205,19 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
     const newType = result?.dataType;
 
     if (currentValue !== newValue || currentType !== newType) {
-      updateNodeData(id, { result });
+      const outputs = result
+        ? {
+            output: {
+              value: result.value,
+              dataType: result.dataType,
+              label: data.label,
+              source: result.source ?? null,
+            },
+          }
+        : undefined;
+      updateNodeData(id, { result, outputs });
     }
-  }, [result, id, updateNodeData, data.result?.value, data.result?.dataType]);
+  }, [result, id, updateNodeData, data.result?.value, data.result?.dataType, data.label]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // OPERATION CHANGE HANDLING

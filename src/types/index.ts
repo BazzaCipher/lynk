@@ -72,6 +72,6 @@ export type {
 // Canvas state
 export type { CanvasMetadata, CanvasState, EmbeddedFile } from './canvas';
 
-// Node categories
-export { SourceNode, TransformNode } from './categories';
-export type { SourceNodeData, TransformNodeData } from './categories';
+// Node capabilities and categories
+export { FileNode, SourceNode, CanExport, CanImport } from './categories';
+export type { NodeOutput, Exportable, Importable, FileNodeData, SourceNodeData } from './categories';

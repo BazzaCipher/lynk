@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { useEdges } from '@xyflow/react';
 import { BaseNode } from './base/BaseNode';
@@ -11,16 +11,19 @@ import { CollapsiblePanel } from '../ui/CollapsiblePanel';
 import { extractTextFromRegion } from '../../core/extraction/ocrExtractor';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useToast } from '../ui/Toast';
-import { BlobRegistry } from '../../store/canvasPersistence';
+import { useFileUpload, type FileUploadResult } from '../../hooks/useFileUpload';
 import { getColorForType } from '../../utils/colors';
+import { parseNumericValue } from '../../hooks/useDataFlow';
 import type {
   ExtractorNode as ExtractorNodeType,
+  NodeOutput,
   RegionCoordinates,
   ExtractedRegion,
   TextRange,
   SimpleDataType,
   DisplayNodeData,
   CachedExtractorEdges,
+  DataSourceReference,
 } from '../../types';
 
 const VIEWER_WIDTH = 500;
@@ -41,20 +44,63 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   const [selectionMode, setSelectionMode] = useState<'box' | 'text'>('box');
   const imageRef = useRef<HTMLImageElement | HTMLCanvasElement | null>(null);
 
-  const handleFileSelect = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+  // ── Populate Exportable.outputs from regions ──────────────────────────────
+  const outputs = useMemo(() => {
+    const map: Record<string, NodeOutput> = {};
+    for (const region of data.regions) {
+      const extractedValue = region.extractedData.value;
+      let value: number | string | boolean | Date;
 
-      // Register file with BlobRegistry for persistence
-      const { fileId, blobUrl } = BlobRegistry.register(file);
-      const fileType = file.type.startsWith('image/') ? 'image' : 'pdf';
+      if (region.dataType === 'boolean') {
+        if (typeof extractedValue === 'boolean') {
+          value = extractedValue;
+        } else {
+          const strVal = String(extractedValue).toLowerCase();
+          value = strVal === 'yes' || strVal === 'true' || strVal === '1';
+        }
+      } else if (region.dataType === 'date') {
+        value = typeof extractedValue === 'string' ? extractedValue : String(extractedValue);
+      } else if (typeof extractedValue === 'number') {
+        value = extractedValue;
+      } else {
+        value = String(extractedValue);
+      }
 
+      const source: DataSourceReference = {
+        nodeId: id,
+        regionId: region.id,
+        pageNumber: region.pageNumber,
+        coordinates: region.coordinates,
+        textRange: region.textRange,
+        extractionMethod: region.extractedData.source?.extractionMethod || 'manual',
+        confidence: region.extractedData.source?.confidence,
+      };
+
+      map[region.id] = {
+        value,
+        dataType: region.dataType,
+        label: region.label,
+        source,
+      };
+    }
+    return map;
+  }, [data.regions, id]);
+
+  useEffect(() => {
+    const current = JSON.stringify(data.outputs);
+    const next = JSON.stringify(outputs);
+    if (current !== next) {
+      updateNodeData(id, { outputs });
+    }
+  }, [outputs, id, updateNodeData, data.outputs]);
+
+  const onFileRegistered = useCallback(
+    (result: FileUploadResult) => {
       updateNodeData(id, {
-        fileUrl: blobUrl,
-        fileId,
-        fileName: file.name,
-        fileType,
+        fileUrl: result.fileUrl,
+        fileId: result.fileId,
+        fileName: result.fileName,
+        fileType: result.fileType,
         currentPage: 1,
         totalPages: 1,
         regions: [],
@@ -63,32 +109,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
     [id, updateNodeData]
   );
 
-  const handleFileDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      const file = e.dataTransfer.files?.[0];
-      if (!file) return;
-
-      // Register file with BlobRegistry for persistence
-      const { fileId, blobUrl } = BlobRegistry.register(file);
-      const fileType = file.type.startsWith('image/') ? 'image' : 'pdf';
-
-      updateNodeData(id, {
-        fileUrl: blobUrl,
-        fileId,
-        fileName: file.name,
-        fileType,
-        currentPage: 1,
-        totalPages: 1,
-        regions: [],
-      });
-    },
-    [id, updateNodeData]
-  );
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-  }, []);
+  const { handleFileSelect, handleFileDrop, handleDragOver } = useFileUpload({ onFileRegistered });
 
   const handleDocumentLoad = useCallback(
     (numPages: number) => {

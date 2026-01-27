@@ -112,18 +112,30 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
     e.stopPropagation();
   }, [handleSave, handleCancel]);
 
-  // Update value in node data for output handle to pass through
+  // Update value and outputs in node data for downstream nodes to access
   useEffect(() => {
     if (outputValue !== null && outputValue !== undefined) {
-      const dataType = typeof outputValue === 'number' ? 'number' : 'string';
+      const dataType: 'number' | 'string' = typeof outputValue === 'number' ? 'number' : 'string';
       updateNodeData(id, {
         value: {
           type: dataType,
           value: outputValue,
         },
+        outputs: {
+          output: {
+            value: outputValue,
+            dataType,
+            label: data.label,
+          },
+        },
+      });
+    } else {
+      updateNodeData(id, {
+        value: undefined,
+        outputs: undefined,
       });
     }
-  }, [outputValue, id, updateNodeData]);
+  }, [outputValue, id, updateNodeData, data.label]);
 
   return (
     <BaseNode label={data.label} selected={selected}>

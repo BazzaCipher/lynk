@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { useCanvasStore } from '../../store/canvasStore';
-import { BlobRegistry } from '../../store/canvasPersistence';
+import { useFileUpload, type FileUploadResult } from '../../hooks/useFileUpload';
 import type {
   DisplayNode as DisplayNodeType,
   ExtractorNodeData,
@@ -34,19 +34,9 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
   // Get current page number from view target
   const currentPage = data.view.target.type === 'page' ? data.view.target.pageNumber : 1;
 
-  const handleFileSelect = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
-      const isPdf = file.type === 'application/pdf';
-      const isImage = file.type.startsWith('image/');
-
-      if (!isPdf && !isImage) return;
-
-      const { fileId, blobUrl } = BlobRegistry.register(file);
-
-      if (isImage) {
+  const onFileRegistered = useCallback(
+    (result: FileUploadResult) => {
+      if (result.fileType === 'image') {
         // Get natural dimensions of the image
         const img = new Image();
         img.onload = () => {
@@ -61,21 +51,21 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
           }
 
           updateNodeData(id, {
-            fileUrl: blobUrl,
-            fileId,
-            fileName: file.name,
+            fileUrl: result.fileUrl,
+            fileId: result.fileId,
+            fileName: result.fileName,
             fileType: 'image',
             view: createImageView(Math.round(width), Math.round(height)),
             totalPages: 1,
           });
         };
-        img.src = blobUrl;
+        img.src = result.fileUrl;
       } else {
         // PDF file
         updateNodeData(id, {
-          fileUrl: blobUrl,
-          fileId,
-          fileName: file.name,
+          fileUrl: result.fileUrl,
+          fileId: result.fileId,
+          fileName: result.fileName,
           fileType: 'pdf',
           view: createPdfView(1, 400, 300),
           totalPages: 1,
@@ -85,58 +75,7 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
     [id, updateNodeData]
   );
 
-  const handleFileDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      const file = e.dataTransfer.files?.[0];
-      if (!file) return;
-
-      const isPdf = file.type === 'application/pdf';
-      const isImage = file.type.startsWith('image/');
-
-      if (!isPdf && !isImage) return;
-
-      const { fileId, blobUrl } = BlobRegistry.register(file);
-
-      if (isImage) {
-        const img = new Image();
-        img.onload = () => {
-          const aspectRatio = img.naturalWidth / img.naturalHeight;
-          let width = DEFAULT_WIDTH;
-          let height = width / aspectRatio;
-
-          if (height > 600) {
-            height = 600;
-            width = height * aspectRatio;
-          }
-
-          updateNodeData(id, {
-            fileUrl: blobUrl,
-            fileId,
-            fileName: file.name,
-            fileType: 'image',
-            view: createImageView(Math.round(width), Math.round(height)),
-            totalPages: 1,
-          });
-        };
-        img.src = blobUrl;
-      } else {
-        updateNodeData(id, {
-          fileUrl: blobUrl,
-          fileId,
-          fileName: file.name,
-          fileType: 'pdf',
-          view: createPdfView(1, 400, 300),
-          totalPages: 1,
-        });
-      }
-    },
-    [id, updateNodeData]
-  );
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-  }, []);
+  const { handleFileSelect, handleFileDrop, handleDragOver } = useFileUpload({ onFileRegistered });
 
   const handlePdfLoad = useCallback(
     ({ numPages }: { numPages: number }) => {

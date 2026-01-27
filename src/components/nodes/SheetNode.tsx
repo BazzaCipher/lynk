@@ -27,9 +27,6 @@ import type {
   SheetComputedResult,
   SimpleDataType,
   LynkNode,
-  ExtractorNode,
-  CalculationNode,
-  DataSourceReference,
 } from '../../types';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -155,20 +152,29 @@ function EntryRow({
   const outputHandleId = `entry-out-${subheaderId}-${entry.id}`;
 
   return (
-    <div className="border-b border-gray-100 last:border-b-0">
-      {/* Entry main row */}
-      <div className="flex items-center gap-1 py-1 px-1">
-        {/* Input handle */}
-        <NodeEntry
-          id={inputHandleId}
-          handleType="target"
-          handlePosition={Position.Left}
-          allowMultiple
-          className="flex-shrink-0 min-h-6 !px-0"
-        >
-          <span className="sr-only">Input</span>
-        </NodeEntry>
+    <div className="relative border-b border-gray-100 last:border-b-0">
+      {/* Handle overlays — absolutely positioned to span full row width for edge alignment */}
+      <NodeEntry
+        id={inputHandleId}
+        handleType="target"
+        handlePosition={Position.Left}
+        allowMultiple
+        className="!absolute !inset-0 !min-h-0 !px-0 pointer-events-none"
+      >
+        <span className="sr-only">Input</span>
+      </NodeEntry>
+      <NodeEntry
+        id={outputHandleId}
+        handleType="source"
+        handlePosition={Position.Right}
+        handleColor={outputColor}
+        className="!absolute !inset-0 !min-h-0 !px-0 pointer-events-none"
+      >
+        <span className="sr-only">Output</span>
+      </NodeEntry>
 
+      {/* Content row — padded to avoid overlapping handle hit areas */}
+      <div className="flex items-center gap-1 py-1 px-3">
         {/* Expand/collapse toggle */}
         <button
           onClick={() => onUpdateEntry(entry.id, { expanded: !entry.expanded })}
@@ -238,17 +244,6 @@ function EntryRow({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
-
-        {/* Output handle */}
-        <NodeEntry
-          id={outputHandleId}
-          handleType="source"
-          handlePosition={Position.Right}
-          handleColor={outputColor}
-          className="flex-shrink-0 min-h-6 !px-0"
-        >
-          <span className="sr-only">Output</span>
-        </NodeEntry>
       </div>
 
       {/* Expanded input list */}
@@ -330,9 +325,20 @@ function SubheaderRow({
     : '—';
 
   return (
-    <div className="border-b border-gray-200 last:border-b-0">
-      {/* Subheader header row */}
-      <div className="flex items-center gap-1 py-1.5 px-2 bg-gray-50">
+    <div className="relative border-b border-gray-200 last:border-b-0">
+      {/* Output handle overlay — absolutely positioned for edge alignment */}
+      <NodeEntry
+        id={`subheader-${subheader.id}`}
+        handleType="source"
+        handlePosition={Position.Right}
+        handleColor={outputColor}
+        className="!absolute !inset-0 !min-h-0 !px-0 pointer-events-none"
+      >
+        <span className="sr-only">Subheader Output</span>
+      </NodeEntry>
+
+      {/* Subheader content row */}
+      <div className="flex items-center gap-1 py-1.5 px-3 bg-gray-50">
         {/* Collapse toggle */}
         <button
           onClick={() => onUpdateSubheader({ collapsed: !subheader.collapsed })}
@@ -403,22 +409,11 @@ function SubheaderRow({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
-
-        {/* Output handle for subheader */}
-        <NodeEntry
-          id={`subheader-${subheader.id}`}
-          handleType="source"
-          handlePosition={Position.Right}
-          handleColor={outputColor}
-          className="flex-shrink-0 min-h-6 !px-0"
-        >
-          <span className="sr-only">Subheader Output</span>
-        </NodeEntry>
       </div>
 
       {/* Entries (hidden when collapsed) */}
       {!subheader.collapsed && (
-        <div className="pl-4">
+        <div>
           {subheader.entries.map((entry) => (
             <EntryRow
               key={entry.id}
@@ -559,17 +554,50 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
     return { entryInputs, entryResults, subheaderResults };
   }, [data.subheaders, edges, nodes, id]);
 
-  // Store results in node data for downstream nodes to access
+  // Build Exportable.outputs from entry/subheader results
+  const outputs = useMemo(() => {
+    const map: Record<string, import('../../types').NodeOutput> = {};
+
+    for (const subheader of data.subheaders) {
+      // Entry outputs
+      for (const entry of subheader.entries) {
+        const resultKey = `${subheader.id}-${entry.id}`;
+        const result = entryResults[resultKey];
+        if (result) {
+          map[`entry-out-${subheader.id}-${entry.id}`] = {
+            value: result.value,
+            dataType: result.dataType,
+            label: entry.label,
+          };
+        }
+      }
+      // Subheader outputs
+      const subResult = subheaderResults[subheader.id];
+      if (subResult) {
+        map[`subheader-${subheader.id}`] = {
+          value: subResult.value,
+          dataType: subResult.dataType,
+          label: subheader.label,
+        };
+      }
+    }
+
+    return Object.keys(map).length > 0 ? map : undefined;
+  }, [data.subheaders, entryResults, subheaderResults]);
+
+  // Store results and outputs in node data for downstream nodes to access
   useEffect(() => {
     const currentEntryResults = JSON.stringify(data.entryResults);
     const newEntryResults = JSON.stringify(entryResults);
     const currentSubheaderResults = JSON.stringify(data.subheaderResults);
     const newSubheaderResults = JSON.stringify(subheaderResults);
+    const currentOutputs = JSON.stringify(data.outputs);
+    const newOutputs = JSON.stringify(outputs);
 
-    if (currentEntryResults !== newEntryResults || currentSubheaderResults !== newSubheaderResults) {
-      updateNodeData(id, { entryResults, subheaderResults });
+    if (currentEntryResults !== newEntryResults || currentSubheaderResults !== newSubheaderResults || currentOutputs !== newOutputs) {
+      updateNodeData(id, { entryResults, subheaderResults, outputs });
     }
-  }, [entryResults, subheaderResults, id, updateNodeData, data.entryResults, data.subheaderResults]);
+  }, [entryResults, subheaderResults, outputs, id, updateNodeData, data.entryResults, data.subheaderResults, data.outputs]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // CRUD HANDLERS
@@ -730,7 +758,7 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// LOCAL RESOLVER (duplicated to avoid circular imports)
+// LOCAL RESOLVER (generic — reads Exportable.outputs)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function resolveNodeOutputLocal(
@@ -739,140 +767,24 @@ function resolveNodeOutputLocal(
 ): Omit<ResolvedInput, 'edgeId'> | null {
   if (!sourceHandle) return null;
 
-  if (node.type === 'extractor') {
-    const extractorNode = node as ExtractorNode;
-    const region = extractorNode.data.regions.find((r) => r.id === sourceHandle);
-    if (!region) return null;
+  const data = node.data as { outputs?: Record<string, import('../../types').NodeOutput> };
+  const output = data.outputs?.[sourceHandle];
+  if (!output) return null;
 
-    const extractedValue = region.extractedData.value;
-    let value: string | number | boolean | Date;
-    let numericValue: number | null = null;
+  const numericValue =
+    typeof output.value === 'number'
+      ? output.value
+      : typeof output.value === 'string'
+        ? parseNumericValue(output.value)
+        : null;
 
-    if (region.dataType === 'boolean') {
-      if (typeof extractedValue === 'boolean') {
-        value = extractedValue;
-      } else {
-        const strVal = String(extractedValue).toLowerCase();
-        value = strVal === 'yes' || strVal === 'true' || strVal === '1';
-      }
-    } else if (region.dataType === 'date') {
-      value = typeof extractedValue === 'string' ? extractedValue : String(extractedValue);
-    } else if (typeof extractedValue === 'number') {
-      value = extractedValue;
-      numericValue = extractedValue;
-    } else if (typeof extractedValue === 'string') {
-      value = extractedValue;
-      numericValue = parseNumericValue(extractedValue);
-    } else {
-      value = String(extractedValue);
-    }
-
-    const source: DataSourceReference = {
-      nodeId: node.id,
-      regionId: region.id,
-      pageNumber: region.pageNumber,
-      coordinates: region.coordinates,
-      textRange: region.textRange,
-      extractionMethod: region.extractedData.source?.extractionMethod || 'manual',
-      confidence: region.extractedData.source?.confidence,
-    };
-
-    return {
-      value,
-      numericValue,
-      label: region.label,
-      source,
-      dataType: region.dataType,
-      sourceNodeId: node.id,
-      sourceRegionId: region.id,
-    };
-  }
-
-  if (node.type === 'calculation') {
-    if (sourceHandle !== 'output') return null;
-    const calcNode = node as CalculationNode;
-    const result = calcNode.data.result;
-    if (!result) return null;
-
-    const value = result.value;
-    const numericValue =
-      typeof value === 'number'
-        ? value
-        : typeof value === 'string'
-          ? parseNumericValue(value)
-          : null;
-
-    return {
-      value,
-      numericValue,
-      label: calcNode.data.label,
-      source: result.source || null,
-      dataType: result.dataType,
-      sourceNodeId: node.id,
-      sourceRegionId: 'output',
-    };
-  }
-
-  // Handle sheet node outputs (for chaining sheets)
-  if (node.type === 'sheet') {
-    const sheetNode = node as SheetNodeType;
-
-    if (sourceHandle.startsWith('entry-out-')) {
-      const parts = sourceHandle.replace('entry-out-', '').split('-');
-      const subheaderId = parts[0];
-      const entryId = parts.slice(1).join('-');
-
-      const subheader = sheetNode.data.subheaders.find((s) => s.id === subheaderId);
-      const entry = subheader?.entries.find((e) => e.id === entryId);
-      if (!entry) return null;
-
-      const result = sheetNode.data.entryResults?.[`${subheaderId}-${entryId}`];
-      if (!result) return null;
-
-      const numericValue =
-        typeof result.value === 'number'
-          ? result.value
-          : typeof result.value === 'string'
-            ? parseNumericValue(result.value)
-            : null;
-
-      return {
-        value: result.value,
-        numericValue,
-        label: entry.label,
-        source: null,
-        dataType: result.dataType,
-        sourceNodeId: node.id,
-        sourceRegionId: `${subheaderId}-${entryId}`,
-      };
-    }
-
-    if (sourceHandle.startsWith('subheader-')) {
-      const subheaderId = sourceHandle.replace('subheader-', '');
-      const subheader = sheetNode.data.subheaders.find((s) => s.id === subheaderId);
-      if (!subheader) return null;
-
-      const result = sheetNode.data.subheaderResults?.[subheaderId];
-      if (!result) return null;
-
-      const numericValue =
-        typeof result.value === 'number'
-          ? result.value
-          : typeof result.value === 'string'
-            ? parseNumericValue(result.value)
-            : null;
-
-      return {
-        value: result.value,
-        numericValue,
-        label: subheader.label,
-        source: null,
-        dataType: result.dataType,
-        sourceNodeId: node.id,
-        sourceRegionId: subheaderId,
-      };
-    }
-  }
-
-  return null;
+  return {
+    value: output.value,
+    numericValue,
+    label: output.label,
+    source: output.source ?? null,
+    dataType: output.dataType,
+    sourceNodeId: node.id,
+    sourceRegionId: sourceHandle,
+  };
 }

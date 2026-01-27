@@ -23,7 +23,8 @@ import { ConnectionLine } from './ConnectionLine';
 import { useToast } from '../ui/Toast';
 import { wouldCreateCycle } from '../../core/engine/dependencyGraph';
 import { getOperation, isTypeCompatible } from '../../core/operations/operationRegistry';
-import type { ExtractorNodeData, CalculationNodeData } from '../../types';
+import type { ExtractorNodeData, CalculationNodeData, LynkNode } from '../../types';
+import { CanExport, CanImport } from '../../types';
 
 // Wrap node components with error boundaries to prevent crashes
 const nodeTypes = {
@@ -76,18 +77,13 @@ export function LynkCanvas() {
       const targetNode = nodes.find((n) => n.id === connection.target);
       if (!sourceNode || !targetNode) return false;
 
-      // DisplayNode cannot be source or target (no handles)
-      if (sourceNode.type === 'display' || targetNode.type === 'display') {
+      // Check if source node can export (has output handles)
+      if (!CanExport.is(sourceNode as LynkNode)) {
         return false;
       }
 
-      // ExtractorNode can only be a source
-      if (targetNode.type === 'extractor') {
-        return false;
-      }
-
-      // Only extractor, calculation, and label nodes can be sources
-      if (sourceNode.type !== 'extractor' && sourceNode.type !== 'calculation' && sourceNode.type !== 'label') {
+      // Check if target node can import (has input handles)
+      if (!CanImport.is(targetNode as LynkNode)) {
         return false;
       }
 
@@ -147,25 +143,15 @@ export function LynkCanvas() {
 
       if (!sourceNode || !targetNode) return;
 
-      // DisplayNode cannot be source or target (no handles)
-      if (sourceNode.type === 'display') {
-        showToast('Display nodes cannot be data sources', 'warning');
-        return;
-      }
-      if (targetNode.type === 'display') {
-        showToast('Display nodes cannot receive data', 'warning');
+      // Check if source node can export (has output handles)
+      if (!CanExport.is(sourceNode as LynkNode)) {
+        showToast('This node type cannot be a data source', 'warning');
         return;
       }
 
-      // ExtractorNode can only be a source, not a target
-      if (targetNode.type === 'extractor') {
-        showToast('Extractor nodes cannot receive data', 'warning');
-        return;
-      }
-
-      // Only extractor, calculation, and label nodes can be sources
-      if (sourceNode.type !== 'extractor' && sourceNode.type !== 'calculation' && sourceNode.type !== 'label') {
-        showToast('Only Extractor, Calculation, and Label nodes can be data sources', 'warning');
+      // Check if target node can import (has input handles)
+      if (!CanImport.is(targetNode as LynkNode)) {
+        showToast('This node type cannot receive data', 'warning');
         return;
       }
 
