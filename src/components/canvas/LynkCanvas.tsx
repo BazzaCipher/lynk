@@ -19,6 +19,7 @@ import { LabelNode } from '../nodes/LabelNode';
 import { GroupNode } from '../nodes/GroupNode';
 import { withErrorBoundary } from '../nodes/base/withErrorBoundary';
 import { Toolbar } from './Toolbar';
+import { ConnectionLine } from './ConnectionLine';
 import { useToast } from '../ui/Toast';
 import { wouldCreateCycle } from '../../core/engine/dependencyGraph';
 import { getOperation, isTypeCompatible } from '../../core/operations/operationRegistry';
@@ -353,6 +354,7 @@ export function LynkCanvas() {
         onViewportChange={setViewport}
         nodeTypes={nodeTypes}
         isValidConnection={isValidConnection}
+        connectionLineComponent={ConnectionLine}
         fitView
         snapToGrid
         snapGrid={[16, 16]}

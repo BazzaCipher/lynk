@@ -80,7 +80,7 @@ export async function extractTextFromRegion(
       const image = new Image();
       image.crossOrigin = 'anonymous';
       image.onload = () => resolve(image);
-      image.onerror = reject;
+      image.onerror = () => reject(new Error('Failed to load image for OCR'));
       image.src = imageSource;
     });
   } else {

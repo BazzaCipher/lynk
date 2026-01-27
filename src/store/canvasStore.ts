@@ -97,6 +97,9 @@ interface CanvasStore {
   validateCanvas: () => ValidationResult;
   saveToFile: () => Promise<{ success: boolean; warnings: string[] }>;
   loadFromFile: () => Promise<{ success: boolean; error?: string }>;
+
+  // Maintenance actions
+  cleanupInvalidEdges: () => number; // Returns count of removed edges
 }
 
 let nodeIdCounter = 0;
@@ -590,6 +593,12 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       highlightedRegion: null,
     });
 
+    // Clean up any invalid edges (e.g., referencing deleted regions/handles)
+    const removedEdges = get().cleanupInvalidEdges();
+    if (removedEdges > 0) {
+      console.log(`Removed ${removedEdges} invalid edge(s) during import`);
+    }
+
     return { success: true };
   },
 
@@ -663,5 +672,101 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
 
       input.click();
     });
+  },
+
+  // Maintenance actions
+  cleanupInvalidEdges: () => {
+    const { nodes, edges } = get();
+    const nodeIds = new Set(nodes.map((n) => n.id));
+
+    // Build a map of valid handles for each node
+    const validHandles = new Map<string, Set<string>>();
+    for (const node of nodes) {
+      const handles = new Set<string>();
+
+      switch (node.type) {
+        case 'extractor': {
+          // Extractor nodes have source handles for each region
+          const data = node.data as { regions?: { id: string }[] };
+          if (data.regions) {
+            for (const region of data.regions) {
+              handles.add(region.id);
+            }
+          }
+          break;
+        }
+        case 'calculation':
+          // Calculation nodes have 'inputs' target handle and 'output' source handle
+          handles.add('inputs');
+          handles.add('output');
+          break;
+        case 'label':
+          // Label nodes have 'input' target handle and 'output' source handle
+          handles.add('input');
+          handles.add('output');
+          break;
+        case 'sheet': {
+          // Sheet nodes have entry input/output handles and subheader output handles
+          const data = node.data as {
+            subheaders?: { id: string; entries?: { id: string }[] }[];
+          };
+          if (data.subheaders) {
+            for (const subheader of data.subheaders) {
+              handles.add(`subheader-${subheader.id}`);
+              if (subheader.entries) {
+                for (const entry of subheader.entries) {
+                  handles.add(`entry-in-${subheader.id}-${entry.id}`);
+                  handles.add(`entry-out-${subheader.id}-${entry.id}`);
+                }
+              }
+            }
+          }
+          break;
+        }
+        default:
+          // For other node types, allow any handle (backward compatibility)
+          break;
+      }
+
+      validHandles.set(node.id, handles);
+    }
+
+    const validEdges: Edge[] = [];
+    let removedCount = 0;
+
+    for (const edge of edges) {
+      // Check if source and target nodes exist
+      if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) {
+        removedCount++;
+        continue;
+      }
+
+      // Check if source handle is valid (if specified)
+      const sourceHandles = validHandles.get(edge.source);
+      if (edge.sourceHandle && sourceHandles && sourceHandles.size > 0) {
+        if (!sourceHandles.has(edge.sourceHandle)) {
+          removedCount++;
+          continue;
+        }
+      }
+
+      // Check if target handle is valid (if specified)
+      const targetHandles = validHandles.get(edge.target);
+      if (edge.targetHandle && targetHandles && targetHandles.size > 0) {
+        if (!targetHandles.has(edge.targetHandle)) {
+          removedCount++;
+          continue;
+        }
+      }
+
+      validEdges.push(edge);
+    }
+
+    if (removedCount > 0) {
+      set({ edges: validEdges });
+      console.warn(`Cleaned up ${removedCount} invalid edge(s)`);
+    }
+
+    return removedCount;
   },
 }));

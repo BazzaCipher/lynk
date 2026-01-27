@@ -12,7 +12,7 @@
 | Phase 5: Persistence & Storage | ✅ Complete | LocalStorage, complete export/import, embedded files |
 | Phase 6: Display/Extractor Split | ✅ Complete | Replaced FileNode+ImageNode with DisplayNode+ExtractorNode |
 | Phase 6.5: Architecture Refactor | ✅ Complete | Categories system, DocumentView abstraction, GroupNode |
-| Phase 7: Polish & UX | 🔄 In Progress | See below |
+| Phase 7: Polish & UX | ✅ Core Complete | Edge mgmt, shortcuts, error handling done |
 | Phase 8: Testing & Docs | ❌ Not Started | Unit tests, integration tests |
 
 ---
@@ -162,7 +162,7 @@ LocalStorage Keys:
 | Task | Priority | Status | Notes |
 |------|----------|--------|-------|
 | Edge deletion UI | High | ✅ | Select + Delete key |
-| Connection validation feedback | Medium | ❌ | Visual feedback for invalid connections |
+| Connection validation feedback | Medium | ✅ | Custom ConnectionLine with valid/invalid colors |
 
 ### 7.2 Keyboard Shortcuts
 
@@ -171,15 +171,16 @@ LocalStorage Keys:
 | Delete key for nodes/edges | High | ✅ | Delete selected elements |
 | Escape to deselect | High | ✅ | Clear selection |
 | Ctrl+S to save | High | ✅ | Trigger save action |
-| Ctrl+Z for undo | Low | ❌ | Requires undo stack |
+| Ctrl+Z for undo | High | ✅ | Full undo/redo stack implemented |
+| Ctrl+G for group | High | ✅ | Group selected nodes |
 
 ### 7.3 Error Handling
 
 | Task | Priority | Status | Notes |
 |------|----------|--------|-------|
 | Error boundaries for nodes | High | ✅ | Prevent single node crash from breaking canvas |
-| OCR error display | Medium | ❌ | Show OCR failures in UI |
-| Invalid edge handling | Medium | ❌ | Graceful handling of broken connections |
+| OCR error display | Medium | ✅ | Toast notifications for failures and low confidence |
+| Invalid edge handling | Medium | ✅ | cleanupInvalidEdges on import, validates nodes/handles |
 
 ### 7.4 Performance
 
@@ -225,7 +226,7 @@ These are potential future features, not required for MVP:
 | CSV/Excel import | Import data files into SheetNode |
 | Export to CSV | Export SheetNode data |
 | Formula support | Custom formulas in CalculationNode |
-| Undo/Redo | Full undo/redo stack |
+| ~~Undo/Redo~~ | ✅ Implemented (Ctrl+Z / Ctrl+Y) |
 | Node templates | Save/load node configurations |
 | Collaborative editing | Multi-user support |
 | AI extraction | Use LLMs for smarter data extraction |
@@ -235,16 +236,21 @@ These are potential future features, not required for MVP:
 
 ## Immediate Next Steps
 
-### Priority 1: Phase 7 Completion
+### Priority 1: Phase 7 Completion ✅ COMPLETE
 1. ~~Edge deletion~~ ✅
 2. ~~Keyboard shortcuts~~ ✅
 3. ~~Error boundaries~~ ✅
-4. Connection validation feedback
-5. OCR error display
+4. ~~Connection validation feedback~~ ✅
+5. ~~OCR error display~~ ✅
+6. ~~Invalid edge handling~~ ✅
 
-### Priority 2: Testing (Phase 8)
-6. **Unit tests** - Test operation registry, formatValue, parseNumericValue, categories
-7. **Integration tests** - Test data flow between nodes, save/load roundtrip
+### Priority 2: Phase 7 Remaining (Low Priority)
+- Large file handling (progress indicator for big PDFs)
+- Memoization audit (prevent unnecessary re-renders)
+
+### Priority 3: Testing (Phase 8)
+- **Unit tests** - Test operation registry, formatValue, parseNumericValue, categories
+- **Integration tests** - Test data flow between nodes, save/load roundtrip
 
 ---
 

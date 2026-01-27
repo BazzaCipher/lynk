@@ -10,6 +10,7 @@ import { Modal } from '../ui/Modal';
 import { CollapsiblePanel } from '../ui/CollapsiblePanel';
 import { extractTextFromRegion } from '../../core/extraction/ocrExtractor';
 import { useCanvasStore } from '../../store/canvasStore';
+import { useToast } from '../ui/Toast';
 import { BlobRegistry } from '../../store/canvasPersistence';
 import { getColorForType } from '../../utils/colors';
 import type {
@@ -24,11 +25,15 @@ import type {
 
 const VIEWER_WIDTH = 500;
 
+// Confidence threshold for OCR warnings (0-100)
+const LOW_CONFIDENCE_THRESHOLD = 50;
+
 export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeType>) {
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
   const replaceNode = useCanvasStore((state) => state.replaceNode);
   const removeEdge = useCanvasStore((state) => state.removeEdge);
   const edges = useEdges();
+  const { showToast } = useToast();
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [viewerHeight, setViewerHeight] = useState(400);
@@ -227,6 +232,19 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
           region.coordinates
         );
 
+        // Warn if confidence is low
+        if (result.confidence < LOW_CONFIDENCE_THRESHOLD) {
+          showToast(
+            `Low OCR confidence (${Math.round(result.confidence)}%). Results may be inaccurate.`,
+            'warning'
+          );
+        }
+
+        // Warn if no text was extracted
+        if (!result.text.trim()) {
+          showToast('No text detected in selection. Try a different region.', 'warning');
+        }
+
         updateNodeData(id, {
           regions: data.regions.map((r) =>
             r.id === regionId
@@ -249,11 +267,20 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
         });
       } catch (error) {
         console.error('OCR extraction failed:', error);
+        // Show user-friendly error message
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        if (errorMessage.includes('canvas context')) {
+          showToast('Failed to process image. Please try again.', 'error');
+        } else if (errorMessage.includes('load') || errorMessage.includes('image')) {
+          showToast('Failed to load image for OCR. The file may be corrupted.', 'error');
+        } else {
+          showToast(`OCR extraction failed: ${errorMessage}`, 'error');
+        }
       } finally {
         setIsExtracting(false);
       }
     },
-    [id, data.regions, data.fileUrl, updateNodeData]
+    [id, data.regions, data.fileUrl, updateNodeData, showToast]
   );
 
   const openModal = useCallback(() => {
