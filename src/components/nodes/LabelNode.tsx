@@ -13,10 +13,15 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
   const removeEdgesToTarget = useCanvasStore((state) => state.removeEdgesToTarget);
 
-  // Local editing state
+  // Local editing state for value
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Local editing state for label
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [labelValue, setLabelValue] = useState(data.label);
+  const labelInputRef = useRef<HTMLInputElement>(null);
 
   // Get the first (and only) input value
   const input = inputs[0];
@@ -102,7 +107,7 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
     setIsEditing(false);
   }, []);
 
-  // Handle key events
+  // Handle key events for value editing
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       handleSave();
@@ -111,6 +116,43 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
     }
     e.stopPropagation();
   }, [handleSave, handleCancel]);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // LABEL EDITING (SheetNode pattern)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const handleLabelDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLabelValue(data.label);
+    setIsEditingLabel(true);
+  }, [data.label]);
+
+  const handleLabelSave = useCallback(() => {
+    if (labelValue.trim()) {
+      updateNodeData(id, { label: labelValue.trim() });
+    } else {
+      setLabelValue(data.label);
+    }
+    setIsEditingLabel(false);
+  }, [id, labelValue, data.label, updateNodeData]);
+
+  const handleLabelKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleLabelSave();
+    } else if (e.key === 'Escape') {
+      setLabelValue(data.label);
+      setIsEditingLabel(false);
+    }
+    e.stopPropagation();
+  }, [handleLabelSave, data.label]);
+
+  // Focus label input when entering edit mode
+  useEffect(() => {
+    if (isEditingLabel && labelInputRef.current) {
+      labelInputRef.current.focus();
+      labelInputRef.current.select();
+    }
+  }, [isEditingLabel]);
 
   // Update value and outputs in node data for downstream nodes to access
   useEffect(() => {
@@ -138,15 +180,41 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
   }, [outputValue, id, updateNodeData, data.label]);
 
   return (
-    <BaseNode label={data.label} selected={selected}>
+    <BaseNode
+      label={data.label}
+      selected={selected}
+      className="!min-w-0"
+      renderHeader={
+        isEditingLabel ? (
+          <input
+            ref={labelInputRef}
+            type="text"
+            value={labelValue}
+            onChange={(e) => setLabelValue(e.target.value)}
+            onKeyDown={handleLabelKeyDown}
+            onBlur={handleLabelSave}
+            className="text-xs font-medium w-full px-1 py-0.5 border border-blue-300 rounded min-w-0 outline-none"
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span
+            className="text-xs font-medium text-gray-700 truncate cursor-pointer hover:text-blue-600"
+            onDoubleClick={handleLabelDoubleClick}
+            title={`${data.label} (double-click to rename)`}
+          >
+            {data.label}
+          </span>
+        )
+      }
+    >
       <div className="relative">
         {/* Input handle (left) */}
         <NodeEntry id="input" handleType="target" handlePosition={Position.Left}>
           <div className="w-0" />
         </NodeEntry>
 
-        {/* Value display/edit area */}
-        <div className="px-2 py-1">
+        {/* Value display/edit area - compact */}
+        <div className="px-1.5 py-0.5">
           {isEditing ? (
             <input
               ref={inputRef}
@@ -155,12 +223,12 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
               onChange={(e) => setEditValue(e.target.value)}
               onKeyDown={handleKeyDown}
               onBlur={handleSave}
-              className={`${fontSizeClass} ${alignmentClass} font-mono w-full px-2 py-1 border border-blue-400 rounded outline-none bg-blue-50`}
+              className={`${fontSizeClass} ${alignmentClass} font-mono w-full px-1 py-0.5 border border-blue-400 rounded outline-none bg-blue-50`}
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
             <div
-              className={`${fontSizeClass} ${alignmentClass} font-mono min-h-[2em] flex-1 px-2 py-1 rounded transition-colors cursor-text ${
+              className={`${fontSizeClass} ${alignmentClass} font-mono min-h-[1.5em] flex-1 px-1 py-0.5 rounded transition-colors cursor-text ${
                 hasInputs && input?.source && !data.isManualMode
                   ? 'hover:bg-gray-100'
                   : 'hover:bg-blue-50'
@@ -171,7 +239,7 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
               onDoubleClick={handleDoubleClick}
             >
               {displayValue ?? (
-                <span className="text-gray-400">Double-click to edit...</span>
+                <span className="text-gray-400 text-xs">Double-click...</span>
               )}
             </div>
           )}
@@ -183,14 +251,14 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
         </NodeEntry>
       </div>
 
-      {/* Format indicator */}
-      <div className="px-2 py-1 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+      {/* Compact footer - format + source indicator */}
+      <div className="px-1.5 py-0.5 border-t border-gray-100 flex items-center justify-between text-[10px] text-gray-400">
         <span className="capitalize">{data.format}</span>
         {isManualMode ? (
           <span className="text-blue-500">manual</span>
         ) : input?.label ? (
-          <span className="truncate max-w-[100px]" title={input.label}>
-            from: {input.label}
+          <span className="truncate max-w-[80px]" title={input.label}>
+            ← {input.label}
           </span>
         ) : null}
       </div>

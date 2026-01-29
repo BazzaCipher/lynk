@@ -23,6 +23,7 @@ import { ConnectionLine } from './ConnectionLine';
 import { useToast } from '../ui/Toast';
 import { wouldCreateCycle } from '../../core/engine/dependencyGraph';
 import { getOperation, isTypeCompatible } from '../../core/operations/operationRegistry';
+import { useFileUpload } from '../../hooks/useFileUpload';
 import type { ExtractorNodeData, CalculationNodeData, LynkNode } from '../../types';
 import { CanExport, CanImport } from '../../types';
 
@@ -225,6 +226,65 @@ export function LynkCanvas() {
     [screenToFlowPosition, addNode]
   );
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // FILE DROP HANDLING
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // Use the file upload hook's processFile function
+  const { processFile } = useFileUpload({
+    onFileRegistered: () => {}, // Not used for canvas drops
+  });
+
+  const handleCanvasDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleCanvasDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+
+      const files = event.dataTransfer.files;
+      if (!files || files.length === 0) return;
+
+      // Process files using the hook's processFile
+      const results = Array.from(files)
+        .map((file) => processFile(file))
+        .filter((r): r is NonNullable<typeof r> => r !== null);
+
+      if (results.length === 0) {
+        showToast('No valid files (PDF or images only)', 'warning');
+        return;
+      }
+
+      // Get drop position
+      const dropPosition = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+
+      // Create ExtractorNodes positioned vertically
+      const VERTICAL_SPACING = 350;
+
+      pushHistory();
+
+      results.forEach((result, index) => {
+        const position = {
+          x: dropPosition.x,
+          y: dropPosition.y + (index * VERTICAL_SPACING),
+        };
+
+        addNode('extractor', position, {
+          label: result.fileName,
+          fileId: result.fileId,
+          fileUrl: result.fileUrl,
+          fileName: result.fileName,
+          regions: [],
+        } as ExtractorNodeData);
+      });
+
+      showToast(`Created ${results.length} extractor node(s)`, 'success');
+    },
+    [screenToFlowPosition, addNode, pushHistory, showToast, processFile]
+  );
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -328,7 +388,11 @@ export function LynkCanvas() {
   }, [getSelectedNodes, getSelectedEdges, removeSelectedNodes, removeSelectedEdges, clearSelection, saveToFile, createGroup, ungroupNodes, pushHistory, undo, redo, showToast]);
 
   return (
-    <div className="w-full h-full relative">
+    <div
+      className="w-full h-full relative"
+      onDragOver={handleCanvasDragOver}
+      onDrop={handleCanvasDrop}
+    >
       <Toolbar />
       <ReactFlow
         nodes={nodes}

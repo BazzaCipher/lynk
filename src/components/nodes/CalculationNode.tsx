@@ -152,6 +152,46 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
   const currentOperation = getOperation(data.operation);
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // LABEL EDITING (SheetNode pattern)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [labelValue, setLabelValue] = useState(data.label);
+  const labelInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLabelDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLabelValue(data.label);
+    setIsEditingLabel(true);
+  }, [data.label]);
+
+  const handleLabelSave = useCallback(() => {
+    if (labelValue.trim()) {
+      updateNodeData(id, { label: labelValue.trim() });
+    } else {
+      setLabelValue(data.label);
+    }
+    setIsEditingLabel(false);
+  }, [id, labelValue, data.label, updateNodeData]);
+
+  const handleLabelKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleLabelSave();
+    } else if (e.key === 'Escape') {
+      setLabelValue(data.label);
+      setIsEditingLabel(false);
+    }
+    e.stopPropagation();
+  }, [handleLabelSave, data.label]);
+
+  useEffect(() => {
+    if (isEditingLabel && labelInputRef.current) {
+      labelInputRef.current.focus();
+      labelInputRef.current.select();
+    }
+  }, [isEditingLabel]);
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // INPUT RESOLUTION (using shared useDataFlow hook)
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -399,14 +439,36 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
           <OperationDropdown currentOperation={data.operation} onSelect={handleOperationChange} />
         </div>
 
-        {/* Result with output handle (color reflects result type) */}
+        {/* Result row with editable label and output handle */}
         <NodeEntry
           id="output"
           handleType="source"
           handlePosition={Position.Right}
           handleColor={outputColor}
         >
-          <div className="flex-1 text-right">
+          <div className="flex-1 flex items-center gap-2">
+            {/* Editable label */}
+            {isEditingLabel ? (
+              <input
+                ref={labelInputRef}
+                type="text"
+                value={labelValue}
+                onChange={(e) => setLabelValue(e.target.value)}
+                onKeyDown={handleLabelKeyDown}
+                onBlur={handleLabelSave}
+                className="flex-1 text-xs px-1 py-0.5 border border-blue-300 rounded min-w-0 outline-none"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <span
+                className="flex-1 text-xs text-gray-500 truncate cursor-pointer hover:text-blue-600"
+                onDoubleClick={handleLabelDoubleClick}
+                title={`${data.label} (double-click to rename)`}
+              >
+                {data.label}
+              </span>
+            )}
+            {/* Result value */}
             {result ? (
               <span className="font-mono font-medium text-sm">
                 {displayValue(result.value, result.dataType)}
