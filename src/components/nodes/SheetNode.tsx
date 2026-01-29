@@ -325,20 +325,22 @@ function SubheaderRow({
     : '—';
 
   return (
-    <div className="relative border-b border-gray-200 last:border-b-0">
-      {/* Output handle overlay — absolutely positioned for edge alignment */}
-      <NodeEntry
-        id={`subheader-${subheader.id}`}
-        handleType="source"
-        handlePosition={Position.Right}
-        handleColor={outputColor}
-        className="!absolute !inset-0 !min-h-0 !px-0 pointer-events-none"
-      >
-        <span className="sr-only">Subheader Output</span>
-      </NodeEntry>
+    <div className="border-b border-gray-200 last:border-b-0">
+      {/* Subheader header row with output handle */}
+      <div className="relative">
+        {/* Output handle overlay — absolutely positioned for edge alignment */}
+        <NodeEntry
+          id={`subheader-${subheader.id}`}
+          handleType="source"
+          handlePosition={Position.Right}
+          handleColor={outputColor}
+          className="!absolute !inset-0 !min-h-0 !px-0 pointer-events-none"
+        >
+          <span className="sr-only">Subheader Output</span>
+        </NodeEntry>
 
-      {/* Subheader content row */}
-      <div className="flex items-center gap-1 py-1.5 px-3 bg-gray-50">
+        {/* Subheader content row */}
+        <div className="flex items-center gap-1 py-1.5 px-3 bg-gray-50">
         {/* Collapse toggle */}
         <button
           onClick={() => onUpdateSubheader({ collapsed: !subheader.collapsed })}
@@ -409,6 +411,7 @@ function SubheaderRow({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
+        </div>
       </div>
 
       {/* Entries (hidden when collapsed) */}
@@ -714,7 +717,7 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
 
   return (
     <BaseNode label={data.label} selected={selected} className="min-w-[280px]">
-      <div className="max-h-[400px] overflow-auto">
+      <div>
         {data.subheaders.length === 0 ? (
           <div className="px-4 py-6 text-center text-gray-400 text-sm">
             No groups yet.
