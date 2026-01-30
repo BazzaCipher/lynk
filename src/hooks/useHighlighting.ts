@@ -6,6 +6,7 @@
 import { useCallback, useMemo } from 'react';
 import { useCanvasStore, type HighlightedRegion } from '../store/canvasStore';
 import type { DataSourceReference } from '../types';
+import type { ResolvedInput } from './useDataFlow';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -14,6 +15,16 @@ import type { DataSourceReference } from '../types';
 export interface HighlightTarget {
   nodeId: string;
   regionId: string;
+}
+
+/** Handlers for ResolvedInput highlighting */
+export interface ResolvedInputHandlers {
+  /** Handler for mouse enter on an input */
+  onMouseEnter: () => void;
+  /** Handler for mouse leave on an input */
+  onMouseLeave: () => void;
+  /** Handler for click on an input */
+  onClick: () => void;
 }
 
 export interface UseHighlightingResult {
@@ -33,6 +44,12 @@ export interface UseHighlightingResult {
   createMouseLeaveHandler: (nodeId: string, regionId: string) => () => void;
   /** Click handler - toggles persistent highlight */
   createClickHandler: (nodeId: string, regionId: string) => () => void;
+  /** Create handlers for ResolvedInput - for hover/click on input rows */
+  createResolvedInputHandlers: (input: ResolvedInput) => ResolvedInputHandlers;
+  /** Handler for hover on ResolvedInput (pass null to clear) */
+  handleInputHover: (input: ResolvedInput | null) => void;
+  /** Handler for click on ResolvedInput */
+  handleInputClick: (input: ResolvedInput) => void;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -101,6 +118,38 @@ export function useHighlighting(): UseHighlightingResult {
     [toggleHighlight]
   );
 
+  const handleInputHover = useCallback(
+    (input: ResolvedInput | null) => {
+      if (input) {
+        setHighlight(input.sourceNodeId, input.sourceRegionId);
+      } else {
+        clearHighlight();
+      }
+    },
+    [setHighlight, clearHighlight]
+  );
+
+  const handleInputClick = useCallback(
+    (input: ResolvedInput) => {
+      toggleHighlight(input.sourceNodeId, input.sourceRegionId);
+    },
+    [toggleHighlight]
+  );
+
+  const createResolvedInputHandlers = useCallback(
+    (input: ResolvedInput): ResolvedInputHandlers => {
+      const inputHighlighted = isHighlighted(input.sourceNodeId, input.sourceRegionId);
+      return {
+        onMouseEnter: () => setHighlight(input.sourceNodeId, input.sourceRegionId),
+        onMouseLeave: () => {
+          if (!inputHighlighted) clearHighlight();
+        },
+        onClick: () => toggleHighlight(input.sourceNodeId, input.sourceRegionId),
+      };
+    },
+    [isHighlighted, setHighlight, clearHighlight, toggleHighlight]
+  );
+
   return {
     highlightedRegion,
     isHighlighted,
@@ -110,6 +159,9 @@ export function useHighlighting(): UseHighlightingResult {
     createMouseEnterHandler,
     createMouseLeaveHandler,
     createClickHandler,
+    createResolvedInputHandlers,
+    handleInputHover,
+    handleInputClick,
   };
 }
 

@@ -1,0 +1,42 @@
+/**
+ * Shared types for Zustand store slices
+ */
+
+import type { Edge, Viewport } from '@xyflow/react';
+import type { LynkNode } from '../../types';
+
+// Highlighted region reference for source highlighting
+export interface HighlightedRegion {
+  nodeId: string;
+  regionId: string;
+}
+
+// History snapshot for undo/redo
+export interface HistorySnapshot {
+  nodes: LynkNode[];
+  edges: Edge[];
+}
+
+// Zustand slice creator type
+export type StateCreator<T> = (
+  set: (partial: Partial<CanvasStoreState> | ((state: CanvasStoreState) => Partial<CanvasStoreState>)) => void,
+  get: () => CanvasStoreState
+) => T;
+
+// Base state that all slices can access
+export interface CanvasStoreState {
+  // Core state
+  nodes: LynkNode[];
+  edges: Edge[];
+  viewport: Viewport;
+  highlightedRegion: HighlightedRegion | null;
+
+  // Canvas metadata
+  canvasName: string;
+  canvasId: string;
+  lastSaved: string | null;
+
+  // History state
+  history: HistorySnapshot[];
+  historyIndex: number;
+}

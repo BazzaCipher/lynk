@@ -6,6 +6,7 @@ import { NodeEntry } from './base/NodeEntry';
 import { useDataFlow, formatValue } from '../../hooks/useDataFlow';
 import { useSourceHighlighting } from '../../hooks/useHighlighting';
 import { useCanvasStore } from '../../store/canvasStore';
+import { useEditableLabel } from '../../hooks/useEditableLabel';
 import type { LabelNode as LabelNodeType } from '../../types';
 
 export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
@@ -18,10 +19,11 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Local editing state for label
-  const [isEditingLabel, setIsEditingLabel] = useState(false);
-  const [labelValue, setLabelValue] = useState(data.label);
-  const labelInputRef = useRef<HTMLInputElement>(null);
+  // Label editing using shared hook
+  const labelEditor = useEditableLabel({
+    initialValue: data.label,
+    onSave: (newLabel) => updateNodeData(id, { label: newLabel }),
+  });
 
   // Get the first (and only) input value
   const input = inputs[0];
@@ -117,42 +119,6 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
     e.stopPropagation();
   }, [handleSave, handleCancel]);
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // LABEL EDITING (SheetNode pattern)
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  const handleLabelDoubleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    setLabelValue(data.label);
-    setIsEditingLabel(true);
-  }, [data.label]);
-
-  const handleLabelSave = useCallback(() => {
-    if (labelValue.trim()) {
-      updateNodeData(id, { label: labelValue.trim() });
-    } else {
-      setLabelValue(data.label);
-    }
-    setIsEditingLabel(false);
-  }, [id, labelValue, data.label, updateNodeData]);
-
-  const handleLabelKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleLabelSave();
-    } else if (e.key === 'Escape') {
-      setLabelValue(data.label);
-      setIsEditingLabel(false);
-    }
-    e.stopPropagation();
-  }, [handleLabelSave, data.label]);
-
-  // Focus label input when entering edit mode
-  useEffect(() => {
-    if (isEditingLabel && labelInputRef.current) {
-      labelInputRef.current.focus();
-      labelInputRef.current.select();
-    }
-  }, [isEditingLabel]);
 
   // Update value and outputs in node data for downstream nodes to access
   useEffect(() => {
@@ -185,21 +151,21 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
       selected={selected}
       className="!min-w-0"
       renderHeader={
-        isEditingLabel ? (
+        labelEditor.isEditing ? (
           <input
-            ref={labelInputRef}
+            ref={labelEditor.inputRef}
             type="text"
-            value={labelValue}
-            onChange={(e) => setLabelValue(e.target.value)}
-            onKeyDown={handleLabelKeyDown}
-            onBlur={handleLabelSave}
+            value={labelEditor.value}
+            onChange={(e) => labelEditor.setValue(e.target.value)}
+            onKeyDown={labelEditor.handleKeyDown}
+            onBlur={labelEditor.handleBlur}
             className="text-xs font-medium w-full px-1 py-0.5 border border-blue-300 rounded min-w-0 outline-none"
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
           <span
             className="text-xs font-medium text-gray-700 truncate cursor-pointer hover:text-blue-600"
-            onDoubleClick={handleLabelDoubleClick}
+            onDoubleClick={labelEditor.startEditing}
             title={`${data.label} (double-click to rename)`}
           >
             {data.label}

@@ -141,6 +141,7 @@ const ExtractorNodeDataSchema = z.object({
   regions: z.array(ExtractedRegionSchema),
   currentPage: z.number(),
   totalPages: z.number(),
+  outputs: z.record(z.string(), z.any()).optional(), // Runtime computed
 });
 
 // Calculation result - uses SimpleDataType (no complex types)
@@ -188,7 +189,8 @@ const SheetSubheaderSchema = z.object({
 const SheetNodeDataSchema = z.object({
   label: z.string(),
   subheaders: z.array(SheetSubheaderSchema),
-  // entryResults and subheaderResults are computed at runtime, not persisted
+  entryResults: z.record(z.string(), z.any()).optional(), // Runtime computed
+  subheaderResults: z.record(z.string(), z.any()).optional(), // Runtime computed
 });
 
 // Label node data
@@ -219,6 +221,7 @@ const PositionSchema = z.object({
 });
 
 // Node schema (discriminated union)
+// Each node uses .passthrough() to allow React Flow internal properties (measured, selected, dragging)
 const NodeSchema = z.discriminatedUnion('type', [
   z.object({
     id: z.string(),
@@ -226,41 +229,41 @@ const NodeSchema = z.discriminatedUnion('type', [
     position: PositionSchema,
     parentId: z.string().optional(),
     data: DisplayNodeDataSchema,
-  }),
+  }).passthrough(),
   z.object({
     id: z.string(),
     type: z.literal('extractor'),
     position: PositionSchema,
     parentId: z.string().optional(),
     data: ExtractorNodeDataSchema,
-  }),
+  }).passthrough(),
   z.object({
     id: z.string(),
     type: z.literal('calculation'),
     position: PositionSchema,
     parentId: z.string().optional(),
     data: CalculationNodeDataSchema,
-  }),
+  }).passthrough(),
   z.object({
     id: z.string(),
     type: z.literal('sheet'),
     position: PositionSchema,
     parentId: z.string().optional(),
     data: SheetNodeDataSchema,
-  }),
+  }).passthrough(),
   z.object({
     id: z.string(),
     type: z.literal('label'),
     position: PositionSchema,
     parentId: z.string().optional(),
     data: LabelNodeDataSchema,
-  }),
+  }).passthrough(),
   z.object({
     id: z.string(),
     type: z.literal('group'),
     position: PositionSchema,
     data: GroupNodeDataSchema,
-  }),
+  }).passthrough(),
 ]);
 
 // Edge schema

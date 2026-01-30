@@ -13,7 +13,6 @@ import { useCanvasStore } from '../../store/canvasStore';
 import { useToast } from '../ui/Toast';
 import { useFileUpload, type FileUploadResult } from '../../hooks/useFileUpload';
 import { getColorForType } from '../../utils/colors';
-import { parseNumericValue } from '../../hooks/useDataFlow';
 import type {
   ExtractorNode as ExtractorNodeType,
   NodeOutput,

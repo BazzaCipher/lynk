@@ -20,6 +20,7 @@ import { GroupNode } from '../nodes/GroupNode';
 import { withErrorBoundary } from '../nodes/base/withErrorBoundary';
 import { Toolbar } from './Toolbar';
 import { ConnectionLine } from './ConnectionLine';
+import { LayoutControls } from './LayoutControls';
 import { useToast } from '../ui/Toast';
 import { wouldCreateCycle } from '../../core/engine/dependencyGraph';
 import { getOperation, isTypeCompatible } from '../../core/operations/operationRegistry';
@@ -276,6 +277,9 @@ export function LynkCanvas() {
           fileId: result.fileId,
           fileUrl: result.fileUrl,
           fileName: result.fileName,
+          fileType: result.fileType,
+          currentPage: 1,
+          totalPages: 1,
           regions: [],
         } as ExtractorNodeData);
       });
@@ -422,6 +426,7 @@ export function LynkCanvas() {
       >
         <Background gap={16} size={1} />
         <Controls />
+        <LayoutControls />
         <MiniMap
           nodeStrokeWidth={3}
           zoomable

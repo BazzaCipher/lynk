@@ -9,15 +9,17 @@
  * Each subheader has an output handle (right) for the aggregated result.
  */
 
-import { useMemo, useEffect, useCallback, useState } from 'react';
+import { useMemo, useEffect, useCallback } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Position, useEdges, useNodes } from '@xyflow/react';
 import { BaseNode } from './base/BaseNode';
 import { NodeEntry } from './base/NodeEntry';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useHighlighting } from '../../hooks/useHighlighting';
+import { useEditableLabel } from '../../hooks/useEditableLabel';
 import { type ResolvedInput, parseNumericValue } from '../../hooks/useDataFlow';
-import { getOperation, OPERATIONS } from '../../core/operations/operationRegistry';
+import { getOperation } from '../../core/operations/operationRegistry';
+import { OperationSelect } from '../ui/OperationSelect';
 import { DATA_TYPE_COLORS, getTypeBadgeClass } from '../../utils/colors';
 import { formatValue } from '../../utils/formatting';
 import type {
@@ -37,34 +39,6 @@ function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// OPERATION SELECTOR COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════════
-
-interface OperationSelectorProps {
-  value: string;
-  onChange: (value: string) => void;
-  compact?: boolean;
-}
-
-function OperationSelector({ value, onChange, compact }: OperationSelectorProps) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className={`text-xs bg-gray-100 border border-gray-200 rounded px-1 py-0.5 ${
-        compact ? 'w-14' : 'w-16'
-      }`}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {OPERATIONS.map((op) => (
-        <option key={op.id} value={op.id}>
-          {op.label}
-        </option>
-      ))}
-    </select>
-  );
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ENTRY INPUT ROW COMPONENT (shown when entry is expanded)
@@ -128,17 +102,10 @@ function EntryRow({
   onInputHover,
   onInputClick,
 }: EntryRowProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [labelValue, setLabelValue] = useState(entry.label);
-
-  const handleLabelSave = () => {
-    if (labelValue.trim()) {
-      onUpdateEntry(entry.id, { label: labelValue.trim() });
-    } else {
-      setLabelValue(entry.label);
-    }
-    setIsEditing(false);
-  };
+  const labelEditor = useEditableLabel({
+    initialValue: entry.label,
+    onSave: (newLabel) => onUpdateEntry(entry.id, { label: newLabel }),
+  });
 
   const outputColor = result
     ? DATA_TYPE_COLORS[result.dataType]?.border || '#6b7280'
@@ -192,27 +159,21 @@ function EntryRow({
         </button>
 
         {/* Editable label */}
-        {isEditing ? (
+        {labelEditor.isEditing ? (
           <input
+            ref={labelEditor.inputRef}
             type="text"
-            value={labelValue}
-            onChange={(e) => setLabelValue(e.target.value)}
-            onBlur={handleLabelSave}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleLabelSave();
-              if (e.key === 'Escape') {
-                setLabelValue(entry.label);
-                setIsEditing(false);
-              }
-            }}
-            autoFocus
+            value={labelEditor.value}
+            onChange={(e) => labelEditor.setValue(e.target.value)}
+            onBlur={labelEditor.handleBlur}
+            onKeyDown={labelEditor.handleKeyDown}
             className="flex-1 text-xs px-1 py-0.5 border border-blue-300 rounded min-w-0"
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
           <span
             className="flex-1 text-xs text-gray-700 truncate cursor-pointer hover:text-blue-600"
-            onDoubleClick={() => setIsEditing(true)}
+            onDoubleClick={labelEditor.startEditing}
             title={`${entry.label} (double-click to edit)`}
           >
             {entry.label}
@@ -220,10 +181,11 @@ function EntryRow({
         )}
 
         {/* Operation selector */}
-        <OperationSelector
+        <OperationSelect
           value={entry.operation}
           onChange={(op) => onUpdateEntry(entry.id, { operation: op })}
-          compact
+          variant="compact"
+          className="w-14"
         />
 
         {/* Input count badge */}
@@ -304,17 +266,10 @@ function SubheaderRow({
   onInputHover,
   onInputClick,
 }: SubheaderRowProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [labelValue, setLabelValue] = useState(subheader.label);
-
-  const handleLabelSave = () => {
-    if (labelValue.trim()) {
-      onUpdateSubheader({ label: labelValue.trim() });
-    } else {
-      setLabelValue(subheader.label);
-    }
-    setIsEditing(false);
-  };
+  const labelEditor = useEditableLabel({
+    initialValue: subheader.label,
+    onSave: (newLabel) => onUpdateSubheader({ label: newLabel }),
+  });
 
   const outputColor = result
     ? DATA_TYPE_COLORS[result.dataType]?.border || '#6b7280'
@@ -358,27 +313,21 @@ function SubheaderRow({
         </button>
 
         {/* Editable label */}
-        {isEditing ? (
+        {labelEditor.isEditing ? (
           <input
+            ref={labelEditor.inputRef}
             type="text"
-            value={labelValue}
-            onChange={(e) => setLabelValue(e.target.value)}
-            onBlur={handleLabelSave}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleLabelSave();
-              if (e.key === 'Escape') {
-                setLabelValue(subheader.label);
-                setIsEditing(false);
-              }
-            }}
-            autoFocus
+            value={labelEditor.value}
+            onChange={(e) => labelEditor.setValue(e.target.value)}
+            onBlur={labelEditor.handleBlur}
+            onKeyDown={labelEditor.handleKeyDown}
             className="flex-1 text-sm font-medium px-1 py-0.5 border border-blue-300 rounded min-w-0"
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
           <span
             className="flex-1 text-sm font-medium text-gray-800 truncate cursor-pointer hover:text-blue-600"
-            onDoubleClick={() => setIsEditing(true)}
+            onDoubleClick={labelEditor.startEditing}
             title={`${subheader.label} (double-click to edit)`}
           >
             {subheader.label}
@@ -386,9 +335,11 @@ function SubheaderRow({
         )}
 
         {/* Operation selector */}
-        <OperationSelector
+        <OperationSelect
           value={subheader.operation}
           onChange={(op) => onUpdateSubheader({ operation: op })}
+          variant="compact"
+          className="w-16"
         />
 
         {/* Entry count */}
@@ -458,7 +409,7 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
   const nodes = useNodes();
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
 
-  const { isHighlighted, setHighlight, clearHighlight, toggleHighlight } = useHighlighting();
+  const { isHighlighted, handleInputHover, handleInputClick } = useHighlighting();
 
   // ─────────────────────────────────────────────────────────────────────────────
   // INPUT RESOLUTION
@@ -687,28 +638,6 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
       });
     },
     [id, data.subheaders, updateNodeData]
-  );
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // HIGHLIGHTING HANDLERS
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  const handleInputHover = useCallback(
-    (input: ResolvedInput | null) => {
-      if (input) {
-        setHighlight(input.sourceNodeId, input.sourceRegionId);
-      } else {
-        clearHighlight();
-      }
-    },
-    [setHighlight, clearHighlight]
-  );
-
-  const handleInputClick = useCallback(
-    (input: ResolvedInput) => {
-      toggleHighlight(input.sourceNodeId, input.sourceRegionId);
-    },
-    [toggleHighlight]
   );
 
   // ─────────────────────────────────────────────────────────────────────────────
