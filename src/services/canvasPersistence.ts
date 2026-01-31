@@ -7,12 +7,7 @@
 import type { LynkNode, CanvasState } from '../types';
 import { CanvasStateSchema } from '../schemas/canvas';
 import { clearLocalStorageDraft } from '../hooks/useLocalStorageSync';
-import {
-  CanvasExporter,
-  CanvasImporter,
-  CanvasValidator,
-  type ValidationResult,
-} from '../store/canvasPersistence';
+import { defaultPipeline, type ValidationResult, type ExportedCanvas } from '../store/codecs';
 import { setNodeIdCounter } from '../store/slices/coreSlice';
 
 export type { ValidationResult };
@@ -59,7 +54,7 @@ export function exportCanvas(data: CanvasData): CanvasState {
 /**
  * Import and validate canvas state
  */
-export function importCanvas(state: CanvasState): ImportResult {
+export function importCanvas(state: ExportedCanvas): ImportResult {
   const result = CanvasStateSchema.safeParse(state);
   if (!result.success) {
     // Include field paths in error message for debugging
@@ -73,7 +68,11 @@ export function importCanvas(state: CanvasState): ImportResult {
   }
 
   const validState = result.data;
-  const restoredState = CanvasImporter.importWithExtractedFiles(validState as CanvasState);
+  const { canvas: restoredState, warnings } = defaultPipeline.import(validState as ExportedCanvas);
+
+  if (warnings.length > 0) {
+    console.warn('Canvas import warnings:', warnings);
+  }
 
   // Find highest node ID to continue from
   let maxNodeId = 0;
@@ -104,7 +103,7 @@ export function importCanvas(state: CanvasState): ImportResult {
  */
 export function validateCanvas(data: CanvasData): ValidationResult {
   const state = exportCanvas(data);
-  return CanvasValidator.validateForExport(state);
+  return defaultPipeline.validate(state);
 }
 
 /**
@@ -113,14 +112,16 @@ export function validateCanvas(data: CanvasData): ValidationResult {
 export async function saveToFile(data: CanvasData): Promise<SaveResult> {
   const state = exportCanvas(data);
 
-  const validation = CanvasValidator.validateForExport(state);
+  const validation = defaultPipeline.validate(state);
   if (!validation.valid) {
     console.error('Canvas validation failed:', validation.errors);
     return { success: false, warnings: validation.errors };
   }
 
-  const stateWithFiles = await CanvasExporter.exportWithEmbeddedFiles(state);
-  const json = JSON.stringify(stateWithFiles, null, 2);
+  const { canvas: exportedCanvas, warnings: exportWarnings } = await defaultPipeline.export(state);
+  const allWarnings = [...validation.warnings, ...exportWarnings];
+
+  const json = JSON.stringify(exportedCanvas, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
 
@@ -134,7 +135,7 @@ export async function saveToFile(data: CanvasData): Promise<SaveResult> {
 
   clearLocalStorageDraft();
 
-  return { success: true, warnings: validation.warnings };
+  return { success: true, warnings: allWarnings };
 }
 
 /**

@@ -53,6 +53,15 @@ const DataValueSchema: z.ZodType<{
   source: DataSourceReferenceSchema.optional(),
 });
 
+// Value cache - stores converted values for each data type (partial, not all types need to be present)
+const ValueCacheSchema = z.object({
+  string: z.string(),
+  number: z.string(),
+  boolean: z.string(),
+  date: z.string(),
+  currency: z.string(),
+}).partial();
+
 // Extracted region
 const ExtractedRegionSchema = z.object({
   id: z.string(),
@@ -64,7 +73,7 @@ const ExtractedRegionSchema = z.object({
   extractedData: DataValueSchema,
   dataType: SimpleDataTypeSchema,
   color: z.string(),
-  valueCache: z.record(SimpleDataTypeSchema, z.string()).optional(),
+  valueCache: ValueCacheSchema.optional(),
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -119,25 +128,25 @@ const CachedExtractorEdgesSchema = z.object({
 // NODE DATA SCHEMAS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// Display node data - visual reference for images and PDFs
-const DisplayNodeDataSchema = z.object({
-  label: z.string(),
+// Base schema for file-backed nodes (DRY)
+const FileNodeDataSchema = z.object({
   fileType: z.enum(['pdf', 'image']),
   fileUrl: z.string().optional(),
   fileId: z.string().optional(),
   fileName: z.string().optional(),
+});
+
+// Display node data - visual reference for images and PDFs
+const DisplayNodeDataSchema = FileNodeDataSchema.extend({
+  label: z.string(),
   view: DocumentViewSchema,
   totalPages: z.number(),
   cachedExtractorEdges: CachedExtractorEdgesSchema.optional(),
 });
 
 // Extractor node data - data extraction with regions
-const ExtractorNodeDataSchema = z.object({
+const ExtractorNodeDataSchema = FileNodeDataSchema.extend({
   label: z.string(),
-  fileType: z.enum(['pdf', 'image']),
-  fileName: z.string().optional(),
-  fileUrl: z.string().optional(),
-  fileId: z.string().optional(),
   regions: z.array(ExtractedRegionSchema),
   currentPage: z.number(),
   totalPages: z.number(),
@@ -290,13 +299,6 @@ const MetadataSchema = z.object({
   updatedAt: z.string(),
 });
 
-// Embedded file schema
-const EmbeddedFileSchema = z.object({
-  filename: z.string(),
-  mimeType: z.string(),
-  data: z.string(),
-});
-
 // Full canvas state schema
 export const CanvasStateSchema = z.object({
   version: z.string(),
@@ -304,7 +306,7 @@ export const CanvasStateSchema = z.object({
   nodes: z.array(NodeSchema),
   edges: z.array(EdgeSchema),
   viewport: ViewportSchema,
-  embeddedFiles: z.record(z.string(), EmbeddedFileSchema).optional(),
+  embedded: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type ValidatedCanvasState = z.infer<typeof CanvasStateSchema>;

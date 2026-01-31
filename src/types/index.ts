@@ -70,7 +70,7 @@ export type {
 } from './nodes';
 
 // Canvas state
-export type { CanvasMetadata, CanvasState, EmbeddedFile } from './canvas';
+export type { CanvasMetadata, CanvasState } from './canvas';
 
 // Node capabilities and categories
 export { FileNode, SourceNode, CanExport, CanImport } from './categories';

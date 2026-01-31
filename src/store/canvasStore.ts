@@ -17,7 +17,7 @@ import { create } from 'zustand';
 import type { Edge, NodeChange, EdgeChange, Viewport } from '@xyflow/react';
 import type { LynkNode, LynkNodeData, LynkNodeType, CanvasState } from '../types';
 import type { LayoutType } from '../core/layout/layoutAlgorithms';
-import type { ValidationResult } from './canvasPersistence';
+import type { ValidationResult } from './codecs';
 
 // Import slice creators
 import {

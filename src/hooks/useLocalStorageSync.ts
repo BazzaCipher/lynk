@@ -42,10 +42,10 @@ function prepareForStorage(canvas: CanvasState): { stripped: CanvasState; missin
     }
   }
 
-  // Strip embedded files from canvas (too large for localStorage)
+  // Strip embedded data from canvas (too large for localStorage)
   const stripped: CanvasState = {
     ...canvas,
-    embeddedFiles: undefined,
+    embedded: undefined,
   };
 
   return { stripped, missingFileIds };

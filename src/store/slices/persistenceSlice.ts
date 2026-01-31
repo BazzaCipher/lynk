@@ -5,7 +5,7 @@
  */
 
 import type { CanvasState } from '../../types';
-import type { ValidationResult } from '../canvasPersistence';
+import type { ValidationResult } from '../codecs';
 import * as persistenceService from '../../services/canvasPersistence';
 import { filterValidEdges } from '../../services/canvasValidation';
 import type { StateCreator } from './types';

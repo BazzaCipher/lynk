@@ -1,4 +1,5 @@
 import { useCanvasStore } from '../../store/canvasStore';
+import { useToast } from '../ui/Toast';
 import type { DisplayNodeData, ExtractorNodeData, CalculationNodeData, SheetNodeData, LabelNodeData } from '../../types';
 import { createImageView } from '../../types';
 
@@ -51,6 +52,7 @@ export function Toolbar() {
   const clearCanvas = useCanvasStore((state) => state.clearCanvas);
   const canvasName = useCanvasStore((state) => state.canvasName);
   const setCanvasName = useCanvasStore((state) => state.setCanvasName);
+  const { showToast } = useToast();
 
   const handleAddNode = (
     type: 'display' | 'extractor' | 'calculation' | 'sheet' | 'label',
@@ -67,22 +69,32 @@ export function Toolbar() {
   const handleSave = async () => {
     const result = await saveToFile();
     if (!result.success) {
-      alert('Save failed:\n' + result.warnings.join('\n'));
+      showToast('Save failed: ' + result.warnings.join(', '), 'error');
     } else if (result.warnings.length > 0) {
-      alert('Saved with warnings:\n' + result.warnings.join('\n'));
+      showToast('Saved with warnings: ' + result.warnings.join(', '), 'warning');
+    } else {
+      showToast('Canvas saved successfully', 'success');
     }
   };
 
   const handleLoad = async () => {
     const result = await loadFromFile();
     if (!result.success && result.error) {
-      alert(result.error);
+      // Format the error message for readability
+      const errorMsg = result.error.startsWith('Invalid canvas file:')
+        ? 'Invalid canvas file. The file may be corrupted or in an incompatible format.'
+        : result.error;
+      showToast(errorMsg, 'error');
+      console.error('Load error details:', result.error);
+    } else if (result.success) {
+      showToast('Canvas loaded successfully', 'success');
     }
   };
 
   const handleClear = () => {
     if (confirm('Clear the canvas? This cannot be undone.')) {
       clearCanvas();
+      showToast('Canvas cleared', 'info');
     }
   };
 

@@ -20,18 +20,6 @@ export interface CanvasMetadata {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// EMBEDDED FILES
-// ═══════════════════════════════════════════════════════════════════════════════
-
-/** Embedded file data for complete export */
-export interface EmbeddedFile {
-  filename: string;
-  mimeType: string;
-  /** Base64-encoded file content */
-  data: string;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
 // CANVAS STATE
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -42,6 +30,6 @@ export interface CanvasState {
   nodes: LynkNode[];
   edges: Edge[];
   viewport: Viewport;
-  /** Embedded files for complete export (PDFs, images used in FileNodes) */
-  embeddedFiles?: Record<string, EmbeddedFile>;
+  /** Codec-managed embedded data (files, etc.) */
+  embedded?: Record<string, unknown>;
 }
