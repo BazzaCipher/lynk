@@ -14,6 +14,9 @@ import type { LynkNode, LynkNodeType } from './nodes';
 import type { SimpleDataType } from './data';
 import type { DataSourceReference } from './geometry';
 
+// Re-export SimpleDataType for convenience
+export type { SimpleDataType } from './data';
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // CAPABILITY INTERFACES (data contracts)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -25,6 +28,8 @@ import type { DataSourceReference } from './geometry';
 export interface NodeOutput {
   value: number | string | boolean | Date;
   dataType: SimpleDataType;
+  /** Types this output is compatible with (for handle coloring). Defaults to [dataType] if not specified. */
+  compatibleTypes?: SimpleDataType[];
   label: string;
   source?: DataSourceReference | null;
 }
@@ -47,7 +52,12 @@ export interface Exportable {
  * and resolves source values from the source node's Exportable.outputs.
  */
 export interface Importable {
-  // Input resolution is edge-driven via useDataFlow
+  /**
+   * Types accepted by input handles (for handle coloring).
+   * - As array: all handles accept these types
+   * - As Record: per-handle accepted types (key = handleId)
+   */
+  acceptedTypes?: SimpleDataType[] | Record<string, SimpleDataType[]>;
 }
 
 /** Data contract for file-backed nodes */

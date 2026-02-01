@@ -12,6 +12,7 @@ import { extractTextFromRegion } from '../../core/extraction/ocrExtractor';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useToast } from '../ui/Toast';
 import { useFileUpload, type FileUploadResult } from '../../hooks/useFileUpload';
+import { useNodeOutputs } from '../../hooks/useNodeOutputs';
 import { getColorForType } from '../../utils/colors';
 import type {
   ExtractorNode as ExtractorNodeType,
@@ -35,6 +36,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   const replaceNode = useCanvasStore((state) => state.replaceNode);
   const removeEdge = useCanvasStore((state) => state.removeEdge);
   const edges = useEdges();
+  const nodeOutputs = useNodeOutputs(id);
   const { showToast } = useToast();
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -78,6 +80,10 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
       map[region.id] = {
         value,
         dataType: region.dataType,
+        // Add compatible types for numeric regions (number/currency are interchangeable)
+        compatibleTypes: (region.dataType === 'number' || region.dataType === 'currency')
+          ? ['number', 'currency']
+          : undefined,
         label: region.label,
         source,
       };
@@ -85,13 +91,14 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
     return map;
   }, [data.regions, id]);
 
+  // Sync outputs to node data
   useEffect(() => {
-    const current = JSON.stringify(data.outputs);
-    const next = JSON.stringify(outputs);
-    if (current !== next) {
-      updateNodeData(id, { outputs });
+    if (Object.keys(outputs).length > 0) {
+      nodeOutputs.update(outputs);
+    } else {
+      nodeOutputs.clearAll();
     }
-  }, [outputs, id, updateNodeData, data.outputs]);
+  }, [outputs, nodeOutputs]);
 
   const onFileRegistered = useCallback(
     (result: FileUploadResult) => {

@@ -100,7 +100,7 @@ export function useDataFlow({ nodeId, targetHandle, acceptedTypes }: UseDataFlow
  * Generic implementation — reads from the node's Exportable.outputs map.
  * Each node component is responsible for populating its outputs.
  */
-function resolveNodeOutput(
+export function resolveNodeOutput(
   node: LynkNode,
   sourceHandle: string | null | undefined
 ): Omit<ResolvedInput, 'edgeId'> | null {

@@ -37,12 +37,12 @@ export function NodeEntry({
           position: 'absolute',
           top: '50%',
           transform: 'translateY(-50%)',
-          ...(handlePosition === Position.Left && { left: -6 }),
-          ...(handlePosition === Position.Right && { right: -6 }),
-          // Apply handle color based on data type
-          backgroundColor: handleColor || '#6b7280',
+          ...(handlePosition === Position.Left && { left: -8 }),
+          ...(handlePosition === Position.Right && { right: -8 }),
+          // Apply handle color based on data type (supports gradients)
+          background: handleColor || '#6b7280',
         }}
-        className={`w-3 h-3 border-2 border-white ${
+        className={`w-4 h-4 border-2 border-white ${
           allowMultiple ? 'ring-2 ring-offset-1 ring-blue-300' : ''
         }`}
       />

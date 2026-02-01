@@ -6,24 +6,35 @@ import { NodeEntry } from './base/NodeEntry';
 import { useDataFlow, formatValue } from '../../hooks/useDataFlow';
 import { useSourceHighlighting } from '../../hooks/useHighlighting';
 import { useCanvasStore } from '../../store/canvasStore';
-import { useEditableLabel } from '../../hooks/useEditableLabel';
-import type { LabelNode as LabelNodeType } from '../../types';
+import { EditableLabel } from './base/EditableLabel';
+import { useNodeOutputs } from '../../hooks/useNodeOutputs';
+import { getInputHandleColor, getOutputHandleColor } from '../../utils/colors';
+import type { LabelNode as LabelNodeType, SimpleDataType } from '../../types';
 
 export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
   const { inputs, hasInputs } = useDataFlow({ nodeId: id, targetHandle: 'input' });
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
   const removeEdgesToTarget = useCanvasStore((state) => state.removeEdgesToTarget);
+  const nodeOutputs = useNodeOutputs(id);
 
   // Local editing state for value
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Label editing using shared hook
-  const labelEditor = useEditableLabel({
-    initialValue: data.label,
-    onSave: (newLabel) => updateNodeData(id, { label: newLabel }),
-  });
+  // All data types for LabelNode input (accepts everything)
+  const allTypes: SimpleDataType[] = useMemo(
+    () => ['string', 'number', 'currency', 'date', 'boolean'],
+    []
+  );
+
+  // Store accepted types in node data for handle coloring
+  useEffect(() => {
+    const currentTypes = data.acceptedTypes;
+    if (JSON.stringify(allTypes) !== JSON.stringify(currentTypes)) {
+      updateNodeData(id, { acceptedTypes: allTypes });
+    }
+  }, [id, updateNodeData, data.acceptedTypes, allTypes]);
 
   // Get the first (and only) input value
   const input = inputs[0];
@@ -119,31 +130,44 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
     e.stopPropagation();
   }, [handleSave, handleCancel]);
 
-
-  // Update value and outputs in node data for downstream nodes to access
+  // Hydrate outputs from persisted value on mount (before upstream data is available)
   useEffect(() => {
-    if (outputValue !== null && outputValue !== undefined) {
-      const dataType: 'number' | 'string' = typeof outputValue === 'number' ? 'number' : 'string';
+    if (data.value && !data.outputs) {
+      const dataType: 'number' | 'string' = data.value.type === 'number' ? 'number' : 'string';
       updateNodeData(id, {
-        value: {
-          type: dataType,
-          value: outputValue,
-        },
         outputs: {
           output: {
-            value: outputValue,
+            value: data.value.value,
             dataType,
             label: data.label,
           },
         },
       });
-    } else {
-      updateNodeData(id, {
-        value: undefined,
-        outputs: undefined,
-      });
     }
-  }, [outputValue, id, updateNodeData, data.label]);
+    // Only run on mount - don't include data.value or data.outputs as deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync value and outputs to node data
+  useEffect(() => {
+    if (outputValue === null || outputValue === undefined) {
+      nodeOutputs.clearAll({ value: undefined });
+      return;
+    }
+
+    const dataType: 'number' | 'string' = typeof outputValue === 'number' ? 'number' : 'string';
+    // Determine compatible types based on format
+    const compatibleTypes = (data.format === 'number' || data.format === 'currency')
+      ? ['number', 'currency'] as SimpleDataType[]
+      : undefined;
+
+    nodeOutputs.set('output', {
+      value: outputValue,
+      dataType,
+      compatibleTypes,
+      label: data.label,
+    }, { value: { type: dataType, value: outputValue } });
+  }, [outputValue, data.label, data.format, nodeOutputs]);
 
   return (
     <BaseNode
@@ -151,31 +175,21 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
       selected={selected}
       className="!min-w-0"
       renderHeader={
-        labelEditor.isEditing ? (
-          <input
-            ref={labelEditor.inputRef}
-            type="text"
-            value={labelEditor.value}
-            onChange={(e) => labelEditor.setValue(e.target.value)}
-            onKeyDown={labelEditor.handleKeyDown}
-            onBlur={labelEditor.handleBlur}
-            className="text-xs font-medium w-full px-1 py-0.5 border border-blue-300 rounded min-w-0 outline-none"
-            onClick={(e) => e.stopPropagation()}
-          />
-        ) : (
-          <span
-            className="text-xs font-medium text-gray-700 truncate cursor-pointer hover:text-blue-600"
-            onDoubleClick={labelEditor.startEditing}
-            title={`${data.label} (double-click to rename)`}
-          >
-            {data.label}
-          </span>
-        )
+        <EditableLabel
+          value={data.label}
+          onSave={(newLabel) => updateNodeData(id, { label: newLabel })}
+          variant="header"
+        />
       }
     >
       <div className="relative">
-        {/* Input handle (left) */}
-        <NodeEntry id="input" handleType="target" handlePosition={Position.Left}>
+        {/* Input handle (left) - accepts all types */}
+        <NodeEntry
+          id="input"
+          handleType="target"
+          handlePosition={Position.Left}
+          handleColor={getInputHandleColor(data.acceptedTypes)}
+        >
           <div className="w-0" />
         </NodeEntry>
 
@@ -211,8 +225,13 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
           )}
         </div>
 
-        {/* Output handle (right) */}
-        <NodeEntry id="output" handleType="source" handlePosition={Position.Right}>
+        {/* Output handle (right) - color based on format */}
+        <NodeEntry
+          id="output"
+          handleType="source"
+          handlePosition={Position.Right}
+          handleColor={getOutputHandleColor(data.outputs?.output)}
+        >
           <div className="w-0" />
         </NodeEntry>
       </div>

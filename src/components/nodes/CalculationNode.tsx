@@ -20,10 +20,11 @@ import { NodeEntry } from './base/NodeEntry';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useHighlighting } from '../../hooks/useHighlighting';
 import { useDataFlow } from '../../hooks/useDataFlow';
-import { useEditableLabel } from '../../hooks/useEditableLabel';
+import { useNodeOutputs } from '../../hooks/useNodeOutputs';
+import { EditableLabel } from './base/EditableLabel';
 import { getOperation, isTypeCompatible } from '../../core/operations/operationRegistry';
 import { OperationSelect } from '../ui/OperationSelect';
-import { DATA_TYPE_COLORS } from '../../utils/colors';
+import { getInputHandleColor, getOutputHandleColor } from '../../utils/colors';
 import { formatValue } from '../../utils/formatting';
 import type {
   CalculationNode as CalculationNodeType,
@@ -39,20 +40,22 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
   const edges = useEdges();
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
   const removeEdge = useCanvasStore((state) => state.removeEdge);
+  const nodeOutputs = useNodeOutputs(id);
 
   // Use highlighting hook with input handlers
   const { isHighlighted, handleInputHover, handleInputClick } = useHighlighting();
 
   const currentOperation = getOperation(data.operation);
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // LABEL EDITING
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  const labelEditor = useEditableLabel({
-    initialValue: data.label,
-    onSave: (newLabel) => updateNodeData(id, { label: newLabel }),
-  });
+  // Store accepted types in node data for handle coloring
+  useEffect(() => {
+    const types = currentOperation?.compatibleTypes ?? [];
+    const currentTypes = data.acceptedTypes;
+    // Only update if types changed
+    if (JSON.stringify(types) !== JSON.stringify(currentTypes)) {
+      updateNodeData(id, { acceptedTypes: types });
+    }
+  }, [currentOperation, id, updateNodeData, data.acceptedTypes]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // INPUT RESOLUTION (using shared useDataFlow hook)
@@ -100,27 +103,27 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
     };
   }, [compatibleInputs, currentOperation, data.precision]);
 
-  // Store result and outputs in node data for downstream nodes to access
+  // Sync result and outputs to node data
   useEffect(() => {
-    const currentValue = data.result?.value;
-    const newValue = result?.value;
-    const currentType = data.result?.dataType;
-    const newType = result?.dataType;
-
-    if (currentValue !== newValue || currentType !== newType) {
-      const outputs = result
-        ? {
-            output: {
-              value: result.value,
-              dataType: result.dataType,
-              label: data.label,
-              source: result.source ?? null,
-            },
-          }
-        : undefined;
-      updateNodeData(id, { result, outputs });
+    if (!result) {
+      nodeOutputs.clearAll({ result: undefined });
+      return;
     }
-  }, [result, id, updateNodeData, data.result?.value, data.result?.dataType, data.label]);
+
+    // Determine compatible types for output handle coloring
+    const compatibleTypes = (currentOperation?.compatibleTypes.includes('number')
+      && currentOperation?.compatibleTypes.includes('currency'))
+      ? ['number', 'currency'] as SimpleDataType[]
+      : undefined;
+
+    nodeOutputs.set('output', {
+      value: result.value,
+      dataType: result.dataType,
+      compatibleTypes,
+      label: data.label,
+      source: result.source ?? null,
+    }, { result });
+  }, [result, data.label, currentOperation, nodeOutputs]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // OPERATION CHANGE HANDLING
@@ -198,9 +201,10 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
   // ─────────────────────────────────────────────────────────────────────────────
 
   const isSingleInput = currentOperation?.category === 'single';
-  const outputColor = result
-    ? DATA_TYPE_COLORS[result.dataType]?.border || '#6b7280'
-    : '#6b7280';
+
+  // Compute handle colors using utility functions
+  const inputHandleColor = getInputHandleColor(data.acceptedTypes);
+  const outputHandleColor = getOutputHandleColor(data.outputs?.output);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -215,6 +219,7 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
           handleType="target"
           handlePosition={Position.Left}
           allowMultiple={!isSingleInput}
+          handleColor={inputHandleColor}
         >
           <div className="flex-1">
             {resolvedInputs.length === 0 ? (
@@ -292,30 +297,14 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
           id="output"
           handleType="source"
           handlePosition={Position.Right}
-          handleColor={outputColor}
+          handleColor={outputHandleColor}
         >
           <div className="flex-1 flex items-center gap-2">
-            {/* Editable label */}
-            {labelEditor.isEditing ? (
-              <input
-                ref={labelEditor.inputRef}
-                type="text"
-                value={labelEditor.value}
-                onChange={(e) => labelEditor.setValue(e.target.value)}
-                onKeyDown={labelEditor.handleKeyDown}
-                onBlur={labelEditor.handleBlur}
-                className="flex-1 text-xs px-1 py-0.5 border border-blue-300 rounded min-w-0 outline-none"
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : (
-              <span
-                className="flex-1 text-xs text-gray-500 truncate cursor-pointer hover:text-blue-600"
-                onDoubleClick={labelEditor.startEditing}
-                title={`${data.label} (double-click to rename)`}
-              >
-                {data.label}
-              </span>
-            )}
+            <EditableLabel
+              value={data.label}
+              onSave={(newLabel) => updateNodeData(id, { label: newLabel })}
+              className="text-gray-500"
+            />
             {/* Result value */}
             {result ? (
               <span className="font-mono font-medium text-sm">

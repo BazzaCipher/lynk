@@ -56,3 +56,45 @@ export function getTypeBadgeClass(dataType: SimpleDataType): string {
   };
   return classes[dataType] || classes.string;
 }
+
+/**
+ * Create CSS gradient from multiple data types.
+ * Sharp edges (no blending) between colors.
+ */
+export function createGradientFromTypes(types: SimpleDataType[]): string {
+  if (types.length === 0) return '#6b7280';
+  if (types.length === 1) return DATA_TYPE_COLORS[types[0]]?.border || '#6b7280';
+
+  const colors = types.map(t => DATA_TYPE_COLORS[t]?.border || '#6b7280');
+  const segmentSize = 100 / colors.length;
+  const stops = colors.map((color, i) => {
+    const start = i * segmentSize;
+    const end = (i + 1) * segmentSize;
+    return `${color} ${start}%, ${color} ${end}%`;
+  }).join(', ');
+
+  return `linear-gradient(90deg, ${stops})`;
+}
+
+/**
+ * Get output handle color from NodeOutput.
+ */
+export function getOutputHandleColor(output: { dataType: SimpleDataType; compatibleTypes?: SimpleDataType[] } | undefined): string {
+  if (!output) return '#6b7280';
+  const types = output.compatibleTypes ?? [output.dataType];
+  return createGradientFromTypes(types);
+}
+
+/**
+ * Get input handle color from accepted types.
+ */
+export function getInputHandleColor(
+  acceptedTypes: SimpleDataType[] | Record<string, SimpleDataType[]> | undefined,
+  handleId?: string
+): string {
+  if (!acceptedTypes) return '#6b7280';
+  const types = Array.isArray(acceptedTypes)
+    ? acceptedTypes
+    : (handleId ? acceptedTypes[handleId] : undefined) ?? [];
+  return createGradientFromTypes(types);
+}

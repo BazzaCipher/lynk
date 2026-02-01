@@ -16,8 +16,9 @@ import { BaseNode } from './base/BaseNode';
 import { NodeEntry } from './base/NodeEntry';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useHighlighting } from '../../hooks/useHighlighting';
-import { useEditableLabel } from '../../hooks/useEditableLabel';
-import { type ResolvedInput, parseNumericValue } from '../../hooks/useDataFlow';
+import { EditableLabel } from './base/EditableLabel';
+import { useNodeOutputs } from '../../hooks/useNodeOutputs';
+import { type ResolvedInput, resolveNodeOutput } from '../../hooks/useDataFlow';
 import { getOperation } from '../../core/operations/operationRegistry';
 import { OperationSelect } from '../ui/OperationSelect';
 import { DATA_TYPE_COLORS, getTypeBadgeClass } from '../../utils/colors';
@@ -102,11 +103,6 @@ function EntryRow({
   onInputHover,
   onInputClick,
 }: EntryRowProps) {
-  const labelEditor = useEditableLabel({
-    initialValue: entry.label,
-    onSave: (newLabel) => onUpdateEntry(entry.id, { label: newLabel }),
-  });
-
   const outputColor = result
     ? DATA_TYPE_COLORS[result.dataType]?.border || '#6b7280'
     : '#6b7280';
@@ -159,26 +155,10 @@ function EntryRow({
         </button>
 
         {/* Editable label */}
-        {labelEditor.isEditing ? (
-          <input
-            ref={labelEditor.inputRef}
-            type="text"
-            value={labelEditor.value}
-            onChange={(e) => labelEditor.setValue(e.target.value)}
-            onBlur={labelEditor.handleBlur}
-            onKeyDown={labelEditor.handleKeyDown}
-            className="flex-1 text-xs px-1 py-0.5 border border-blue-300 rounded min-w-0"
-            onClick={(e) => e.stopPropagation()}
-          />
-        ) : (
-          <span
-            className="flex-1 text-xs text-gray-700 truncate cursor-pointer hover:text-blue-600"
-            onDoubleClick={labelEditor.startEditing}
-            title={`${entry.label} (double-click to edit)`}
-          >
-            {entry.label}
-          </span>
-        )}
+        <EditableLabel
+          value={entry.label}
+          onSave={(newLabel) => onUpdateEntry(entry.id, { label: newLabel })}
+        />
 
         {/* Operation selector */}
         <OperationSelect
@@ -266,11 +246,6 @@ function SubheaderRow({
   onInputHover,
   onInputClick,
 }: SubheaderRowProps) {
-  const labelEditor = useEditableLabel({
-    initialValue: subheader.label,
-    onSave: (newLabel) => onUpdateSubheader({ label: newLabel }),
-  });
-
   const outputColor = result
     ? DATA_TYPE_COLORS[result.dataType]?.border || '#6b7280'
     : '#6b7280';
@@ -313,26 +288,11 @@ function SubheaderRow({
         </button>
 
         {/* Editable label */}
-        {labelEditor.isEditing ? (
-          <input
-            ref={labelEditor.inputRef}
-            type="text"
-            value={labelEditor.value}
-            onChange={(e) => labelEditor.setValue(e.target.value)}
-            onBlur={labelEditor.handleBlur}
-            onKeyDown={labelEditor.handleKeyDown}
-            className="flex-1 text-sm font-medium px-1 py-0.5 border border-blue-300 rounded min-w-0"
-            onClick={(e) => e.stopPropagation()}
-          />
-        ) : (
-          <span
-            className="flex-1 text-sm font-medium text-gray-800 truncate cursor-pointer hover:text-blue-600"
-            onDoubleClick={labelEditor.startEditing}
-            title={`${subheader.label} (double-click to edit)`}
-          >
-            {subheader.label}
-          </span>
-        )}
+        <EditableLabel
+          value={subheader.label}
+          onSave={(newLabel) => onUpdateSubheader({ label: newLabel })}
+          className="text-sm font-medium text-gray-800"
+        />
 
         {/* Operation selector */}
         <OperationSelect
@@ -408,6 +368,7 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
   const edges = useEdges();
   const nodes = useNodes();
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
+  const nodeOutputs = useNodeOutputs(id);
 
   const { isHighlighted, handleInputHover, handleInputClick } = useHighlighting();
 
@@ -439,7 +400,7 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
           const sourceNode = nodes.find((n) => n.id === edge.source) as LynkNode | undefined;
           if (!sourceNode) continue;
 
-          const resolved = resolveNodeOutputLocal(sourceNode, edge.sourceHandle);
+          const resolved = resolveNodeOutput(sourceNode, edge.sourceHandle);
           if (resolved) {
             inputs.push({ ...resolved, edgeId: edge.id });
           }
@@ -539,19 +500,16 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
     return Object.keys(map).length > 0 ? map : undefined;
   }, [data.subheaders, entryResults, subheaderResults]);
 
-  // Store results and outputs in node data for downstream nodes to access
+  // Sync results and outputs to node data
   useEffect(() => {
-    const currentEntryResults = JSON.stringify(data.entryResults);
-    const newEntryResults = JSON.stringify(entryResults);
-    const currentSubheaderResults = JSON.stringify(data.subheaderResults);
-    const newSubheaderResults = JSON.stringify(subheaderResults);
-    const currentOutputs = JSON.stringify(data.outputs);
-    const newOutputs = JSON.stringify(outputs);
-
-    if (currentEntryResults !== newEntryResults || currentSubheaderResults !== newSubheaderResults || currentOutputs !== newOutputs) {
-      updateNodeData(id, { entryResults, subheaderResults, outputs });
+    if (!outputs || Object.keys(outputs).length === 0) {
+      nodeOutputs.clearAll({ entryResults, subheaderResults });
+      return;
     }
-  }, [entryResults, subheaderResults, outputs, id, updateNodeData, data.entryResults, data.subheaderResults, data.outputs]);
+
+    nodeOutputs.update(outputs, { entryResults, subheaderResults });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- entryResults/subheaderResults are derived from same data as outputs
+  }, [outputs, nodeOutputs]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // CRUD HANDLERS
@@ -689,34 +647,3 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// LOCAL RESOLVER (generic — reads Exportable.outputs)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function resolveNodeOutputLocal(
-  node: LynkNode,
-  sourceHandle: string | null | undefined
-): Omit<ResolvedInput, 'edgeId'> | null {
-  if (!sourceHandle) return null;
-
-  const data = node.data as { outputs?: Record<string, import('../../types').NodeOutput> };
-  const output = data.outputs?.[sourceHandle];
-  if (!output) return null;
-
-  const numericValue =
-    typeof output.value === 'number'
-      ? output.value
-      : typeof output.value === 'string'
-        ? parseNumericValue(output.value)
-        : null;
-
-  return {
-    value: output.value,
-    numericValue,
-    label: output.label,
-    source: output.source ?? null,
-    dataType: output.dataType,
-    sourceNodeId: node.id,
-    sourceRegionId: sourceHandle,
-  };
-}
