@@ -41,8 +41,10 @@ export function NodeEntry({
           ...(handlePosition === Position.Right && { right: -8 }),
           // Apply handle color based on data type (supports gradients)
           background: handleColor || '#6b7280',
+          width: '15px',
+          height: '15px',
         }}
-        className={`w-4 h-4 border-2 border-white ${
+        className={`border-2 border-white ${
           allowMultiple ? 'ring-2 ring-offset-1 ring-blue-300' : ''
         }`}
       />
