@@ -42,7 +42,7 @@ export type {
 
 export { DEFAULT_VIEW, createImageView, createPdfView } from './view';
 
-// Node types
+// Node types and type guards
 export type {
   LynkNodeType,
   BaseNodeData,
@@ -60,13 +60,17 @@ export type {
   LabelNodeData,
   GroupNodeData,
   LynkNodeData,
+  LynkNode,
+} from './nodes';
+
+// Node type aliases (types) and type guards (values) - declaration merging
+export {
   DisplayNode,
   ExtractorNode,
   CalculationNode,
   SheetNode,
   LabelNode,
   GroupNode,
-  LynkNode,
 } from './nodes';
 
 // Canvas state

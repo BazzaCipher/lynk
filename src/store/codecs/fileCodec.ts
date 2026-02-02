@@ -9,7 +9,7 @@
  */
 
 import type { CanvasState, LynkNode } from '../../types';
-import { FileNode } from '../../types';
+import { FileNode, ExtractorNode } from '../../types';
 import { BlobRegistry } from '../canvasPersistence';
 import type { CanvasCodec, EncodeResult, DecodeResult, ValidationResult } from './types';
 
@@ -235,7 +235,7 @@ export const FileCodec: CanvasCodec<FileEmbeddedData> = {
         const fileUrl = FileNode.getFileUrl(node);
         const fileId = FileNode.getFileId(node);
         const label = node.data.label;
-        const nodeTypeName = node.type === 'extractor' ? 'ExtractorNode' : 'DisplayNode';
+        const nodeTypeName = ExtractorNode.is(node) ? 'ExtractorNode' : 'DisplayNode';
 
         // Check if file has URL but no fileId (blob URL that won't persist)
         if (fileUrl && !fileId) {

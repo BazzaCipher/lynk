@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import {
   ReactFlow,
   Background,
@@ -11,12 +11,12 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import { useCanvasStore } from '../../store/canvasStore';
-import { DisplayNode } from '../nodes/DisplayNode';
-import { ExtractorNode } from '../nodes/ExtractorNode';
-import { CalculationNode } from '../nodes/CalculationNode';
-import { SheetNode } from '../nodes/SheetNode';
-import { LabelNode } from '../nodes/LabelNode';
-import { GroupNode } from '../nodes/GroupNode';
+import { DisplayNode as DisplayNodeComponent } from '../nodes/DisplayNode';
+import { ExtractorNode as ExtractorNodeComponent } from '../nodes/ExtractorNode';
+import { CalculationNode as CalculationNodeComponent } from '../nodes/CalculationNode';
+import { SheetNode as SheetNodeComponent } from '../nodes/SheetNode';
+import { LabelNode as LabelNodeComponent } from '../nodes/LabelNode';
+import { GroupNode as GroupNodeComponent } from '../nodes/GroupNode';
 import { withErrorBoundary } from '../nodes/base/withErrorBoundary';
 import { Toolbar } from './Toolbar';
 import { ConnectionLine } from './ConnectionLine';
@@ -25,17 +25,18 @@ import { useToast } from '../ui/Toast';
 import { wouldCreateCycle } from '../../core/engine/dependencyGraph';
 import { getOperation, isTypeCompatible } from '../../core/operations/operationRegistry';
 import { useFileUpload } from '../../hooks/useFileUpload';
-import type { ExtractorNodeData, CalculationNodeData, LynkNode } from '../../types';
-import { CanExport, CanImport } from '../../types';
+import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import type { LynkNode } from '../../types';
+import { CanExport, CanImport, CalculationNode, ExtractorNode } from '../../types';
 
 // Wrap node components with error boundaries to prevent crashes
 const nodeTypes = {
-  display: withErrorBoundary(DisplayNode, 'display'),
-  extractor: withErrorBoundary(ExtractorNode, 'extractor'),
-  calculation: withErrorBoundary(CalculationNode, 'calculation'),
-  sheet: withErrorBoundary(SheetNode, 'sheet'),
-  label: withErrorBoundary(LabelNode, 'label'),
-  group: withErrorBoundary(GroupNode, 'group'),
+  display: withErrorBoundary(DisplayNodeComponent, 'display'),
+  extractor: withErrorBoundary(ExtractorNodeComponent, 'extractor'),
+  calculation: withErrorBoundary(CalculationNodeComponent, 'calculation'),
+  sheet: withErrorBoundary(SheetNodeComponent, 'sheet'),
+  label: withErrorBoundary(LabelNodeComponent, 'label'),
+  group: withErrorBoundary(GroupNodeComponent, 'group'),
 };
 
 export function LynkCanvas() {
@@ -46,19 +47,12 @@ export function LynkCanvas() {
   const storeAddEdge = useCanvasStore((state) => state.addEdge);
   const addNode = useCanvasStore((state) => state.addNode);
   const setViewport = useCanvasStore((state) => state.setViewport);
-  const createGroup = useCanvasStore((state) => state.createGroup);
-  const ungroupNodes = useCanvasStore((state) => state.ungroupNodes);
-  const getSelectedNodes = useCanvasStore((state) => state.getSelectedNodes);
-  const getSelectedEdges = useCanvasStore((state) => state.getSelectedEdges);
-  const removeSelectedNodes = useCanvasStore((state) => state.removeSelectedNodes);
-  const removeSelectedEdges = useCanvasStore((state) => state.removeSelectedEdges);
-  const clearSelection = useCanvasStore((state) => state.clearSelection);
-  const saveToFile = useCanvasStore((state) => state.saveToFile);
   const pushHistory = useCanvasStore((state) => state.pushHistory);
-  const undo = useCanvasStore((state) => state.undo);
-  const redo = useCanvasStore((state) => state.redo);
   const { showToast } = useToast();
   const { screenToFlowPosition } = useReactFlow();
+
+  // Keyboard shortcuts (Delete, Ctrl+S, Ctrl+Z, Ctrl+G, etc.)
+  useKeyboardShortcuts();
 
   const isValidConnection = useCallback(
     (connection: Edge | Connection): boolean => {
@@ -90,18 +84,18 @@ export function LynkCanvas() {
       }
 
       // Type compatibility check for CalculationNode targets
-      if (targetNode.type === 'calculation') {
-        const calcData = targetNode.data as CalculationNodeData;
-        const operation = getOperation(calcData.operation);
+      const targetLynkNode = targetNode as LynkNode;
+      const sourceLynkNode = sourceNode as LynkNode;
+      if (CalculationNode.is(targetLynkNode)) {
+        const operation = getOperation(targetLynkNode.data.operation);
 
         if (operation) {
           // Check if source data type is compatible with the operation
-          if (sourceNode.type === 'extractor') {
-            const extractorData = sourceNode.data as ExtractorNodeData;
+          if (ExtractorNode.is(sourceLynkNode)) {
             const regionId = connection.sourceHandle;
-            const region = extractorData.regions.find((r) => r.id === regionId);
+            const region = sourceLynkNode.data.regions.find((r) => r.id === regionId);
 
-            if (region && !isTypeCompatible(calcData.operation, region.dataType)) {
+            if (region && !isTypeCompatible(targetLynkNode.data.operation, region.dataType)) {
               return false; // Incompatible type
             }
           }
@@ -158,18 +152,18 @@ export function LynkCanvas() {
       }
 
       // Type compatibility check for CalculationNode targets
-      if (targetNode.type === 'calculation') {
-        const calcData = targetNode.data as CalculationNodeData;
-        const operation = getOperation(calcData.operation);
+      const targetLynkNode = targetNode as LynkNode;
+      const sourceLynkNode = sourceNode as LynkNode;
+      if (CalculationNode.is(targetLynkNode)) {
+        const operation = getOperation(targetLynkNode.data.operation);
 
         if (operation) {
           // Check if source data type is compatible with the operation
-          if (sourceNode.type === 'extractor') {
-            const extractorData = sourceNode.data as ExtractorNodeData;
+          if (ExtractorNode.is(sourceLynkNode)) {
             const regionId = connection.sourceHandle;
-            const region = extractorData.regions.find((r) => r.id === regionId);
+            const region = sourceLynkNode.data.regions.find((r) => r.id === regionId);
 
-            if (region && !isTypeCompatible(calcData.operation, region.dataType)) {
+            if (region && !isTypeCompatible(targetLynkNode.data.operation, region.dataType)) {
               showToast(
                 `${region.dataType} is not compatible with ${operation.label}. ` +
                 `Supported types: ${operation.compatibleTypes.join(', ')}`,
@@ -281,115 +275,13 @@ export function LynkCanvas() {
           currentPage: 1,
           totalPages: 1,
           regions: [],
-        } as ExtractorNodeData);
+        });
       });
 
       showToast(`Created ${results.length} extractor node(s)`, 'success');
     },
     [screenToFlowPosition, addNode, pushHistory, showToast, processFile]
   );
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Ignore if typing in an input field
-      const target = event.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-        return;
-      }
-
-      const isMod = event.ctrlKey || event.metaKey;
-
-      // Escape - clear selection
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        clearSelection();
-      }
-
-      // Delete/Backspace - delete selected nodes and edges
-      if (event.key === 'Delete' || event.key === 'Backspace') {
-        const selectedNodes = getSelectedNodes();
-        const selectedEdges = getSelectedEdges();
-
-        if (selectedNodes.length > 0 || selectedEdges.length > 0) {
-          event.preventDefault();
-          pushHistory();
-
-          if (selectedEdges.length > 0) {
-            removeSelectedEdges();
-          }
-          if (selectedNodes.length > 0) {
-            removeSelectedNodes();
-          }
-
-          const parts = [];
-          if (selectedNodes.length > 0) {
-            parts.push(`${selectedNodes.length} node(s)`);
-          }
-          if (selectedEdges.length > 0) {
-            parts.push(`${selectedEdges.length} edge(s)`);
-          }
-          showToast(`Deleted ${parts.join(' and ')}`, 'info');
-        }
-      }
-
-      // Ctrl/Cmd+S - save to file
-      if (isMod && event.key === 's') {
-        event.preventDefault();
-        saveToFile().then((result) => {
-          if (result.success) {
-            showToast('Canvas saved', 'success');
-          } else if (result.warnings && result.warnings.length > 0) {
-            showToast(`Save failed: ${result.warnings[0]}`, 'error');
-          }
-        });
-      }
-
-      // Ctrl/Cmd+Z - undo
-      if (isMod && event.key === 'z' && !event.shiftKey) {
-        event.preventDefault();
-        undo();
-      }
-
-      // Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z - redo
-      if (isMod && (event.key === 'y' || (event.key === 'z' && event.shiftKey))) {
-        event.preventDefault();
-        redo();
-      }
-
-      // Ctrl/Cmd+G - group selected nodes
-      if (isMod && event.key === 'g' && !event.shiftKey) {
-        event.preventDefault();
-        const selected = getSelectedNodes();
-        if (selected.length >= 2) {
-          pushHistory();
-          const groupId = createGroup(selected.map((n) => n.id));
-          if (groupId) {
-            showToast('Nodes grouped', 'info');
-          }
-        } else {
-          showToast('Select at least 2 nodes to group', 'warning');
-        }
-      }
-
-      // Ctrl/Cmd+Shift+G - ungroup selected group
-      if (isMod && event.key === 'G' && event.shiftKey) {
-        event.preventDefault();
-        const selected = getSelectedNodes();
-        const groupNode = selected.find((n) => n.type === 'group');
-        if (groupNode) {
-          pushHistory();
-          ungroupNodes(groupNode.id);
-          showToast('Group dissolved', 'info');
-        } else {
-          showToast('Select a group to ungroup', 'warning');
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [getSelectedNodes, getSelectedEdges, removeSelectedNodes, removeSelectedEdges, clearSelection, saveToFile, createGroup, ungroupNodes, pushHistory, undo, redo, showToast]);
 
   return (
     <div

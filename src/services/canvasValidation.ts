@@ -6,6 +6,13 @@
 
 import type { Edge } from '@xyflow/react';
 import type { LynkNode, LynkNodeData } from '../types';
+import {
+  CalculationNode,
+  ExtractorNode,
+  DisplayNode,
+  LabelNode,
+  SheetNode,
+} from '../types';
 
 /**
  * Validate node data updates for common issues.
@@ -16,7 +23,7 @@ export function validateNodeDataUpdate(
 ): boolean {
   let isValid = true;
 
-  if (nodeType === 'calculation') {
+  if (nodeType === CalculationNode.type) {
     if ('precision' in update && typeof update.precision === 'number') {
       if (update.precision < 0 || update.precision > 10) {
         console.warn(`Invalid precision value: ${update.precision}. Should be 0-10.`);
@@ -25,7 +32,7 @@ export function validateNodeDataUpdate(
     }
   }
 
-  if (nodeType === 'extractor') {
+  if (nodeType === ExtractorNode.type) {
     if ('regions' in update && update.regions) {
       if (!Array.isArray(update.regions)) {
         console.warn('Invalid regions: expected array');
@@ -34,7 +41,7 @@ export function validateNodeDataUpdate(
     }
   }
 
-  if (nodeType === 'display') {
+  if (nodeType === DisplayNode.type) {
     if ('view' in update && update.view) {
       const view = update.view as { nodeSize?: { width?: number; height?: number } };
       if (view.nodeSize) {
@@ -66,40 +73,23 @@ export function validateNodeDataUpdate(
 export function getValidHandles(node: LynkNode): Set<string> {
   const handles = new Set<string>();
 
-  switch (node.type) {
-    case 'extractor': {
-      const data = node.data as { regions?: { id: string }[] };
-      if (data.regions) {
-        for (const region of data.regions) {
-          handles.add(region.id);
-        }
-      }
-      break;
+  if (ExtractorNode.is(node)) {
+    for (const region of node.data.regions) {
+      handles.add(region.id);
     }
-    case 'calculation':
-      handles.add('inputs');
-      handles.add('output');
-      break;
-    case 'label':
-      handles.add('input');
-      handles.add('output');
-      break;
-    case 'sheet': {
-      const data = node.data as {
-        subheaders?: { id: string; entries?: { id: string }[] }[];
-      };
-      if (data.subheaders) {
-        for (const subheader of data.subheaders) {
-          handles.add(`subheader-${subheader.id}`);
-          if (subheader.entries) {
-            for (const entry of subheader.entries) {
-              handles.add(`entry-in-${subheader.id}-${entry.id}`);
-              handles.add(`entry-out-${subheader.id}-${entry.id}`);
-            }
-          }
-        }
+  } else if (CalculationNode.is(node)) {
+    handles.add('inputs');
+    handles.add('output');
+  } else if (LabelNode.is(node)) {
+    handles.add('input');
+    handles.add('output');
+  } else if (SheetNode.is(node)) {
+    for (const subheader of node.data.subheaders) {
+      handles.add(`subheader-${subheader.id}`);
+      for (const entry of subheader.entries) {
+        handles.add(`entry-in-${subheader.id}-${entry.id}`);
+        handles.add(`entry-out-${subheader.id}-${entry.id}`);
       }
-      break;
     }
   }
 

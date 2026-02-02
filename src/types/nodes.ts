@@ -235,3 +235,43 @@ export type GroupNode = Node<GroupNodeData, 'group'>;
 
 /** Union type for all node types */
 export type LynkNode = DisplayNode | ExtractorNode | CalculationNode | SheetNode | LabelNode | GroupNode;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TYPE GUARDS (runtime type checking)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Type guard and utilities for DisplayNode */
+export const DisplayNode = {
+  type: 'display' as const,
+  is: (node: LynkNode): node is DisplayNode => node.type === 'display',
+};
+
+/** Type guard and utilities for ExtractorNode */
+export const ExtractorNode = {
+  type: 'extractor' as const,
+  is: (node: LynkNode): node is ExtractorNode => node.type === 'extractor',
+};
+
+/** Type guard and utilities for CalculationNode */
+export const CalculationNode = {
+  type: 'calculation' as const,
+  is: (node: LynkNode): node is CalculationNode => node.type === 'calculation',
+};
+
+/** Type guard and utilities for SheetNode */
+export const SheetNode = {
+  type: 'sheet' as const,
+  is: (node: LynkNode): node is SheetNode => node.type === 'sheet',
+};
+
+/** Type guard and utilities for LabelNode */
+export const LabelNode = {
+  type: 'label' as const,
+  is: (node: LynkNode): node is LabelNode => node.type === 'label',
+};
+
+/** Type guard and utilities for GroupNode */
+export const GroupNode = {
+  type: 'group' as const,
+  is: (node: LynkNode): node is GroupNode => node.type === 'group',
+};
