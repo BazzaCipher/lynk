@@ -36,7 +36,7 @@ export const createPersistenceSlice: StateCreator<PersistenceSlice> = (set, get)
     set({
       nodes: [],
       edges: [],
-      highlightedRegion: null,
+      highlightedHandle: null,
       canvasName: 'Untitled Canvas',
       canvasId: generateCanvasId(),
       lastSaved: null,
@@ -64,7 +64,7 @@ export const createPersistenceSlice: StateCreator<PersistenceSlice> = (set, get)
       canvasName: result.data.canvasName,
       canvasId: result.data.canvasId,
       lastSaved: result.data.lastSaved,
-      highlightedRegion: null,
+      highlightedHandle: null,
     });
 
     // Clean up invalid edges
@@ -105,7 +105,7 @@ export const createPersistenceSlice: StateCreator<PersistenceSlice> = (set, get)
       canvasName: result.data.canvasName,
       canvasId: result.data.canvasId,
       lastSaved: result.data.lastSaved,
-      highlightedRegion: null,
+      highlightedHandle: null,
     });
 
     // Clean up invalid edges
