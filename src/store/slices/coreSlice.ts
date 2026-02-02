@@ -19,7 +19,7 @@ import {
   getDependentNodes,
 } from '../../core/engine/dependencyGraph';
 import { validateNodeDataUpdate } from '../../services/canvasValidation';
-import type { StateCreator, HighlightedRegion } from './types';
+import type { StateCreator } from './types';
 
 let nodeIdCounter = 0;
 export const generateNodeId = () => `node-${++nodeIdCounter}`;
@@ -30,7 +30,7 @@ export interface CoreSlice {
   nodes: LynkNode[];
   edges: Edge[];
   viewport: Viewport;
-  highlightedRegion: HighlightedRegion | null;
+  highlightedHandle: string | null;
 
   onNodesChange: (changes: NodeChange<LynkNode>[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
@@ -49,14 +49,14 @@ export interface CoreSlice {
   getDependents: (nodeId: string) => string[];
 
   setViewport: (viewport: Viewport) => void;
-  setHighlightedRegion: (region: HighlightedRegion | null) => void;
+  setHighlightedHandle: (handle: string | null) => void;
 }
 
 export const createCoreSlice: StateCreator<CoreSlice> = (set, get) => ({
   nodes: [],
   edges: [],
   viewport: { x: 0, y: 0, zoom: 1 },
-  highlightedRegion: null,
+  highlightedHandle: null,
 
   onNodesChange: (changes) => {
     set({ nodes: applyNodeChanges(changes, get().nodes) as LynkNode[] });
@@ -134,5 +134,5 @@ export const createCoreSlice: StateCreator<CoreSlice> = (set, get) => ({
   getDependents: (nodeId) => getDependentNodes(get().edges, nodeId),
 
   setViewport: (viewport) => set({ viewport }),
-  setHighlightedRegion: (region) => set({ highlightedRegion: region }),
+  setHighlightedHandle: (handle) => set({ highlightedHandle: handle }),
 });

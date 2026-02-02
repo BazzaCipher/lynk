@@ -5,12 +5,6 @@
 import type { Edge, Viewport } from '@xyflow/react';
 import type { LynkNode } from '../../types';
 
-// Highlighted region reference for source highlighting
-export interface HighlightedRegion {
-  nodeId: string;
-  regionId: string;
-}
-
 // History snapshot for undo/redo
 export interface HistorySnapshot {
   nodes: LynkNode[];
@@ -29,7 +23,7 @@ export interface CanvasStoreState {
   nodes: LynkNode[];
   edges: Edge[];
   viewport: Viewport;
-  highlightedRegion: HighlightedRegion | null;
+  highlightedHandle: string | null; // "nodeId:handleId" format
 
   // Canvas metadata
   canvasName: string;

@@ -15,7 +15,7 @@ import { Position, useEdges, useNodes } from '@xyflow/react';
 import { BaseNode } from './base/BaseNode';
 import { NodeEntry } from './base/NodeEntry';
 import { useCanvasStore } from '../../store/canvasStore';
-import { useHighlighting } from '../../hooks/useHighlighting';
+import { useHighlighting, useNodeHighlights } from '../../hooks/useHighlighting';
 import { EditableLabel } from './base/EditableLabel';
 import { useNodeOutputs } from '../../hooks/useNodeOutputs';
 import { type ResolvedInput, resolveNodeOutput } from '../../hooks/useDataFlow';
@@ -85,6 +85,7 @@ interface EntryRowProps {
   subheaderId: string;
   inputs: ResolvedInput[];
   result: SheetComputedResult | null;
+  isOutputHighlighted: boolean;
   onUpdateEntry: (entryId: string, updates: Partial<SheetEntry>) => void;
   onDeleteEntry: (entryId: string) => void;
   isHighlighted: (nodeId: string, regionId: string) => boolean;
@@ -97,6 +98,7 @@ function EntryRow({
   subheaderId,
   inputs,
   result,
+  isOutputHighlighted,
   onUpdateEntry,
   onDeleteEntry,
   isHighlighted,
@@ -115,7 +117,9 @@ function EntryRow({
   const outputHandleId = `entry-out-${subheaderId}-${entry.id}`;
 
   return (
-    <div className="relative border-b border-gray-100 last:border-b-0">
+    <div className={`relative border-b border-gray-100 last:border-b-0 ${
+      isOutputHighlighted ? 'bg-blue-100 ring-1 ring-blue-400 animate-pulse' : ''
+    }`}>
       {/* Handle overlays — absolutely positioned to span full row width for edge alignment */}
       <NodeEntry
         id={inputHandleId}
@@ -222,6 +226,7 @@ interface SubheaderRowProps {
   result: SheetComputedResult | null;
   entryInputs: Record<string, ResolvedInput[]>;
   entryResults: Record<string, SheetComputedResult | null>;
+  outputHighlights: Record<string, boolean>;
   onUpdateSubheader: (updates: Partial<SheetSubheader>) => void;
   onDeleteSubheader: () => void;
   onAddEntry: () => void;
@@ -237,6 +242,7 @@ function SubheaderRow({
   result,
   entryInputs,
   entryResults,
+  outputHighlights,
   onUpdateSubheader,
   onDeleteSubheader,
   onAddEntry,
@@ -254,10 +260,12 @@ function SubheaderRow({
     ? formatValue(result.value, result.dataType, { precision: 2 })
     : '—';
 
+  const isSubheaderHighlighted = outputHighlights[`subheader-${subheader.id}`] ?? false;
+
   return (
     <div className="border-b border-gray-200 last:border-b-0">
       {/* Subheader header row with output handle */}
-      <div className="relative">
+      <div className={`relative ${isSubheaderHighlighted ? 'bg-blue-100 ring-1 ring-blue-400 animate-pulse' : ''}`}>
         {/* Output handle overlay — absolutely positioned for edge alignment */}
         <NodeEntry
           id={`subheader-${subheader.id}`}
@@ -270,7 +278,7 @@ function SubheaderRow({
         </NodeEntry>
 
         {/* Subheader content row */}
-        <div className="flex items-center gap-1 py-1.5 px-3 bg-gray-50">
+        <div className={`flex items-center gap-1 py-1.5 px-3 ${isSubheaderHighlighted ? '' : 'bg-gray-50'}`}>
         {/* Collapse toggle */}
         <button
           onClick={() => onUpdateSubheader({ collapsed: !subheader.collapsed })}
@@ -335,6 +343,7 @@ function SubheaderRow({
               subheaderId={subheader.id}
               inputs={entryInputs[entry.id] || []}
               result={entryResults[`${subheader.id}-${entry.id}`] || null}
+              isOutputHighlighted={outputHighlights[`entry-out-${subheader.id}-${entry.id}`] ?? false}
               onUpdateEntry={onUpdateEntry}
               onDeleteEntry={onDeleteEntry}
               isHighlighted={isHighlighted}
@@ -371,6 +380,9 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
   const nodeOutputs = useNodeOutputs(id);
 
   const { isHighlighted, handleInputHover, handleInputClick } = useHighlighting();
+
+  // Output highlight state - responds when this node's outputs are highlighted
+  const outputHighlights = useNodeHighlights(id, data);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // INPUT RESOLUTION
@@ -619,6 +631,7 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
               result={subheaderResults[subheader.id] || null}
               entryInputs={entryInputs}
               entryResults={entryResults}
+              outputHighlights={outputHighlights}
               onUpdateSubheader={(updates) => handleUpdateSubheader(subheader.id, updates)}
               onDeleteSubheader={() => handleDeleteSubheader(subheader.id)}
               onAddEntry={() => handleAddEntry(subheader.id)}

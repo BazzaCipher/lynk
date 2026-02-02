@@ -4,7 +4,7 @@ import { Position } from '@xyflow/react';
 import { BaseNode } from './base/BaseNode';
 import { NodeEntry } from './base/NodeEntry';
 import { useDataFlow, formatValue } from '../../hooks/useDataFlow';
-import { useSourceHighlighting } from '../../hooks/useHighlighting';
+import { useNodeHighlights, useIsNodeHighlighted, useHighlightActions } from '../../hooks/useHighlighting';
 import { useCanvasStore } from '../../store/canvasStore';
 import { EditableLabel } from './base/EditableLabel';
 import { useNodeOutputs } from '../../hooks/useNodeOutputs';
@@ -39,8 +39,20 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
   // Get the first (and only) input value
   const input = inputs[0];
 
-  // Use highlighting hook for the input source
-  const { isHighlighted, onMouseEnter, onMouseLeave, onClick } = useSourceHighlighting(input?.source ?? null);
+  // Output highlight state - responds when this node's output is highlighted
+  const outputHighlights = useNodeHighlights(id, data);
+  const isOutputHighlighted = outputHighlights['output'] ?? false;
+
+  // Propagation: if our output is highlighted and we have an input, propagate to input source
+  const isNodeHighlighted = useIsNodeHighlighted(id);
+  const { set: setHighlight } = useHighlightActions();
+
+  useEffect(() => {
+    // When this node becomes highlighted and has an input, propagate
+    if (isNodeHighlighted && input?.source) {
+      setHighlight(input.source.nodeId, input.source.regionId);
+    }
+  }, [isNodeHighlighted, input?.source, setHighlight]);
 
   // Determine if we're in manual mode
   const isManualMode = data.isManualMode || (!hasInputs && data.manualValue !== undefined);
@@ -212,10 +224,7 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
                 hasInputs && input?.source && !data.isManualMode
                   ? 'hover:bg-gray-100'
                   : 'hover:bg-blue-50'
-              } ${isHighlighted ? 'bg-blue-100 ring-1 ring-blue-400' : ''}`}
-              onMouseEnter={!data.isManualMode ? onMouseEnter : undefined}
-              onMouseLeave={!data.isManualMode ? onMouseLeave : undefined}
-              onClick={!data.isManualMode ? onClick : undefined}
+              } ${isOutputHighlighted ? 'bg-blue-100 ring-1 ring-blue-400 animate-pulse' : ''}`}
               onDoubleClick={handleDoubleClick}
             >
               {displayValue ?? (

@@ -1,252 +1,129 @@
 /**
- * Unified highlighting hook for source region highlighting.
- * Consolidates highlight logic from CalculationNode, SheetNode, LabelNode, RegionList, and HighlightOverlay.
+ * Highlighting Hooks
+ *
+ * Unified highlighting system using a single string ID format: "nodeId:handleId"
+ * Works with Exportable.outputs for all highlightable nodes.
  */
 
-import { useCallback, useMemo } from 'react';
-import { useCanvasStore, type HighlightedRegion } from '../store/canvasStore';
-import type { DataSourceReference } from '../types';
+import { useMemo } from 'react';
+import { useCanvasStore } from '../store/canvasStore';
+import { Highlightable } from '../types/categories';
+import type { Exportable } from '../types/categories';
 import type { ResolvedInput } from './useDataFlow';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// TYPES
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export interface HighlightTarget {
-  nodeId: string;
-  regionId: string;
-}
-
-/** Handlers for ResolvedInput highlighting */
-export interface ResolvedInputHandlers {
-  /** Handler for mouse enter on an input */
-  onMouseEnter: () => void;
-  /** Handler for mouse leave on an input */
-  onMouseLeave: () => void;
-  /** Handler for click on an input */
-  onClick: () => void;
-}
-
-export interface UseHighlightingResult {
-  /** Current highlighted region from store */
-  highlightedRegion: HighlightedRegion | null;
-  /** Check if a specific region is highlighted */
-  isHighlighted: (nodeId: string, regionId: string) => boolean;
-  /** Set highlight to a specific region */
-  setHighlight: (nodeId: string, regionId: string) => void;
-  /** Clear highlight */
-  clearHighlight: () => void;
-  /** Toggle highlight (for click handlers) */
-  toggleHighlight: (nodeId: string, regionId: string) => void;
-  /** Mouse enter handler - sets highlight */
-  createMouseEnterHandler: (nodeId: string, regionId: string) => () => void;
-  /** Mouse leave handler - clears highlight if not persistent */
-  createMouseLeaveHandler: (nodeId: string, regionId: string) => () => void;
-  /** Click handler - toggles persistent highlight */
-  createClickHandler: (nodeId: string, regionId: string) => () => void;
-  /** Create handlers for ResolvedInput - for hover/click on input rows */
-  createResolvedInputHandlers: (input: ResolvedInput) => ResolvedInputHandlers;
-  /** Handler for hover on ResolvedInput (pass null to clear) */
-  handleInputHover: (input: ResolvedInput | null) => void;
-  /** Handler for click on ResolvedInput */
-  handleInputClick: (input: ResolvedInput) => void;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// MAIN HOOK
+// CORE HOOKS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Hook for managing region highlighting state and handlers.
- * Provides unified API for highlight-related functionality across all components.
+ * Returns highlight state for all outputs of a node.
+ * Derives handles from Exportable.outputs.
  */
-export function useHighlighting(): UseHighlightingResult {
-  const highlightedRegion = useCanvasStore((state) => state.highlightedRegion);
-  const setHighlightedRegion = useCanvasStore((state) => state.setHighlightedRegion);
+export function useNodeHighlights(
+  nodeId: string,
+  data: Partial<Exportable>
+): Record<string, boolean> {
+  const highlighted = useCanvasStore(state => state.highlightedHandle);
+  const handles = Highlightable.getHandles(data);
 
-  const isHighlighted = useCallback(
-    (nodeId: string, regionId: string): boolean => {
-      if (!highlightedRegion) return false;
-      return highlightedRegion.nodeId === nodeId && highlightedRegion.regionId === regionId;
+  return useMemo(() => {
+    const result: Record<string, boolean> = {};
+    for (const handleId of handles) {
+      result[handleId] = Highlightable.matches(highlighted, nodeId, handleId);
+    }
+    return result;
+  }, [highlighted, nodeId, handles]);
+}
+
+/**
+ * Check if ANY output of this node is highlighted.
+ * Useful for propagation - if any output is highlighted, propagate to inputs.
+ */
+export function useIsNodeHighlighted(nodeId: string): boolean {
+  const highlighted = useCanvasStore(state => state.highlightedHandle);
+  if (!highlighted) return false;
+  const parsed = Highlightable.parse(highlighted);
+  return parsed?.nodeId === nodeId;
+}
+
+/**
+ * Actions for setting/clearing highlights.
+ */
+export function useHighlightActions() {
+  const setHighlighted = useCanvasStore(state => state.setHighlightedHandle);
+
+  return useMemo(() => ({
+    set: (nodeId: string, handleId: string) =>
+      setHighlighted(Highlightable.target(nodeId, handleId)),
+    clear: () => setHighlighted(null),
+    toggle: (nodeId: string, handleId: string) => {
+      const current = useCanvasStore.getState().highlightedHandle;
+      const target = Highlightable.target(nodeId, handleId);
+      setHighlighted(current === target ? null : target);
     },
-    [highlightedRegion]
-  );
+  }), [setHighlighted]);
+}
 
-  const setHighlight = useCallback(
-    (nodeId: string, regionId: string) => {
-      setHighlightedRegion({ nodeId, regionId });
-    },
-    [setHighlightedRegion]
-  );
+/**
+ * For input rows - hover/click handlers + highlight state.
+ */
+export function useInputHighlighting(input: ResolvedInput) {
+  const highlighted = useCanvasStore(state => state.highlightedHandle);
+  const { set, clear, toggle } = useHighlightActions();
 
-  const clearHighlight = useCallback(() => {
-    setHighlightedRegion(null);
-  }, [setHighlightedRegion]);
-
-  const toggleHighlight = useCallback(
-    (nodeId: string, regionId: string) => {
-      if (isHighlighted(nodeId, regionId)) {
-        setHighlightedRegion(null);
-      } else {
-        setHighlightedRegion({ nodeId, regionId });
-      }
-    },
-    [isHighlighted, setHighlightedRegion]
-  );
-
-  const createMouseEnterHandler = useCallback(
-    (nodeId: string, regionId: string) => () => {
-      setHighlightedRegion({ nodeId, regionId });
-    },
-    [setHighlightedRegion]
-  );
-
-  const createMouseLeaveHandler = useCallback(
-    (nodeId: string, regionId: string) => () => {
-      // Only clear if not currently the persistent highlight
-      if (!isHighlighted(nodeId, regionId)) {
-        setHighlightedRegion(null);
-      }
-    },
-    [isHighlighted, setHighlightedRegion]
-  );
-
-  const createClickHandler = useCallback(
-    (nodeId: string, regionId: string) => () => {
-      toggleHighlight(nodeId, regionId);
-    },
-    [toggleHighlight]
-  );
-
-  const handleInputHover = useCallback(
-    (input: ResolvedInput | null) => {
-      if (input) {
-        setHighlight(input.sourceNodeId, input.sourceRegionId);
-      } else {
-        clearHighlight();
-      }
-    },
-    [setHighlight, clearHighlight]
-  );
-
-  const handleInputClick = useCallback(
-    (input: ResolvedInput) => {
-      toggleHighlight(input.sourceNodeId, input.sourceRegionId);
-    },
-    [toggleHighlight]
-  );
-
-  const createResolvedInputHandlers = useCallback(
-    (input: ResolvedInput): ResolvedInputHandlers => {
-      const inputHighlighted = isHighlighted(input.sourceNodeId, input.sourceRegionId);
-      return {
-        onMouseEnter: () => setHighlight(input.sourceNodeId, input.sourceRegionId),
-        onMouseLeave: () => {
-          if (!inputHighlighted) clearHighlight();
-        },
-        onClick: () => toggleHighlight(input.sourceNodeId, input.sourceRegionId),
-      };
-    },
-    [isHighlighted, setHighlight, clearHighlight, toggleHighlight]
-  );
+  const target = Highlightable.target(input.sourceNodeId, input.sourceRegionId);
+  const isHighlighted = highlighted === target;
 
   return {
-    highlightedRegion,
     isHighlighted,
-    setHighlight,
-    clearHighlight,
-    toggleHighlight,
-    createMouseEnterHandler,
-    createMouseLeaveHandler,
-    createClickHandler,
-    createResolvedInputHandlers,
+    onMouseEnter: () => set(input.sourceNodeId, input.sourceRegionId),
+    onMouseLeave: () => { if (!isHighlighted) clear(); },
+    onClick: () => toggle(input.sourceNodeId, input.sourceRegionId),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONVENIENCE HOOKS (for simpler use cases)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Check if a specific handle is highlighted.
+ * Used by RegionList, HighlightOverlay for individual region checks.
+ */
+export function useIsHandleHighlighted(nodeId: string | undefined, handleId: string): boolean {
+  const highlighted = useCanvasStore(state => state.highlightedHandle);
+  if (!nodeId || !highlighted) return false;
+  return Highlightable.matches(highlighted, nodeId, handleId);
+}
+
+/**
+ * Hook for highlighting from an input list (used by CalculationNode, SheetNode).
+ * Returns check function and handlers.
+ */
+export function useHighlighting() {
+  const highlighted = useCanvasStore(state => state.highlightedHandle);
+  const setHighlighted = useCanvasStore(state => state.setHighlightedHandle);
+
+  const isHighlighted = (nodeId: string, regionId: string): boolean => {
+    return Highlightable.matches(highlighted, nodeId, regionId);
+  };
+
+  const handleInputHover = (input: ResolvedInput | null) => {
+    if (input) {
+      setHighlighted(Highlightable.target(input.sourceNodeId, input.sourceRegionId));
+    } else {
+      setHighlighted(null);
+    }
+  };
+
+  const handleInputClick = (input: ResolvedInput) => {
+    const target = Highlightable.target(input.sourceNodeId, input.sourceRegionId);
+    setHighlighted(highlighted === target ? null : target);
+  };
+
+  return {
+    isHighlighted,
     handleInputHover,
     handleInputClick,
-  };
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// SOURCE-BASED HOOK
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export interface UseSourceHighlightingResult {
-  /** Whether this source is currently highlighted */
-  isHighlighted: boolean;
-  /** Mouse enter handler */
-  onMouseEnter: () => void;
-  /** Mouse leave handler */
-  onMouseLeave: () => void;
-  /** Click handler (toggles persistent highlight) */
-  onClick: () => void;
-}
-
-/**
- * Hook for highlighting based on a DataSourceReference.
- * Simplified API for components that work with a single source.
- */
-export function useSourceHighlighting(source: DataSourceReference | null): UseSourceHighlightingResult {
-  const { isHighlighted: checkHighlighted, setHighlight, clearHighlight, toggleHighlight } =
-    useHighlighting();
-
-  const isHighlighted = useMemo(() => {
-    if (!source) return false;
-    return checkHighlighted(source.nodeId, source.regionId);
-  }, [source, checkHighlighted]);
-
-  const onMouseEnter = useCallback(() => {
-    if (source) {
-      setHighlight(source.nodeId, source.regionId);
-    }
-  }, [source, setHighlight]);
-
-  const onMouseLeave = useCallback(() => {
-    if (source && !isHighlighted) {
-      clearHighlight();
-    }
-  }, [source, isHighlighted, clearHighlight]);
-
-  const onClick = useCallback(() => {
-    if (source) {
-      toggleHighlight(source.nodeId, source.regionId);
-    }
-  }, [source, toggleHighlight]);
-
-  return {
-    isHighlighted,
-    onMouseEnter,
-    onMouseLeave,
-    onClick,
-  };
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// EXTERNAL HIGHLIGHT CHECK (for RegionList, HighlightOverlay)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export interface UseExternalHighlightResult {
-  /** Check if a region is externally highlighted */
-  isExternallyHighlighted: (regionId: string) => boolean;
-  /** Current highlighted region */
-  highlightedRegion: HighlightedRegion | null;
-}
-
-/**
- * Hook for checking if regions are externally highlighted.
- * Used by components that display regions and need to respond to external highlights.
- */
-export function useExternalHighlight(nodeId: string | undefined): UseExternalHighlightResult {
-  const highlightedRegion = useCanvasStore((state) => state.highlightedRegion);
-
-  const isExternallyHighlighted = useCallback(
-    (regionId: string): boolean => {
-      if (!highlightedRegion || !nodeId) return false;
-      return highlightedRegion.nodeId === nodeId && highlightedRegion.regionId === regionId;
-    },
-    [highlightedRegion, nodeId]
-  );
-
-  return {
-    isExternallyHighlighted,
-    highlightedRegion,
   };
 }

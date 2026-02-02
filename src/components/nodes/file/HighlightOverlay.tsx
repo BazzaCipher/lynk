@@ -1,6 +1,8 @@
+import { useCallback } from 'react';
 import type { ExtractedRegion } from '../../../types';
 import { getColorForType } from '../../../utils/colors';
-import { useExternalHighlight } from '../../../hooks/useHighlighting';
+import { useCanvasStore } from '../../../store/canvasStore';
+import { Highlightable } from '../../../types/categories';
 
 interface HighlightOverlayProps {
   regions: ExtractedRegion[];
@@ -19,8 +21,15 @@ export function HighlightOverlay({
   interactive = true,
   nodeId,
 }: HighlightOverlayProps) {
-  // Use external highlight hook
-  const { isExternallyHighlighted } = useExternalHighlight(nodeId);
+  // Check if a region is externally highlighted
+  const highlightedHandle = useCanvasStore(state => state.highlightedHandle);
+  const isExternallyHighlighted = useCallback(
+    (regionId: string): boolean => {
+      if (!nodeId || !highlightedHandle) return false;
+      return Highlightable.matches(highlightedHandle, nodeId, regionId);
+    },
+    [highlightedHandle, nodeId]
+  );
 
   // Filter regions for current page
   const boxRegions = regions.filter(

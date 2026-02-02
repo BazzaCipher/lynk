@@ -144,3 +144,33 @@ export const CanImport = {
   types: ['calculation', 'sheet', 'label'] as LynkNodeType[],
   is: (node: LynkNode) => CanImport.types.includes(node.type as LynkNodeType),
 };
+
+/** Capability helper for highlighting - works with Exportable */
+export const Highlightable = {
+  types: CanExport.types,
+
+  /** Construct handle ID: "nodeId:handleId" */
+  target(nodeId: string, handleId: string): string {
+    return `${nodeId}:${handleId}`;
+  },
+
+  /** Parse handle ID back to parts */
+  parse(target: string): { nodeId: string; handleId: string } | null {
+    const colonIndex = target.indexOf(':');
+    if (colonIndex === -1) return null;
+    return {
+      nodeId: target.slice(0, colonIndex),
+      handleId: target.slice(colonIndex + 1),
+    };
+  },
+
+  /** Get highlightable handles from Exportable.outputs */
+  getHandles(data: Partial<Exportable>): string[] {
+    return Object.keys(data.outputs ?? {});
+  },
+
+  /** Check if handle matches highlighted target */
+  matches(highlighted: string | null, nodeId: string, handleId: string): boolean {
+    return highlighted === Highlightable.target(nodeId, handleId);
+  },
+};

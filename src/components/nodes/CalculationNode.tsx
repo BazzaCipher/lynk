@@ -18,7 +18,7 @@ import { Position, useEdges } from '@xyflow/react';
 import { BaseNode } from './base/BaseNode';
 import { NodeEntry } from './base/NodeEntry';
 import { useCanvasStore } from '../../store/canvasStore';
-import { useHighlighting } from '../../hooks/useHighlighting';
+import { useHighlighting, useNodeHighlights } from '../../hooks/useHighlighting';
 import { useDataFlow } from '../../hooks/useDataFlow';
 import { useNodeOutputs } from '../../hooks/useNodeOutputs';
 import { EditableLabel } from './base/EditableLabel';
@@ -44,6 +44,10 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
 
   // Use highlighting hook with input handlers
   const { isHighlighted, handleInputHover, handleInputClick } = useHighlighting();
+
+  // Output highlight state - responds when this node's output is highlighted
+  const outputHighlights = useNodeHighlights(id, data);
+  const isOutputHighlighted = outputHighlights['output'] ?? false;
 
   const currentOperation = getOperation(data.operation);
 
@@ -298,6 +302,7 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
           handleType="source"
           handlePosition={Position.Right}
           handleColor={outputHandleColor}
+          className={isOutputHighlighted ? 'bg-blue-100 ring-1 ring-blue-400 animate-pulse rounded' : ''}
         >
           <div className="flex-1 flex items-center gap-2">
             <EditableLabel

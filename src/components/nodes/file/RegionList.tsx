@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Position } from '@xyflow/react';
 import { NodeEntry } from '../base/NodeEntry';
-import { useExternalHighlight } from '../../../hooks/useHighlighting';
+import { useCanvasStore } from '../../../store/canvasStore';
+import { Highlightable } from '../../../types/categories';
 import type { ExtractedRegion, SimpleDataType } from '../../../types';
 import { getTypeBadgeClass, getTypeColorClass } from '../../../utils/colors';
 import {
@@ -84,8 +85,15 @@ export function RegionList({
   compact = false,
   nodeId,
 }: RegionListProps) {
-  // Use external highlight hook
-  const { isExternallyHighlighted } = useExternalHighlight(nodeId);
+  // Check if a region is externally highlighted
+  const highlightedHandle = useCanvasStore(state => state.highlightedHandle);
+  const isExternallyHighlighted = useCallback(
+    (regionId: string): boolean => {
+      if (!nodeId || !highlightedHandle) return false;
+      return Highlightable.matches(highlightedHandle, nodeId, regionId);
+    },
+    [highlightedHandle, nodeId]
+  );
 
   // Collapsible view state for full view mode
   const [collapsedView, setCollapsedView] = useState(false);

@@ -27,12 +27,8 @@ import {
   createPersistenceSlice,
   createValidationSlice,
   createLayoutSlice,
-  type HighlightedRegion,
   type HistorySnapshot,
 } from './slices';
-
-// Re-export types for external use
-export type { HighlightedRegion };
 
 // Combined store interface (maintains backward compatibility)
 interface CanvasStore {
@@ -40,7 +36,7 @@ interface CanvasStore {
   nodes: LynkNode[];
   edges: Edge[];
   viewport: Viewport;
-  highlightedRegion: HighlightedRegion | null;
+  highlightedHandle: string | null; // "nodeId:handleId" format
 
   // Canvas metadata
   canvasName: string;
@@ -75,7 +71,7 @@ interface CanvasStore {
   setViewport: (viewport: Viewport) => void;
 
   // Highlight actions
-  setHighlightedRegion: (region: HighlightedRegion | null) => void;
+  setHighlightedHandle: (handle: string | null) => void;
 
   // Group actions
   createGroup: (nodeIds: string[]) => string | null;
