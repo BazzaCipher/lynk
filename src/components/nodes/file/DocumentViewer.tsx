@@ -40,6 +40,27 @@ export function DocumentViewer({
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null); // Ref for document content area only
+  const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  // For PDFs, call onImageRef with the first canvas after render
+  // In scroll mode, we find the canvas from the DOM
+  useEffect(() => {
+    if (fileType === 'pdf' && !loading && onImageRef) {
+      // Small delay to ensure canvas is rendered
+      const timer = setTimeout(() => {
+        if (pdfCanvasRef.current) {
+          onImageRef(pdfCanvasRef.current);
+        } else if (contentRef.current) {
+          // For scroll mode, find the first canvas in the content area
+          const canvas = contentRef.current.querySelector('canvas');
+          if (canvas) {
+            onImageRef(canvas as HTMLCanvasElement);
+          }
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [fileType, loading, onImageRef, currentPage]);
 
   const handlePdfLoadSuccess = useCallback(
     ({ numPages }: { numPages: number }) => {
@@ -188,6 +209,7 @@ export function DocumentViewer({
                 width={width}
                 renderTextLayer={enableTextSelection}
                 renderAnnotationLayer={false}
+                canvasRef={pdfCanvasRef}
               />
             )}
           </Document>
