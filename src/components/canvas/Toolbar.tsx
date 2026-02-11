@@ -1,3 +1,4 @@
+import { useReactFlow } from '@xyflow/react';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useToast } from '../ui/Toast';
 import type { DisplayNodeData, ExtractorNodeData, CalculationNodeData, SheetNodeData, LabelNodeData } from '../../types';
@@ -54,16 +55,19 @@ export function Toolbar() {
   const canvasName = useCanvasStore((state) => state.canvasName);
   const setCanvasName = useCanvasStore((state) => state.setCanvasName);
   const { showToast } = useToast();
+  const { screenToFlowPosition } = useReactFlow();
 
   const handleAddNode = (
     type: 'display' | 'extractor' | 'calculation' | 'sheet' | 'label',
     data: DisplayNodeData | ExtractorNodeData | CalculationNodeData | SheetNodeData | LabelNodeData
   ) => {
-    // Add node at a random position in the viewport
-    const position = {
-      x: 100 + Math.random() * 200,
-      y: 100 + Math.random() * 200,
-    };
+    // Add node at the center of the visible canvas with a small random offset
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+    const position = screenToFlowPosition({
+      x: centerX + (Math.random() - 0.5) * 100,
+      y: centerY + (Math.random() - 0.5) * 100,
+    });
     addNode(type, position, data);
   };
 
