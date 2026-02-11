@@ -12,7 +12,7 @@ import {
   type EdgeChange,
   type Viewport,
 } from '@xyflow/react';
-import type { LynkNode, LynkNodeData, LynkNodeType } from '../../types';
+import type { LynkNode, LynkNodeData, LynkNodeType, DisplayNodeData, ViewportRegion } from '../../types';
 import {
   wouldCreateCycle,
   getTopologicalOrder,
@@ -50,6 +50,8 @@ export interface CoreSlice {
 
   setViewport: (viewport: Viewport) => void;
   setHighlightedHandle: (handle: string | null) => void;
+
+  updateViewportRegion: (nodeId: string, viewportId: string, updates: Partial<ViewportRegion>) => void;
 }
 
 export const createCoreSlice: StateCreator<CoreSlice> = (set, get) => ({
@@ -135,4 +137,24 @@ export const createCoreSlice: StateCreator<CoreSlice> = (set, get) => ({
 
   setViewport: (viewport) => set({ viewport }),
   setHighlightedHandle: (handle) => set({ highlightedHandle: handle }),
+
+  updateViewportRegion: (nodeId, viewportId, updates) => {
+    const { nodes } = get();
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node || node.type !== 'display') return;
+
+    const displayData = node.data as DisplayNodeData;
+    const viewports = displayData.viewports || [];
+    const updatedViewports = viewports.map((v) =>
+      v.id === viewportId ? { ...v, ...updates } : v
+    );
+
+    set({
+      nodes: nodes.map((n) =>
+        n.id === nodeId
+          ? { ...n, data: { ...n.data, viewports: updatedViewports } }
+          : n
+      ) as LynkNode[],
+    });
+  },
 });

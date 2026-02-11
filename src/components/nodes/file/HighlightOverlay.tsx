@@ -11,6 +11,8 @@ interface HighlightOverlayProps {
   onRegionSelect: (regionId: string) => void;
   interactive?: boolean;
   nodeId?: string; // Node ID for comparing with external highlight
+  scrollMode?: boolean; // When true, show regions from all pages with Y offset
+  pageOffsets?: Map<number, number>; // Y offset for each page in scrollMode
 }
 
 export function HighlightOverlay({
@@ -20,6 +22,8 @@ export function HighlightOverlay({
   onRegionSelect,
   interactive = true,
   nodeId,
+  scrollMode = false,
+  pageOffsets,
 }: HighlightOverlayProps) {
   // Check if a region is externally highlighted
   const highlightedHandle = useCanvasStore(state => state.highlightedHandle);
@@ -31,13 +35,19 @@ export function HighlightOverlay({
     [highlightedHandle, nodeId]
   );
 
-  // Filter regions for current page
-  const boxRegions = regions.filter(
-    (r) => r.pageNumber === currentPage && r.selectionType === 'box' && r.coordinates
-  );
-  const textRegions = regions.filter(
-    (r) => r.pageNumber === currentPage && r.selectionType === 'text' && r.textRange?.rects
-  );
+  // Filter regions - in scrollMode show all pages, otherwise just current page
+  const boxRegions = scrollMode
+    ? regions.filter((r) => r.selectionType === 'box' && r.coordinates)
+    : regions.filter((r) => r.pageNumber === currentPage && r.selectionType === 'box' && r.coordinates);
+  const textRegions = scrollMode
+    ? regions.filter((r) => r.selectionType === 'text' && r.textRange?.rects)
+    : regions.filter((r) => r.pageNumber === currentPage && r.selectionType === 'text' && r.textRange?.rects);
+
+  // Helper to get Y offset for a page in scrollMode
+  const getPageOffset = (pageNumber: number): number => {
+    if (!scrollMode || !pageOffsets) return 0;
+    return pageOffsets.get(pageNumber) ?? 0;
+  };
 
   if (boxRegions.length === 0 && textRegions.length === 0) return null;
 
@@ -58,7 +68,7 @@ export function HighlightOverlay({
             } ${isExternal ? 'animate-pulse' : ''}`}
             style={{
               left: region.coordinates!.x,
-              top: region.coordinates!.y,
+              top: getPageOffset(region.pageNumber) + region.coordinates!.y,
               width: region.coordinates!.width,
               height: region.coordinates!.height,
               backgroundColor: isSelected || isExternal ? colors.bg : 'transparent',
@@ -114,6 +124,7 @@ export function HighlightOverlay({
         const isSelected = selectedRegionId === region.id;
         const isExternal = isExternallyHighlighted(region.id);
         const rects = region.textRange!.rects;
+        const pageOffset = getPageOffset(region.pageNumber);
 
         // Use first rect for label positioning (where text actually starts)
         const firstRect = rects[0];
@@ -134,7 +145,7 @@ export function HighlightOverlay({
                   }`}
                   style={{
                     left: rect.x - 2,
-                    top: rect.y,
+                    top: pageOffset + rect.y,
                     width: rect.width + 4,
                     height: rect.height,
                     background: `linear-gradient(to bottom, ${colors.bg} 0%, ${colors.bg} 85%, ${colors.border}40 100%)`,
@@ -156,7 +167,7 @@ export function HighlightOverlay({
               }`}
               style={{
                 left: firstRect.x - 2,
-                top: Math.max(0, firstRect.y - 18),
+                top: Math.max(0, pageOffset + firstRect.y - 18),
                 zIndex: 10,
               }}
               onClick={interactive ? () => onRegionSelect(region.id) : undefined}

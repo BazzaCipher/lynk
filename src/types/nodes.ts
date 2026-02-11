@@ -9,6 +9,7 @@ import type { Node } from '@xyflow/react';
 import type { DataValue, SimpleDataType } from './data';
 import type { DataSourceReference } from './geometry';
 import type { ExtractedRegion } from './regions';
+import type { ViewportRegion } from './viewport';
 import type { DocumentView } from './view';
 import type { FileNodeData, Exportable, Importable } from './categories';
 
@@ -16,7 +17,7 @@ import type { FileNodeData, Exportable, Importable } from './categories';
 // NODE TYPE IDENTIFIERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export type LynkNodeType = 'display' | 'extractor' | 'calculation' | 'sheet' | 'label' | 'group';
+export type LynkNodeType = 'display' | 'extractor' | 'calculation' | 'sheet' | 'label' | 'group' | 'viewport';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // BASE NODE DATA
@@ -53,14 +54,38 @@ export interface CachedExtractorEdges {
 // DISPLAY NODE (visual reference for images and PDFs)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** Display node specific data - visual reference with no data output */
-export interface DisplayNodeData extends BaseNodeData, FileNodeData {
+/** Display node specific data - visual reference with viewport regions */
+export interface DisplayNodeData extends BaseNodeData, FileNodeData, Exportable {
   /** View configuration - defines what portion of document is shown */
   view: DocumentView;
   /** Total pages in document (1 for images) */
   totalPages: number;
+  /** Viewport regions drawn on the document */
+  viewports: ViewportRegion[];
   /** Edge cache when switching from ExtractorNode */
   cachedExtractorEdges?: CachedExtractorEdges;
+  /** Document dimensions at scale=1 (natural size) */
+  documentSize?: { width: number; height: number };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VIEWPORT NODE (cropped view connected to DisplayNode)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Viewport node specific data - receives cropped region via edge from DisplayNode */
+export interface ViewportNodeData extends BaseNodeData, Importable {
+  /** File URL copied from parent DisplayNode for rendering */
+  fileUrl?: string;
+  /** File type of the parent document */
+  fileType?: 'image' | 'pdf';
+  /** Normalized crop coordinates (0-1) */
+  normalizedRect?: ViewportRegion['normalizedRect'];
+  /** Page number for PDFs */
+  pageNumber?: number;
+  /** Node display size */
+  nodeSize: { width: number; height: number };
+  /** Lock aspect ratio when resizing */
+  aspectLocked: boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -215,6 +240,7 @@ export interface GroupNodeData extends BaseNodeData {
 /** Union type for all node data types */
 export type LynkNodeData =
   | DisplayNodeData
+  | ViewportNodeData
   | ExtractorNodeData
   | CalculationNodeData
   | SheetNodeData
@@ -227,6 +253,7 @@ export type LynkNodeData =
 
 /** Typed React Flow nodes */
 export type DisplayNode = Node<DisplayNodeData, 'display'>;
+export type ViewportNode = Node<ViewportNodeData, 'viewport'>;
 export type ExtractorNode = Node<ExtractorNodeData, 'extractor'>;
 export type CalculationNode = Node<CalculationNodeData, 'calculation'>;
 export type SheetNode = Node<SheetNodeData, 'sheet'>;
@@ -234,7 +261,7 @@ export type LabelNode = Node<LabelNodeData, 'label'>;
 export type GroupNode = Node<GroupNodeData, 'group'>;
 
 /** Union type for all node types */
-export type LynkNode = DisplayNode | ExtractorNode | CalculationNode | SheetNode | LabelNode | GroupNode;
+export type LynkNode = DisplayNode | ViewportNode | ExtractorNode | CalculationNode | SheetNode | LabelNode | GroupNode;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPE GUARDS (runtime type checking)
@@ -244,6 +271,12 @@ export type LynkNode = DisplayNode | ExtractorNode | CalculationNode | SheetNode
 export const DisplayNode = {
   type: 'display' as const,
   is: (node: LynkNode): node is DisplayNode => node.type === 'display',
+};
+
+/** Type guard and utilities for ViewportNode */
+export const ViewportNode = {
+  type: 'viewport' as const,
+  is: (node: LynkNode): node is ViewportNode => node.type === 'viewport',
 };
 
 /** Type guard and utilities for ExtractorNode */

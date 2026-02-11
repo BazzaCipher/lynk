@@ -12,6 +12,7 @@ import '@xyflow/react/dist/style.css';
 
 import { useCanvasStore } from '../../store/canvasStore';
 import { DisplayNode as DisplayNodeComponent } from '../nodes/DisplayNode';
+import { ViewportNode as ViewportNodeComponent } from '../nodes/ViewportNode';
 import { ExtractorNode as ExtractorNodeComponent } from '../nodes/ExtractorNode';
 import { CalculationNode as CalculationNodeComponent } from '../nodes/CalculationNode';
 import { SheetNode as SheetNodeComponent } from '../nodes/SheetNode';
@@ -26,12 +27,13 @@ import { wouldCreateCycle } from '../../core/engine/dependencyGraph';
 import { getOperation, isTypeCompatible } from '../../core/operations/operationRegistry';
 import { useFileUpload } from '../../hooks/useFileUpload';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
-import type { LynkNode } from '../../types';
-import { CanExport, CanImport, CalculationNode, ExtractorNode } from '../../types';
+import type { LynkNode, DisplayNodeData, ViewportRegion } from '../../types';
+import { CanExport, CanImport, CalculationNode, ExtractorNode, DisplayNode, ViewportNode } from '../../types';
 
 // Wrap node components with error boundaries to prevent crashes
 const nodeTypes = {
   display: withErrorBoundary(DisplayNodeComponent, 'display'),
+  viewport: withErrorBoundary(ViewportNodeComponent, 'viewport'),
   extractor: withErrorBoundary(ExtractorNodeComponent, 'extractor'),
   calculation: withErrorBoundary(CalculationNodeComponent, 'calculation'),
   sheet: withErrorBoundary(SheetNodeComponent, 'sheet'),
@@ -43,7 +45,8 @@ export function LynkCanvas() {
   const nodes = useCanvasStore((state) => state.nodes);
   const edges = useCanvasStore((state) => state.edges);
   const onNodesChange = useCanvasStore((state) => state.onNodesChange);
-  const onEdgesChange = useCanvasStore((state) => state.onEdgesChange);
+  const storeOnEdgesChange = useCanvasStore((state) => state.onEdgesChange);
+  const updateNodeData = useCanvasStore((state) => state.updateNodeData);
   const storeAddEdge = useCanvasStore((state) => state.addEdge);
   const addNode = useCanvasStore((state) => state.addNode);
   const setViewport = useCanvasStore((state) => state.setViewport);
@@ -53,6 +56,33 @@ export function LynkCanvas() {
 
   // Keyboard shortcuts (Delete, Ctrl+S, Ctrl+Z, Ctrl+G, etc.)
   useKeyboardShortcuts();
+
+  // Wrap onEdgesChange to clean up viewport regions when edges are deleted
+  const onEdgesChange = useCallback(
+    (changes: import('@xyflow/react').EdgeChange[]) => {
+      // Check for removed edges that connect DisplayNode → ViewportNode
+      for (const change of changes) {
+        if (change.type === 'remove') {
+          const edge = edges.find((e) => e.id === change.id);
+          if (!edge) continue;
+
+          const sourceNode = nodes.find((n) => n.id === edge.source);
+          if (sourceNode && DisplayNode.is(sourceNode as LynkNode)) {
+            const displayData = sourceNode.data as DisplayNodeData;
+            const sourceHandle = edge.sourceHandle;
+            if (sourceHandle && displayData.viewports?.some((v: ViewportRegion) => v.id === sourceHandle)) {
+              // Remove the viewport region from the parent DisplayNode
+              updateNodeData(sourceNode.id, {
+                viewports: displayData.viewports.filter((v: ViewportRegion) => v.id !== sourceHandle),
+              });
+            }
+          }
+        }
+      }
+      storeOnEdgesChange(changes);
+    },
+    [edges, nodes, storeOnEdgesChange, updateNodeData]
+  );
 
   const isValidConnection = useCallback(
     (connection: Edge | Connection): boolean => {
@@ -83,9 +113,23 @@ export function LynkCanvas() {
         return false;
       }
 
-      // Type compatibility check for CalculationNode targets
       const targetLynkNode = targetNode as LynkNode;
       const sourceLynkNode = sourceNode as LynkNode;
+
+      // ViewportNode targets: only accept from DisplayNode, max 1 input
+      if (ViewportNode.is(targetLynkNode)) {
+        if (!DisplayNode.is(sourceLynkNode)) {
+          return false;
+        }
+        const existingInputs = edges.filter(
+          (e) => e.target === targetNode.id && e.targetHandle === 'viewport-in'
+        );
+        if (existingInputs.length >= 1) {
+          return false;
+        }
+      }
+
+      // Type compatibility check for CalculationNode targets
       if (CalculationNode.is(targetLynkNode)) {
         const operation = getOperation(targetLynkNode.data.operation);
 
@@ -151,9 +195,25 @@ export function LynkCanvas() {
         return;
       }
 
-      // Type compatibility check for CalculationNode targets
       const targetLynkNode = targetNode as LynkNode;
       const sourceLynkNode = sourceNode as LynkNode;
+
+      // ViewportNode targets: only accept from DisplayNode, max 1 input
+      if (ViewportNode.is(targetLynkNode)) {
+        if (!DisplayNode.is(sourceLynkNode)) {
+          showToast('Viewport nodes only accept connections from Display nodes', 'warning');
+          return;
+        }
+        const existingInputs = edges.filter(
+          (e) => e.target === targetNode.id && e.targetHandle === 'viewport-in'
+        );
+        if (existingInputs.length >= 1) {
+          showToast('Viewport node already has a connection', 'warning');
+          return;
+        }
+      }
+
+      // Type compatibility check for CalculationNode targets
       if (CalculationNode.is(targetLynkNode)) {
         const operation = getOperation(targetLynkNode.data.operation);
 

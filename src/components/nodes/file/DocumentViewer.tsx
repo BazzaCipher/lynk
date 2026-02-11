@@ -16,6 +16,8 @@ interface DocumentViewerProps {
   onDocumentLoad: (numPages: number) => void;
   onImageRef?: (element: HTMLImageElement | HTMLCanvasElement | null) => void;
   onTextSelect?: (textRange: TextRange) => void;
+  onContentResize?: (width: number, height: number) => void;
+  onPageOffsetsChange?: (offsets: Map<number, number>) => void; // Callback when page offsets are calculated
   enableTextSelection?: boolean;
   width?: number;
   scrollMode?: boolean; // Enable smooth scroll through all pages
@@ -31,6 +33,8 @@ export function DocumentViewer({
   onDocumentLoad,
   onImageRef,
   onTextSelect,
+  onContentResize,
+  onPageOffsetsChange,
   enableTextSelection = true,
   width = 300,
   scrollMode = false,
@@ -40,6 +44,7 @@ export function DocumentViewer({
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null); // Ref for document content area only
+  const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const handlePdfLoadSuccess = useCallback(
     ({ numPages }: { numPages: number }) => {
@@ -65,6 +70,41 @@ export function DocumentViewer({
     setLoading(false);
     setError('Failed to load image');
   }, []);
+
+  // Track content dimensions and report via callback
+  useEffect(() => {
+    if (!onContentResize || !contentRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width: w, height: h } = entry.contentRect;
+        if (w > 0 && h > 0) {
+          onContentResize(w, h);
+        }
+      }
+    });
+
+    observer.observe(contentRef.current);
+    return () => observer.disconnect();
+  }, [onContentResize]);
+
+  // Calculate page offsets in scrollMode
+  useEffect(() => {
+    if (!scrollMode || totalPages <= 1 || !onPageOffsetsChange) return;
+
+    // Use a small delay to ensure pages have rendered
+    const timeoutId = setTimeout(() => {
+      const offsets = new Map<number, number>();
+      pageRefs.current.forEach((el, pageNum) => {
+        offsets.set(pageNum, el.offsetTop);
+      });
+      if (offsets.size > 0) {
+        onPageOffsetsChange(offsets);
+      }
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [scrollMode, totalPages, loading, onPageOffsetsChange]);
 
   // Handle text selection
   useEffect(() => {
@@ -169,7 +209,14 @@ export function DocumentViewer({
             {scrollMode && totalPages > 1 ? (
               // Smooth scroll mode: render all pages
               Array.from({ length: totalPages }, (_, i) => (
-                <div key={i + 1} className="mb-4 last:mb-0">
+                <div
+                  key={i + 1}
+                  className="mb-4 last:mb-0"
+                  ref={(el) => {
+                    if (el) pageRefs.current.set(i + 1, el);
+                  }}
+                  data-page-number={i + 1}
+                >
                   <Page
                     pageNumber={i + 1}
                     width={width}

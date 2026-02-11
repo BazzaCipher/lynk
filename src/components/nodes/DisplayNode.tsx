@@ -1,55 +1,100 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import type { NodeProps } from '@xyflow/react';
-import { Document, Page, pdfjs } from 'react-pdf';
+import { useEdges, useReactFlow } from '@xyflow/react';
+import { BaseNode } from './base/BaseNode';
+import { DocumentViewer } from './file/DocumentViewer';
+import { RegionSelector } from './file/RegionSelector';
+import { ViewportOverlay } from './file/ViewportOverlay';
+import { ViewportList } from './file/ViewportList';
+import { FileNodePreview } from './file/FileNodePreview';
+import { Modal } from '../ui/Modal';
+import { CollapsiblePanel } from '../ui/CollapsiblePanel';
+import { FileDropZone } from '../ui/FileDropZone';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useFileUpload, type FileUploadResult } from '../../hooks/useFileUpload';
+import { useNodeOutputs } from '../../hooks/useNodeOutputs';
 import type {
   DisplayNode as DisplayNodeType,
   ExtractorNodeData,
+  NodeOutput,
+  RegionCoordinates,
+  ViewportRegion,
+  ViewportNodeData,
 } from '../../types';
 import { createImageView, createPdfView } from '../../types';
 
-// Initialize PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-
-const MIN_SIZE = 50;
+const VIEWER_WIDTH = 500;
 const DEFAULT_WIDTH = 300;
-
-type ResizeCorner = 'nw' | 'ne' | 'sw' | 'se';
 
 export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) {
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
   const replaceNode = useCanvasStore((state) => state.replaceNode);
   const addEdge = useCanvasStore((state) => state.addEdge);
-  const [isDraggingResize, setIsDraggingResize] = useState(false);
-  const [activeCorner, setActiveCorner] = useState<ResizeCorner | null>(null);
+  const storeAddNode = useCanvasStore((state) => state.addNode);
+  const removeEdge = useCanvasStore((state) => state.removeEdge);
+  const edges = useEdges();
+  const { getNode } = useReactFlow();
+  const nodeOutputs = useNodeOutputs(id);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedViewportId, setSelectedViewportId] = useState<string | null>(null);
+  const [viewerHeight, setViewerHeight] = useState(400);
   const [pdfError, setPdfError] = useState<string | null>(null);
-  const resizeStartRef = useRef<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  } | null>(null);
+  const [pageOffsets, setPageOffsets] = useState<Map<number, number>>(new Map());
 
   // Get current page number from view target
   const currentPage = data.view.target.type === 'page' ? data.view.target.pageNumber : 1;
+  const viewports = data.viewports || [];
 
+  // Track viewer container dimensions for normalizing coordinates
+  const viewerContainerRef = useRef<{ width: number; height: number }>({
+    width: VIEWER_WIDTH,
+    height: 400,
+  });
+
+  // ── Populate Exportable.outputs from viewports ──────────────────────────────
+  const outputs = useMemo(() => {
+    const map: Record<string, NodeOutput> = {};
+    for (const viewport of viewports) {
+      // Serialize viewport data as a JSON string for transport through the data flow system
+      const value = JSON.stringify({
+        fileUrl: data.fileUrl,
+        fileType: data.fileType,
+        normalizedRect: viewport.normalizedRect,
+        pageNumber: viewport.pageNumber,
+      });
+
+      map[viewport.id] = {
+        value,
+        dataType: 'string',
+        label: viewport.label,
+      };
+    }
+    return map;
+  }, [viewports, data.fileUrl, data.fileType]);
+
+  // Sync outputs to node data
+  useEffect(() => {
+    if (Object.keys(outputs).length > 0) {
+      nodeOutputs.update(outputs);
+    } else {
+      nodeOutputs.clearAll();
+    }
+  }, [outputs, nodeOutputs]);
+
+  // ── File handling ──────────────────────────────────────────────────────────
   const onFileRegistered = useCallback(
     (result: FileUploadResult) => {
       if (result.fileType === 'image') {
-        // Get natural dimensions of the image
         const img = new Image();
         img.onload = () => {
           const aspectRatio = img.naturalWidth / img.naturalHeight;
           let width = DEFAULT_WIDTH;
           let height = width / aspectRatio;
-
-          // Constrain to reasonable max dimensions
           if (height > 600) {
             height = 600;
             width = height * aspectRatio;
           }
-
           updateNodeData(id, {
             fileUrl: result.fileUrl,
             fileId: result.fileId,
@@ -57,11 +102,12 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
             fileType: 'image',
             view: createImageView(Math.round(width), Math.round(height)),
             totalPages: 1,
+            viewports: [],
+            documentSize: { width: img.naturalWidth, height: img.naturalHeight },
           });
         };
         img.src = result.fileUrl;
       } else {
-        // PDF file
         updateNodeData(id, {
           fileUrl: result.fileUrl,
           fileId: result.fileId,
@@ -69,6 +115,7 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
           fileType: 'pdf',
           view: createPdfView(1, 400, 300),
           totalPages: 1,
+          viewports: [],
         });
       }
     },
@@ -77,6 +124,7 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
 
   const { handleFileSelect, handleFileDrop, handleDragOver } = useFileUpload({ onFileRegistered });
 
+  // ── PDF handling ──────────────────────────────────────────────────────────
   const handlePdfLoad = useCallback(
     ({ numPages }: { numPages: number }) => {
       updateNodeData(id, { totalPages: numPages });
@@ -90,115 +138,173 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
     setPdfError('Failed to load PDF');
   }, []);
 
-  const handlePageChange = useCallback(
-    (delta: number) => {
-      const newPage = Math.max(1, Math.min(data.totalPages, currentPage + delta));
+  const handleModalPageChange = useCallback(
+    (page: number) => {
       updateNodeData(id, {
         view: {
           ...data.view,
-          target: { type: 'page', pageNumber: newPage },
+          target: { type: 'page', pageNumber: page },
         },
       });
-    },
-    [id, data.view, data.totalPages, currentPage, updateNodeData]
-  );
-
-  const handleResizeStart = useCallback(
-    (e: React.MouseEvent, corner: ResizeCorner) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsDraggingResize(true);
-      setActiveCorner(corner);
-      resizeStartRef.current = {
-        x: e.clientX,
-        y: e.clientY,
-        width: data.view.nodeSize.width,
-        height: data.view.nodeSize.height,
-      };
-
-      const handleMouseMove = (moveEvent: MouseEvent) => {
-        if (!resizeStartRef.current) return;
-
-        const deltaX = moveEvent.clientX - resizeStartRef.current.x;
-        const deltaY = moveEvent.clientY - resizeStartRef.current.y;
-
-        let newWidth = resizeStartRef.current.width;
-        let newHeight = resizeStartRef.current.height;
-
-        // Calculate new dimensions based on corner
-        if (corner === 'se') {
-          newWidth = resizeStartRef.current.width + deltaX;
-          newHeight = resizeStartRef.current.height + deltaY;
-        } else if (corner === 'sw') {
-          newWidth = resizeStartRef.current.width - deltaX;
-          newHeight = resizeStartRef.current.height + deltaY;
-        } else if (corner === 'ne') {
-          newWidth = resizeStartRef.current.width + deltaX;
-          newHeight = resizeStartRef.current.height - deltaY;
-        } else if (corner === 'nw') {
-          newWidth = resizeStartRef.current.width - deltaX;
-          newHeight = resizeStartRef.current.height - deltaY;
-        }
-
-        // Enforce minimum size
-        newWidth = Math.max(MIN_SIZE, newWidth);
-        newHeight = Math.max(MIN_SIZE, newHeight);
-
-        // If aspect locked, maintain ratio
-        if (data.view.aspectLocked && data.view.nodeSize.width > 0 && data.view.nodeSize.height > 0) {
-          const aspectRatio = resizeStartRef.current.width / resizeStartRef.current.height;
-          if (Math.abs(deltaX) > Math.abs(deltaY)) {
-            newHeight = newWidth / aspectRatio;
-          } else {
-            newWidth = newHeight * aspectRatio;
-          }
-          // Re-enforce minimums
-          newWidth = Math.max(MIN_SIZE, newWidth);
-          newHeight = Math.max(MIN_SIZE, newHeight);
-        }
-
-        updateNodeData(id, {
-          view: {
-            ...data.view,
-            nodeSize: {
-              width: Math.round(newWidth),
-              height: Math.round(newHeight),
-            },
-          },
-        });
-      };
-
-      const handleMouseUp = () => {
-        setIsDraggingResize(false);
-        setActiveCorner(null);
-        resizeStartRef.current = null;
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
     },
     [id, data.view, updateNodeData]
   );
 
-  const toggleAspectLock = useCallback(() => {
-    updateNodeData(id, {
-      view: {
-        ...data.view,
-        aspectLocked: !data.view.aspectLocked,
-      },
-    });
-  }, [id, data.view, updateNodeData]);
+  const handleDocumentLoad = useCallback(
+    (numPages: number) => {
+      updateNodeData(id, { totalPages: numPages });
+      // Set initial viewer height based on typical document aspect ratio
+      setViewerHeight(VIEWER_WIDTH * 1.4);
+    },
+    [id, updateNodeData]
+  );
 
-  // Convert to ExtractorNode
+  const handleContentResize = useCallback(
+    (width: number, height: number) => {
+      viewerContainerRef.current = { width, height };
+      setViewerHeight(height);
+      // Track document size for viewports (PDF only - images set this on load)
+      if (data.fileType === 'pdf' && (!data.documentSize || data.documentSize.width !== width || data.documentSize.height !== height)) {
+        updateNodeData(id, { documentSize: { width, height } });
+      }
+    },
+    [id, data.fileType, data.documentSize, updateNodeData]
+  );
+
+  // ── Viewport region creation ──────────────────────────────────────────────
+  const handleViewportCreate = useCallback(
+    (coordinates: RegionCoordinates) => {
+      const { width: containerW, height: containerH } = viewerContainerRef.current;
+
+      // Normalize pixel coordinates to 0-1 range
+      const normalizedRect = {
+        x: coordinates.x / containerW,
+        y: coordinates.y / containerH,
+        width: coordinates.width / containerW,
+        height: coordinates.height / containerH,
+      };
+
+      const newViewport: ViewportRegion = {
+        id: `viewport-${Date.now()}`,
+        label: `Viewport ${viewports.length + 1}`,
+        normalizedRect,
+        pixelRect: coordinates,
+        pageNumber: currentPage,
+      };
+
+      const newViewports = [...viewports, newViewport];
+      updateNodeData(id, { viewports: newViewports });
+      setSelectedViewportId(newViewport.id);
+
+      // Auto-spawn ViewportNode + create connecting edge
+      const thisNode = getNode(id);
+      const nodeX = thisNode?.position?.x ?? 0;
+      const nodeY = thisNode?.position?.y ?? 0;
+      const spawnX = nodeX + data.view.nodeSize.width + 100;
+      const spawnY = nodeY + (newViewports.length - 1) * 220;
+
+      // Determine size based on aspect ratio of the crop
+      // Use pixel coordinates directly - they preserve the correct aspect ratio
+      // (normalized coords are ratios against different dimensions, so dividing them doesn't give true aspect)
+      const cropAspect = coordinates.width / coordinates.height;
+      const MAX_SPAWN_SIZE = 350;
+      let viewportWidth = 250;
+      let viewportHeight = Math.round(viewportWidth / cropAspect);
+
+      // Cap on spawn only - user can resize past this limit afterwards
+      if (viewportHeight > MAX_SPAWN_SIZE) {
+        viewportHeight = MAX_SPAWN_SIZE;
+        viewportWidth = Math.round(viewportHeight * cropAspect);
+      }
+      if (viewportWidth > MAX_SPAWN_SIZE) {
+        viewportWidth = MAX_SPAWN_SIZE;
+        viewportHeight = Math.round(viewportWidth / cropAspect);
+      }
+
+      const viewportNodeData: ViewportNodeData = {
+        label: newViewport.label,
+        fileUrl: data.fileUrl,
+        fileType: data.fileType,
+        normalizedRect: newViewport.normalizedRect,
+        pageNumber: newViewport.pageNumber,
+        nodeSize: { width: viewportWidth, height: viewportHeight },
+        aspectLocked: true,
+      };
+
+      const viewportNodeId = storeAddNode(
+        'viewport',
+        { x: spawnX, y: spawnY },
+        viewportNodeData
+      );
+
+      // Create connecting edge to ViewportNode
+      addEdge({
+        id: `edge-${id}-${newViewport.id}-${viewportNodeId}`,
+        source: id,
+        sourceHandle: newViewport.id,
+        target: viewportNodeId,
+        targetHandle: 'viewport-in',
+      });
+    },
+    [id, viewports, currentPage, data.fileUrl, data.fileType, data.view.nodeSize, updateNodeData, storeAddNode, getNode, addEdge]
+  );
+
+  // ── Viewport management ───────────────────────────────────────────────────
+  const handleViewportSelect = useCallback((viewportId: string) => {
+    setSelectedViewportId(viewportId);
+  }, []);
+
+  const handleViewportDelete = useCallback(
+    (viewportId: string) => {
+      // Remove connected edges
+      const outgoingEdges = edges.filter(
+        (e) => e.source === id && e.sourceHandle === viewportId
+      );
+      for (const edge of outgoingEdges) {
+        // Also remove the connected ViewportNode
+        const targetNode = getNode(edge.target);
+        if (targetNode && targetNode.type === 'viewport') {
+          useCanvasStore.getState().removeNode(edge.target);
+        }
+        removeEdge(edge.id);
+      }
+
+      updateNodeData(id, {
+        viewports: viewports.filter((v) => v.id !== viewportId),
+      });
+      if (selectedViewportId === viewportId) {
+        setSelectedViewportId(null);
+      }
+    },
+    [id, viewports, edges, selectedViewportId, updateNodeData, removeEdge, getNode]
+  );
+
+  const handleViewportLabelChange = useCallback(
+    (viewportId: string, label: string) => {
+      updateNodeData(id, {
+        viewports: viewports.map((v) =>
+          v.id === viewportId ? { ...v, label } : v
+        ),
+      });
+    },
+    [id, viewports, updateNodeData]
+  );
+
+  // ── Modal ─────────────────────────────────────────────────────────────────
+  const openModal = useCallback(() => {
+    setIsModalOpen(true);
+  }, []);
+
+  const closeModal = useCallback(() => {
+    setIsModalOpen(false);
+  }, []);
+
+  // ── Convert to ExtractorNode ──────────────────────────────────────────────
   const convertToExtractor = useCallback(() => {
-    // Get current page from view target
     const extractorCurrentPage = data.view.target.type === 'page'
       ? data.view.target.pageNumber
       : 1;
 
-    // Create ExtractorNode with restored regions
     const extractorData: ExtractorNodeData = {
       label: data.label,
       fileType: data.fileType,
@@ -210,10 +316,18 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
       totalPages: data.totalPages,
     };
 
-    // Replace node first
-    replaceNode(id, 'extractor', extractorData);
+    // Remove viewport edges before converting
+    const outgoingEdges = edges.filter((e) => e.source === id);
+    for (const edge of outgoingEdges) {
+      removeEdge(edge.id);
+    }
 
-    // Restore cached edges if available
+    replaceNode(id, 'extractor', {
+      ...extractorData,
+      cachedExtractorEdges: undefined, // Don't carry over to extractor
+    } as unknown as ExtractorNodeData);
+
+    // Restore cached extractor edges if available
     if (data.cachedExtractorEdges?.edges) {
       for (const cached of data.cachedExtractorEdges.edges) {
         addEdge({
@@ -225,9 +339,9 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
         });
       }
     }
-  }, [id, data, replaceNode, addEdge]);
+  }, [id, data, edges, replaceNode, addEdge, removeEdge]);
 
-  // Empty state - drop zone
+  // ── Empty state ───────────────────────────────────────────────────────────
   if (!data.fileUrl) {
     return (
       <div
@@ -235,33 +349,12 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
           bg-white rounded-lg shadow-md border-2 p-4 w-[200px]
           ${selected ? 'border-blue-500' : 'border-gray-200'}
         `}
-        onDrop={handleFileDrop}
-        onDragOver={handleDragOver}
       >
-        <label className="flex flex-col items-center justify-center h-32 cursor-pointer hover:bg-gray-50 transition-colors rounded border-2 border-dashed border-gray-300">
-          <input
-            type="file"
-            accept="image/*,application/pdf"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-10 w-10 text-gray-300 mb-2"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path
-              fillRule="evenodd"
-              d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"
-              clipRule="evenodd"
-            />
-          </svg>
-          <div className="text-sm text-gray-400 text-center">
-            <p>Drop an image or PDF</p>
-            <p className="text-xs mt-1">or click to browse</p>
-          </div>
-        </label>
+        <FileDropZone
+          onFileSelect={handleFileSelect}
+          onDrop={handleFileDrop}
+          onDragOver={handleDragOver}
+        />
         <div className="mt-2 text-center text-xs text-gray-400">
           {data.label}
         </div>
@@ -269,135 +362,132 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
     );
   }
 
-  // Loaded state - display with resize handles
+  // ── Loaded state ──────────────────────────────────────────────────────────
   return (
-    <div
-      className={`
-        relative bg-white rounded-lg shadow-md border-2 overflow-hidden
-        ${selected ? 'border-blue-500' : 'border-gray-200'}
-        ${isDraggingResize ? 'select-none' : ''}
-      `}
-      style={{ width: data.view.nodeSize.width, height: data.view.nodeSize.height }}
-    >
-      {/* Content display */}
-      {data.fileType === 'image' ? (
-        <img
-          src={data.fileUrl}
-          alt={data.fileName || 'Image'}
-          className="w-full h-full object-contain bg-gray-50"
-          draggable={false}
+    <>
+      {/* Main node with preview + viewport list */}
+      <BaseNode label={data.label} selected={selected} className="w-[280px]">
+        {/* Document preview using shared component */}
+        <FileNodePreview
+          fileUrl={data.fileUrl}
+          fileType={data.fileType}
+          fileName={data.fileName || ''}
+          currentPage={currentPage}
+          totalPages={data.totalPages}
+          itemCount={viewports.length}
+          itemLabel="viewport"
+          onOpenClick={openModal}
+          onConvertClick={convertToExtractor}
+          convertLabel="Extractor"
+          convertIcon="document"
+          showThumbnail={true}
+          thumbnailHeight={Math.min(data.view.nodeSize.height, 200)}
+          onPdfLoad={handlePdfLoad}
+          onPdfError={handlePdfError}
+          pdfError={pdfError}
         />
-      ) : (
-        <div className="w-full h-full bg-gray-50 flex items-center justify-center overflow-hidden">
-          {pdfError ? (
-            <div className="text-red-500 text-sm">{pdfError}</div>
-          ) : (
-            <Document
-              file={data.fileUrl}
-              onLoadSuccess={handlePdfLoad}
-              onLoadError={handlePdfError}
-              loading={
-                <div className="text-gray-400 text-sm">Loading PDF...</div>
-              }
-            >
-              <Page
-                pageNumber={currentPage}
-                width={data.view.nodeSize.width - 4}
-                renderTextLayer={false}
-                renderAnnotationLayer={false}
-              />
-            </Document>
-          )}
-        </div>
-      )}
 
-      {/* File name overlay on hover */}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent px-2 py-1 opacity-0 hover:opacity-100 transition-opacity">
-        <p className="text-xs text-white truncate">{data.fileName}</p>
-      </div>
+        {/* Compact viewport list with source handles */}
+        <ViewportList
+          viewports={viewports}
+          selectedViewportId={selectedViewportId}
+          onViewportSelect={handleViewportSelect}
+          onViewportDelete={handleViewportDelete}
+          onViewportLabelChange={handleViewportLabelChange}
+          compact
+          nodeId={id}
+        />
+      </BaseNode>
 
-      {/* PDF page navigation */}
-      {data.fileType === 'pdf' && data.totalPages > 1 && (
-        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex items-center gap-1 bg-black/50 rounded-full px-2 py-1">
-          <button
-            onClick={() => handlePageChange(-1)}
-            disabled={currentPage <= 1}
-            className="text-white disabled:opacity-50 p-0.5 hover:bg-white/20 rounded"
+      {/* Document viewer modal with region selector */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title={data.fileName || 'Document Viewer'}
+        className="w-[950px] max-w-[95vw]"
+      >
+        <div className="flex h-[75vh]">
+          {/* Document viewer area */}
+          <div className="flex-1 overflow-auto bg-gray-50">
+            {/* Instruction bar */}
+            <div className="sticky top-0 z-10 flex items-center justify-center gap-2 py-2 px-4 bg-white border-b border-gray-200 shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-500" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zm0 2h10v10H5V5z" />
+              </svg>
+              <span className="text-xs text-gray-600">
+                Draw a box to create a viewport region
+              </span>
+            </div>
+
+            {/* Document with overlays */}
+            <div className="relative p-6 flex justify-center">
+              <div className="relative bg-white shadow-lg">
+                <DocumentViewer
+                  fileUrl={data.fileUrl ?? null}
+                  fileType={data.fileType}
+                  currentPage={currentPage}
+                  totalPages={data.totalPages}
+                  onPageChange={handleModalPageChange}
+                  onDocumentLoad={handleDocumentLoad}
+                  onContentResize={handleContentResize}
+                  onPageOffsetsChange={setPageOffsets}
+                  enableTextSelection={false}
+                  width={VIEWER_WIDTH}
+                  scrollMode={false}
+                >
+                  {/* Viewport overlays */}
+                  {data.fileUrl && (
+                    <ViewportOverlay
+                      viewports={viewports}
+                      currentPage={currentPage}
+                      selectedViewportId={selectedViewportId}
+                      onViewportSelect={handleViewportSelect}
+                      interactive
+                      nodeId={id}
+                    />
+                  )}
+                  {/* Box selection for creating viewports */}
+                  {data.fileUrl && (
+                    <RegionSelector
+                      onRegionCreate={handleViewportCreate}
+                      width={VIEWER_WIDTH}
+                      height={viewerHeight}
+                      pageOffsets={pageOffsets}
+                    />
+                  )}
+                </DocumentViewer>
+              </div>
+            </div>
+          </div>
+
+          {/* Collapsible viewports panel */}
+          <CollapsiblePanel
+            title="Viewports"
+            badge={viewports.length}
+            defaultOpen={true}
+            side="right"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-          </button>
-          <span className="text-white text-xs min-w-[40px] text-center">
-            {currentPage}/{data.totalPages}
-          </span>
-          <button
-            onClick={() => handlePageChange(1)}
-            disabled={currentPage >= data.totalPages}
-            className="text-white disabled:opacity-50 p-0.5 hover:bg-white/20 rounded"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* Controls (visible when selected) */}
-      {selected && (
-        <>
-          {/* Corner resize handles */}
-          {(['nw', 'ne', 'sw', 'se'] as const).map((corner) => (
-            <div
-              key={corner}
-              className={`
-                absolute w-3 h-3 bg-blue-500 border border-white rounded-sm
-                ${corner.includes('n') ? 'top-0' : 'bottom-0'}
-                ${corner.includes('w') ? 'left-0' : 'right-0'}
-                ${corner === 'nw' || corner === 'se' ? 'cursor-nwse-resize' : 'cursor-nesw-resize'}
-                ${activeCorner === corner ? 'bg-blue-600' : ''}
-                hover:bg-blue-600
-              `}
-              style={{
-                transform: `translate(${corner.includes('w') ? '-50%' : '50%'}, ${corner.includes('n') ? '-50%' : '50%'})`,
-              }}
-              onMouseDown={(e) => handleResizeStart(e, corner)}
+            <ViewportList
+              viewports={viewports}
+              selectedViewportId={selectedViewportId}
+              onViewportSelect={handleViewportSelect}
+              onViewportDelete={handleViewportDelete}
+              onViewportLabelChange={handleViewportLabelChange}
+              nodeId={id}
             />
-          ))}
+          </CollapsiblePanel>
+        </div>
 
-          {/* Aspect lock toggle */}
-          <button
-            onClick={toggleAspectLock}
-            className={`
-              absolute top-1 right-8 p-1 rounded text-xs
-              ${data.view.aspectLocked ? 'bg-blue-500 text-white' : 'bg-white/80 text-gray-600'}
-              hover:bg-blue-600 hover:text-white transition-colors
-            `}
-            title={data.view.aspectLocked ? 'Unlock aspect ratio' : 'Lock aspect ratio'}
-          >
-            {data.view.aspectLocked ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H7V7a3 3 0 015.905-.75 1 1 0 001.937-.5A5.002 5.002 0 0010 2z" />
-              </svg>
-            )}
-          </button>
-
-          {/* Convert to Extractor button */}
-          <button
-            onClick={convertToExtractor}
-            className="absolute top-1 right-1 p-1 rounded text-xs bg-white/80 text-gray-600 hover:bg-orange-500 hover:text-white transition-colors"
-            title="Convert to Extractor Node"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-            </svg>
-          </button>
-        </>
-      )}
-    </div>
+        {/* Footer */}
+        <div className="px-4 py-2 bg-gray-100 border-t border-gray-200 text-xs text-gray-500 flex items-center justify-between">
+          <span>
+            Draw a box on the document to create a viewport. Each viewport spawns a connected node.
+          </span>
+          <span className="text-gray-400">
+            {viewports.length} viewport{viewports.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+      </Modal>
+    </>
   );
 }

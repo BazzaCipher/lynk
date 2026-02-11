@@ -136,12 +136,34 @@ const FileNodeDataSchema = z.object({
   fileName: z.string().optional(),
 });
 
-// Display node data - visual reference for images and PDFs
+// Viewport region - a cropped area on a document
+const ViewportRegionSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  normalizedRect: ViewRectSchema,
+  pixelRect: RegionCoordinatesSchema,
+  pageNumber: z.number(),
+});
+
+// Display node data - visual reference for images and PDFs with viewport regions
 const DisplayNodeDataSchema = FileNodeDataSchema.extend({
   label: z.string(),
   view: DocumentViewSchema,
   totalPages: z.number(),
+  viewports: z.array(ViewportRegionSchema).default([]),
+  outputs: z.record(z.string(), z.any()).optional(),
   cachedExtractorEdges: CachedExtractorEdgesSchema.optional(),
+});
+
+// Viewport node data - receives cropped region via edge from DisplayNode
+const ViewportNodeDataSchema = z.object({
+  label: z.string(),
+  fileUrl: z.string().optional(),
+  fileType: z.enum(['image', 'pdf']).optional(),
+  normalizedRect: ViewRectSchema.optional(),
+  pageNumber: z.number().optional(),
+  nodeSize: z.object({ width: z.number(), height: z.number() }),
+  aspectLocked: z.boolean(),
 });
 
 // Extractor node data - data extraction with regions
@@ -266,6 +288,13 @@ const NodeSchema = z.discriminatedUnion('type', [
     position: PositionSchema,
     parentId: z.string().optional(),
     data: LabelNodeDataSchema,
+  }).passthrough(),
+  z.object({
+    id: z.string(),
+    type: z.literal('viewport'),
+    position: PositionSchema,
+    parentId: z.string().optional(),
+    data: ViewportNodeDataSchema,
   }).passthrough(),
   z.object({
     id: z.string(),

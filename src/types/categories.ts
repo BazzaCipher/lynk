@@ -135,19 +135,19 @@ export class SourceNode {
 
 /** Nodes that can be connection sources (have output handles) */
 export const CanExport = {
-  types: ['extractor', 'calculation', 'sheet', 'label'] as LynkNodeType[],
+  types: ['display', 'extractor', 'calculation', 'sheet', 'label'] as LynkNodeType[],
   is: (node: LynkNode) => CanExport.types.includes(node.type as LynkNodeType),
 };
 
 /** Nodes that can be connection targets (have input handles) */
 export const CanImport = {
-  types: ['calculation', 'sheet', 'label'] as LynkNodeType[],
+  types: ['viewport', 'calculation', 'sheet', 'label'] as LynkNodeType[],
   is: (node: LynkNode) => CanImport.types.includes(node.type as LynkNodeType),
 };
 
 /** Capability helper for highlighting - works with Exportable */
 export const Highlightable = {
-  types: CanExport.types,
+  types: [...CanExport.types],
 
   /** Construct handle ID: "nodeId:handleId" */
   target(nodeId: string, handleId: string): string {

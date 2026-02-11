@@ -15,7 +15,7 @@
 
 import { create } from 'zustand';
 import type { Edge, NodeChange, EdgeChange, Viewport } from '@xyflow/react';
-import type { LynkNode, LynkNodeData, LynkNodeType, CanvasState } from '../types';
+import type { LynkNode, LynkNodeData, LynkNodeType, CanvasState, ViewportRegion } from '../types';
 import type { LayoutType } from '../core/layout/layoutAlgorithms';
 import type { ValidationResult } from './codecs';
 
@@ -72,6 +72,9 @@ interface CanvasStore {
 
   // Highlight actions
   setHighlightedHandle: (handle: string | null) => void;
+
+  // Viewport region actions
+  updateViewportRegion: (nodeId: string, viewportId: string, updates: Partial<ViewportRegion>) => void;
 
   // Group actions
   createGroup: (nodeIds: string[]) => string | null;

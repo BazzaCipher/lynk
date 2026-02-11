@@ -33,6 +33,9 @@ export type {
 // Extracted regions
 export type { ExtractedRegion } from './regions';
 
+// Viewport types
+export type { ViewportRegion } from './viewport';
+
 // View types
 export type {
   ViewRect,
@@ -48,6 +51,7 @@ export type {
   BaseNodeData,
   CachedExtractorEdges,
   DisplayNodeData,
+  ViewportNodeData,
   ExtractorNodeData,
   CachedOperationInputs,
   CalculationResult,
@@ -66,6 +70,7 @@ export type {
 // Node type aliases (types) and type guards (values) - declaration merging
 export {
   DisplayNode,
+  ViewportNode,
   ExtractorNode,
   CalculationNode,
   SheetNode,

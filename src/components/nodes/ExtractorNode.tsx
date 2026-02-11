@@ -6,8 +6,10 @@ import { DocumentViewer } from './file/DocumentViewer';
 import { RegionSelector } from './file/RegionSelector';
 import { HighlightOverlay } from './file/HighlightOverlay';
 import { RegionList } from './file/RegionList';
+import { FileNodePreview } from './file/FileNodePreview';
 import { Modal } from '../ui/Modal';
 import { CollapsiblePanel } from '../ui/CollapsiblePanel';
+import { FileDropZone } from '../ui/FileDropZone';
 import { extractTextFromRegion } from '../../core/extraction/ocrExtractor';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useToast } from '../ui/Toast';
@@ -43,6 +45,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   const [viewerHeight, setViewerHeight] = useState(400);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState<'box' | 'text'>('box');
+  const [pageOffsets, setPageOffsets] = useState<Map<number, number>>(new Map());
   const imageRef = useRef<HTMLImageElement | HTMLCanvasElement | null>(null);
 
   // ── Populate Exportable.outputs from regions ──────────────────────────────
@@ -133,13 +136,13 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   );
 
   const handleRegionCreate = useCallback(
-    (coordinates: RegionCoordinates) => {
+    (coordinates: RegionCoordinates, pageNumber?: number) => {
       const newRegion: ExtractedRegion = {
         id: `region-${Date.now()}`,
         label: `Field ${data.regions.length + 1}`,
         selectionType: 'box',
         coordinates,
-        pageNumber: data.currentPage,
+        pageNumber: pageNumber ?? data.currentPage,
         extractedData: { type: 'string', value: '' },
         dataType: 'string',
         color: getColorForType('string').border,
@@ -349,6 +352,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
         aspectLocked: true,
       },
       totalPages: data.totalPages,
+      viewports: [],
       cachedExtractorEdges,
     };
 
@@ -366,77 +370,33 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
       <BaseNode label={data.label} selected={selected} className="w-[280px]">
         {/* File info and open button */}
         <div
-          className="border-b border-gray-100"
           onDrop={handleFileDrop}
           onDragOver={handleDragOver}
         >
           {data.fileUrl ? (
-            <div className="p-3">
-              {/* File info */}
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center text-gray-500">
-                  {data.fileType === 'pdf' ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-                    </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                    </svg>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {data.fileName}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {data.regions.length} field{data.regions.length !== 1 ? 's' : ''}
-                    {data.fileType === 'pdf' && data.totalPages > 1
-                      ? ` · Page ${data.currentPage}/${data.totalPages}`
-                      : ''}
-                  </p>
-                </div>
-              </div>
-
-              {/* Action buttons */}
-              <div className="flex gap-2">
-                <button
-                  onClick={openModal}
-                  className="flex-1 px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                  </svg>
-                  Open
-                </button>
-                <button
-                  onClick={convertToDisplay}
-                  className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors flex items-center justify-center gap-1"
-                  title="Convert to Display Node"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+            <FileNodePreview
+              fileUrl={data.fileUrl}
+              fileType={data.fileType}
+              fileName={data.fileName || ''}
+              currentPage={data.currentPage}
+              totalPages={data.totalPages}
+              itemCount={data.regions.length}
+              itemLabel="field"
+              onOpenClick={openModal}
+              onConvertClick={convertToDisplay}
+              convertLabel="Display"
+              convertIcon="image"
+              showThumbnail={false}
+            />
           ) : (
-            <label className="flex flex-col items-center justify-center h-28 cursor-pointer hover:bg-gray-50 transition-colors">
-              <input
-                type="file"
-                accept="application/pdf,image/*"
-                onChange={handleFileSelect}
-                className="hidden"
+            <div className="border-b border-gray-100">
+              <FileDropZone
+                onFileSelect={handleFileSelect}
+                onDrop={handleFileDrop}
+                onDragOver={handleDragOver}
+                compact
               />
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-300 mb-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-              </svg>
-              <div className="text-sm text-gray-400 text-center">
-                <p>Drop a PDF or image</p>
-                <p className="text-xs mt-1">or click to browse</p>
-              </div>
-            </label>
+            </div>
           )}
         </div>
 
@@ -477,7 +437,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                   <path d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zm0 2h10v10H5V5z" />
                 </svg>
-                Box (OCR)
+                Box
               </button>
               <button
                 onClick={() => setSelectionMode('text')}
@@ -508,6 +468,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
                     imageRef.current = ref;
                   }}
                   onTextSelect={selectionMode === 'text' ? handleTextSelect : undefined}
+                  onPageOffsetsChange={setPageOffsets}
                   enableTextSelection={selectionMode === 'text'}
                   width={VIEWER_WIDTH}
                   scrollMode={true}
@@ -521,6 +482,8 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
                       onRegionSelect={handleRegionSelect}
                       interactive={selectionMode === 'box'}
                       nodeId={id}
+                      scrollMode={true}
+                      pageOffsets={pageOffsets}
                     />
                   )}
                   {data.fileUrl && selectionMode === 'box' && (
@@ -528,6 +491,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
                       onRegionCreate={handleRegionCreate}
                       width={VIEWER_WIDTH}
                       height={viewerHeight}
+                      pageOffsets={pageOffsets}
                     />
                   )}
                 </DocumentViewer>
@@ -552,7 +516,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
               onValueChange={handleValueChange}
               onExtract={handleExtract}
               isExtracting={isExtracting}
-              showOcrButton={true}
+              showOcrButton={false}
             />
           </CollapsiblePanel>
         </div>
@@ -561,7 +525,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
         <div className="px-4 py-2 bg-gray-100 border-t border-gray-200 text-xs text-gray-500 flex items-center justify-between">
           <span>
             {selectionMode === 'box'
-              ? 'Draw a box to create a field, then run OCR to extract text.'
+              ? 'Draw a box to create a field.'
               : 'Select text directly to create a field with that value.'}
           </span>
           <span className="text-gray-400">

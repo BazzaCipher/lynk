@@ -10,6 +10,7 @@ import {
   CalculationNode,
   ExtractorNode,
   DisplayNode,
+  ViewportNode,
   LabelNode,
   SheetNode,
 } from '../types';
@@ -73,7 +74,14 @@ export function validateNodeDataUpdate(
 export function getValidHandles(node: LynkNode): Set<string> {
   const handles = new Set<string>();
 
-  if (ExtractorNode.is(node)) {
+  if (DisplayNode.is(node)) {
+    const viewports = node.data.viewports || [];
+    for (const viewport of viewports) {
+      handles.add(viewport.id);
+    }
+  } else if (ViewportNode.is(node)) {
+    handles.add('viewport-in');
+  } else if (ExtractorNode.is(node)) {
     for (const region of node.data.regions) {
       handles.add(region.id);
     }

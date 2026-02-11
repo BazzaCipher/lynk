@@ -21,6 +21,7 @@ const defaultDisplayData: DisplayNodeData = {
   fileName: undefined,
   view: createImageView(300, 200),
   totalPages: 1,
+  viewports: [],
 };
 
 const defaultCalculationData: CalculationNodeData = {

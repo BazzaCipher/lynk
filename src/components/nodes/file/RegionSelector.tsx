@@ -2,9 +2,10 @@ import { useState, useCallback, useRef, type MouseEvent } from 'react';
 import type { RegionCoordinates } from '../../../types';
 
 interface RegionSelectorProps {
-  onRegionCreate: (coordinates: RegionCoordinates) => void;
+  onRegionCreate: (coordinates: RegionCoordinates, pageNumber?: number) => void;
   width: number;
   height: number;
+  pageOffsets?: Map<number, number>; // Y offset for each page in scrollMode
 }
 
 interface DragState {
@@ -18,9 +19,31 @@ export function RegionSelector({
   onRegionCreate,
   width,
   height,
+  pageOffsets,
 }: RegionSelectorProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
+
+  // Determine which page a Y coordinate belongs to
+  const getPageForY = (y: number): { pageNumber: number; localY: number } => {
+    if (!pageOffsets || pageOffsets.size === 0) {
+      return { pageNumber: 1, localY: y };
+    }
+
+    let currentPage = 1;
+    let currentOffset = 0;
+
+    // Find the page this Y coordinate is on
+    const sortedEntries = Array.from(pageOffsets.entries()).sort((a, b) => a[1] - b[1]);
+    for (const [pageNum, offset] of sortedEntries) {
+      if (y >= offset) {
+        currentPage = pageNum;
+        currentOffset = offset;
+      }
+    }
+
+    return { pageNumber: currentPage, localY: y - currentOffset };
+  };
 
   const getRelativeCoordinates = useCallback(
     (e: MouseEvent): { x: number; y: number } => {
@@ -36,8 +59,9 @@ export function RegionSelector({
 
   const handleMouseDown = useCallback(
     (e: MouseEvent) => {
-      // Don't start if clicking on a region overlay
-      if ((e.target as HTMLElement).closest('[data-region-id]')) {
+      // Don't start if clicking on a region or viewport overlay
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-region-id]') || target.closest('[data-viewport-id]')) {
         return;
       }
 
@@ -78,17 +102,22 @@ export function RegionSelector({
     const regionHeight = Math.abs(dragState.currentY - dragState.startY);
 
     if (regionWidth >= minSize && regionHeight >= minSize) {
+      const globalY = Math.min(dragState.startY, dragState.currentY);
+
+      // Determine which page this region is on (based on top of selection)
+      const { pageNumber, localY } = getPageForY(globalY);
+
       const coordinates: RegionCoordinates = {
         x: Math.min(dragState.startX, dragState.currentX),
-        y: Math.min(dragState.startY, dragState.currentY),
+        y: localY,
         width: regionWidth,
         height: regionHeight,
       };
-      onRegionCreate(coordinates);
+      onRegionCreate(coordinates, pageNumber);
     }
 
     setDragState(null);
-  }, [dragState, onRegionCreate]);
+  }, [dragState, onRegionCreate, getPageForY]);
 
   // Calculate selection box dimensions
   const selectionBox = dragState
