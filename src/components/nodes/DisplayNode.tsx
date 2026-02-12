@@ -344,21 +344,16 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
   // ── Empty state ───────────────────────────────────────────────────────────
   if (!data.fileUrl) {
     return (
-      <div
-        className={`
-          bg-white rounded-lg shadow-md border-2 p-4 w-[200px]
-          ${selected ? 'border-blue-500' : 'border-gray-200'}
-        `}
-      >
-        <FileDropZone
-          onFileSelect={handleFileSelect}
-          onDrop={handleFileDrop}
-          onDragOver={handleDragOver}
-        />
-        <div className="mt-2 text-center text-xs text-gray-400">
-          {data.label}
+      <BaseNode label={data.label} selected={selected} className="w-[280px]">
+        <div className="p-2">
+          <FileDropZone
+            onFileSelect={handleFileSelect}
+            onDrop={handleFileDrop}
+            onDragOver={handleDragOver}
+            compact
+          />
         </div>
-      </div>
+      </BaseNode>
     );
   }
 

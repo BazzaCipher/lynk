@@ -46,6 +46,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState<'box' | 'text'>('box');
   const [pageOffsets, setPageOffsets] = useState<Map<number, number>>(new Map());
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const imageRef = useRef<HTMLImageElement | HTMLCanvasElement | null>(null);
 
   // ── Populate Exportable.outputs from regions ──────────────────────────────
@@ -119,6 +120,19 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   );
 
   const { handleFileSelect, handleFileDrop, handleDragOver } = useFileUpload({ onFileRegistered });
+
+  const handlePdfLoad = useCallback(
+    ({ numPages }: { numPages: number }) => {
+      updateNodeData(id, { totalPages: numPages });
+      setPdfError(null);
+    },
+    [id, updateNodeData]
+  );
+
+  const handlePdfError = useCallback((error: Error) => {
+    console.error('PDF load error:', error);
+    setPdfError('Failed to load PDF');
+  }, []);
 
   const handleDocumentLoad = useCallback(
     (numPages: number) => {
@@ -386,10 +400,14 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
               onConvertClick={convertToDisplay}
               convertLabel="Display"
               convertIcon="image"
-              showThumbnail={false}
+              showThumbnail={true}
+              thumbnailHeight={150}
+              onPdfLoad={handlePdfLoad}
+              onPdfError={handlePdfError}
+              pdfError={pdfError}
             />
           ) : (
-            <div className="border-b border-gray-100">
+            <div className="p-2">
               <FileDropZone
                 onFileSelect={handleFileSelect}
                 onDrop={handleFileDrop}
