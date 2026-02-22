@@ -13,6 +13,8 @@ import { FileDropZone } from '../ui/FileDropZone';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useFileUpload, type FileUploadResult } from '../../hooks/useFileUpload';
 import { useNodeOutputs } from '../../hooks/useNodeOutputs';
+import { BlobRegistry, type FileMetadata } from '../../store/canvasPersistence';
+import { FilePickerModal } from '../ui/FilePickerModal';
 import type {
   DisplayNode as DisplayNodeType,
   ExtractorNodeData,
@@ -37,10 +39,12 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
   const nodeOutputs = useNodeOutputs(id);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [selectedViewportId, setSelectedViewportId] = useState<string | null>(null);
   const [viewerHeight, setViewerHeight] = useState(400);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [pageOffsets, setPageOffsets] = useState<Map<number, number>>(new Map());
+  const [singlePageSize, setSinglePageSize] = useState<{ width: number; height: number } | null>(null);
 
   // Get current page number from view target
   const currentPage = data.view.target.type === 'page' ? data.view.target.pageNumber : 1;
@@ -85,6 +89,9 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
   // ── File handling ──────────────────────────────────────────────────────────
   const onFileRegistered = useCallback(
     (result: FileUploadResult) => {
+      BlobRegistry.addNodeReference(result.fileId, id);
+      useCanvasStore.getState().refreshFileRegistry();
+
       if (result.fileType === 'image') {
         const img = new Image();
         img.onload = () => {
@@ -122,7 +129,49 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
     [id, updateNodeData]
   );
 
-  const { handleFileSelect, handleFileDrop, handleDragOver } = useFileUpload({ onFileRegistered });
+  const { handleFileSelect, handleFileDrop, handleDragOver } = useFileUpload({ onFileRegistered, nodeId: id });
+
+  const handlePickFromRegistry = useCallback(
+    (_fileId: string, blobUrl: string, meta: FileMetadata) => {
+      BlobRegistry.addNodeReference(meta.fileId, id);
+      useCanvasStore.getState().refreshFileRegistry();
+
+      if (meta.fileType === 'image') {
+        const img = new Image();
+        img.onload = () => {
+          const aspectRatio = img.naturalWidth / img.naturalHeight;
+          let width = DEFAULT_WIDTH;
+          let height = width / aspectRatio;
+          if (height > 600) {
+            height = 600;
+            width = height * aspectRatio;
+          }
+          updateNodeData(id, {
+            fileUrl: blobUrl,
+            fileId: meta.fileId,
+            fileName: meta.fileName,
+            fileType: 'image',
+            view: createImageView(Math.round(width), Math.round(height)),
+            totalPages: 1,
+            viewports: [],
+            documentSize: { width: img.naturalWidth, height: img.naturalHeight },
+          });
+        };
+        img.src = blobUrl;
+      } else {
+        updateNodeData(id, {
+          fileUrl: blobUrl,
+          fileId: meta.fileId,
+          fileName: meta.fileName,
+          fileType: 'pdf',
+          view: createPdfView(1, 400, 300),
+          totalPages: 1,
+          viewports: [],
+        });
+      }
+    },
+    [id, updateNodeData]
+  );
 
   // ── PDF handling ──────────────────────────────────────────────────────────
   const handlePdfLoad = useCallback(
@@ -153,43 +202,65 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
   const handleDocumentLoad = useCallback(
     (numPages: number) => {
       updateNodeData(id, { totalPages: numPages });
-      // Set initial viewer height based on typical document aspect ratio
       setViewerHeight(VIEWER_WIDTH * 1.4);
     },
     [id, updateNodeData]
   );
 
+  // Handle single page size from DocumentViewer
+  const handleSinglePageSize = useCallback(
+    (w: number, h: number) => {
+      setSinglePageSize({ width: w, height: h });
+    },
+    []
+  );
+
+  // Sync documentSize from singlePageSize for per-page normalization
+  useEffect(() => {
+    if (singlePageSize && data.fileType === 'pdf') {
+      const { width, height } = singlePageSize;
+      if (!data.documentSize || data.documentSize.width !== width || data.documentSize.height !== height) {
+        updateNodeData(id, { documentSize: { width, height } });
+      }
+    }
+  }, [singlePageSize, id, data.fileType, data.documentSize, updateNodeData]);
+
   const handleContentResize = useCallback(
     (width: number, height: number) => {
       viewerContainerRef.current = { width, height };
       setViewerHeight(height);
-      // Track document size for viewports (PDF only - images set this on load)
-      if (data.fileType === 'pdf' && (!data.documentSize || data.documentSize.width !== width || data.documentSize.height !== height)) {
+      // For images (non-scroll), still track total content size
+      if (data.fileType === 'image' && (!data.documentSize || data.documentSize.width !== width || data.documentSize.height !== height)) {
         updateNodeData(id, { documentSize: { width, height } });
       }
+      // For PDFs in scroll mode, documentSize is set from singlePageSize instead
     },
     [id, data.fileType, data.documentSize, updateNodeData]
   );
 
   // ── Viewport region creation ──────────────────────────────────────────────
   const handleViewportCreate = useCallback(
-    (coordinates: RegionCoordinates) => {
-      const { width: containerW, height: containerH } = viewerContainerRef.current;
+    (coordinates: RegionCoordinates, pageNumber?: number) => {
+      // In scroll mode, normalize against single page dimensions
+      // RegionSelector already provides page-local coordinates via getPageForY
+      const normW = singlePageSize ? singlePageSize.width : viewerContainerRef.current.width;
+      const normH = singlePageSize ? singlePageSize.height : viewerContainerRef.current.height;
 
-      // Normalize pixel coordinates to 0-1 range
       const normalizedRect = {
-        x: coordinates.x / containerW,
-        y: coordinates.y / containerH,
-        width: coordinates.width / containerW,
-        height: coordinates.height / containerH,
+        x: coordinates.x / normW,
+        y: coordinates.y / normH,
+        width: coordinates.width / normW,
+        height: coordinates.height / normH,
       };
+
+      const resolvedPage = pageNumber ?? currentPage;
 
       const newViewport: ViewportRegion = {
         id: `viewport-${Date.now()}`,
         label: `Viewport ${viewports.length + 1}`,
         normalizedRect,
         pixelRect: coordinates,
-        pageNumber: currentPage,
+        pageNumber: resolvedPage,
       };
 
       const newViewports = [...viewports, newViewport];
@@ -203,15 +274,11 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
       const spawnX = nodeX + data.view.nodeSize.width + 100;
       const spawnY = nodeY + (newViewports.length - 1) * 220;
 
-      // Determine size based on aspect ratio of the crop
-      // Use pixel coordinates directly - they preserve the correct aspect ratio
-      // (normalized coords are ratios against different dimensions, so dividing them doesn't give true aspect)
       const cropAspect = coordinates.width / coordinates.height;
       const MAX_SPAWN_SIZE = 350;
       let viewportWidth = 250;
       let viewportHeight = Math.round(viewportWidth / cropAspect);
 
-      // Cap on spawn only - user can resize past this limit afterwards
       if (viewportHeight > MAX_SPAWN_SIZE) {
         viewportHeight = MAX_SPAWN_SIZE;
         viewportWidth = Math.round(viewportHeight * cropAspect);
@@ -237,7 +304,6 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
         viewportNodeData
       );
 
-      // Create connecting edge to ViewportNode
       addEdge({
         id: `edge-${id}-${newViewport.id}-${viewportNodeId}`,
         source: id,
@@ -246,7 +312,7 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
         targetHandle: 'viewport-in',
       });
     },
-    [id, viewports, currentPage, data.fileUrl, data.fileType, data.view.nodeSize, updateNodeData, storeAddNode, getNode, addEdge]
+    [id, viewports, currentPage, singlePageSize, data.fileUrl, data.fileType, data.view.nodeSize, updateNodeData, storeAddNode, getNode, addEdge]
   );
 
   // ── Viewport management ───────────────────────────────────────────────────
@@ -261,7 +327,6 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
         (e) => e.source === id && e.sourceHandle === viewportId
       );
       for (const edge of outgoingEdges) {
-        // Also remove the connected ViewportNode
         const targetNode = getNode(edge.target);
         if (targetNode && targetNode.type === 'viewport') {
           useCanvasStore.getState().removeNode(edge.target);
@@ -324,7 +389,7 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
 
     replaceNode(id, 'extractor', {
       ...extractorData,
-      cachedExtractorEdges: undefined, // Don't carry over to extractor
+      cachedExtractorEdges: undefined,
     } as unknown as ExtractorNodeData);
 
     // Restore cached extractor edges if available
@@ -344,16 +409,24 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
   // ── Empty state ───────────────────────────────────────────────────────────
   if (!data.fileUrl) {
     return (
-      <BaseNode label={data.label} selected={selected} className="w-[280px]">
-        <div className="p-2">
-          <FileDropZone
-            onFileSelect={handleFileSelect}
-            onDrop={handleFileDrop}
-            onDragOver={handleDragOver}
-            compact
-          />
-        </div>
-      </BaseNode>
+      <>
+        <BaseNode label={data.label} selected={selected} className="w-[280px]">
+          <div className="p-2">
+            <FileDropZone
+              onFileSelect={handleFileSelect}
+              onDrop={handleFileDrop}
+              onDragOver={handleDragOver}
+              compact
+              onPickFromRegistry={() => setIsPickerOpen(true)}
+            />
+          </div>
+        </BaseNode>
+        <FilePickerModal
+          isOpen={isPickerOpen}
+          onClose={() => setIsPickerOpen(false)}
+          onSelect={handlePickFromRegistry}
+        />
+      </>
     );
   }
 
@@ -380,6 +453,8 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
           onPdfLoad={handlePdfLoad}
           onPdfError={handlePdfError}
           pdfError={pdfError}
+          mimeType={data.fileId ? BlobRegistry.getMetadata(data.fileId)?.mimeType : undefined}
+          fileSize={data.fileId ? BlobRegistry.getMetadata(data.fileId)?.size : undefined}
         />
 
         {/* Compact viewport list with source handles */}
@@ -426,9 +501,10 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
                   onDocumentLoad={handleDocumentLoad}
                   onContentResize={handleContentResize}
                   onPageOffsetsChange={setPageOffsets}
+                  onSinglePageSize={handleSinglePageSize}
                   enableTextSelection={false}
                   width={VIEWER_WIDTH}
-                  scrollMode={false}
+                  scrollMode={true}
                 >
                   {/* Viewport overlays */}
                   {data.fileUrl && (
@@ -439,6 +515,8 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
                       onViewportSelect={handleViewportSelect}
                       interactive
                       nodeId={id}
+                      scrollMode={true}
+                      pageOffsets={pageOffsets}
                     />
                   )}
                   {/* Box selection for creating viewports */}

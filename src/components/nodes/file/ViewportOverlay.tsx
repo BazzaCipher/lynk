@@ -10,6 +10,8 @@ interface ViewportOverlayProps {
   onViewportSelect: (viewportId: string) => void;
   interactive?: boolean;
   nodeId?: string;
+  scrollMode?: boolean;
+  pageOffsets?: Map<number, number>;
 }
 
 export function ViewportOverlay({
@@ -19,6 +21,8 @@ export function ViewportOverlay({
   onViewportSelect,
   interactive = true,
   nodeId,
+  scrollMode = false,
+  pageOffsets,
 }: ViewportOverlayProps) {
   const highlightedHandle = useCanvasStore(state => state.highlightedHandle);
   const isExternallyHighlighted = useCallback(
@@ -29,14 +33,22 @@ export function ViewportOverlay({
     [highlightedHandle, nodeId]
   );
 
-  // Filter viewports for current page
-  const pageViewports = viewports.filter((v) => v.pageNumber === currentPage);
+  // Helper to get Y offset for a page in scrollMode
+  const getPageOffset = (pageNumber: number): number => {
+    if (!scrollMode || !pageOffsets) return 0;
+    return pageOffsets.get(pageNumber) ?? 0;
+  };
 
-  if (pageViewports.length === 0) return null;
+  // In scroll mode show viewports from all pages, otherwise filter by current page
+  const filteredViewports = scrollMode
+    ? viewports
+    : viewports.filter((v) => v.pageNumber === currentPage);
+
+  if (filteredViewports.length === 0) return null;
 
   return (
     <div className="absolute inset-0 pointer-events-none">
-      {pageViewports.map((viewport) => {
+      {filteredViewports.map((viewport) => {
         const isSelected = selectedViewportId === viewport.id;
         const isExternal = isExternallyHighlighted(viewport.id);
 
@@ -49,7 +61,7 @@ export function ViewportOverlay({
             } ${isExternal ? 'animate-pulse' : ''}`}
             style={{
               left: viewport.pixelRect.x,
-              top: viewport.pixelRect.y,
+              top: getPageOffset(viewport.pageNumber) + viewport.pixelRect.y,
               width: viewport.pixelRect.width,
               height: viewport.pixelRect.height,
               backgroundColor: isSelected || isExternal

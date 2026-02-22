@@ -54,6 +54,8 @@ export function Toolbar() {
   const clearCanvas = useCanvasStore((state) => state.clearCanvas);
   const canvasName = useCanvasStore((state) => state.canvasName);
   const setCanvasName = useCanvasStore((state) => state.setCanvasName);
+  const toggleFileRegistry = useCanvasStore((state) => state.toggleFileRegistry);
+  const fileRegistryOpen = useCanvasStore((state) => state.fileRegistryOpen);
   const { showToast } = useToast();
   const { screenToFlowPosition } = useReactFlow();
 
@@ -151,6 +153,21 @@ export function Toolbar() {
         title="Add Label Node"
       >
         + Label
+      </button>
+
+      <div className="w-px h-6 bg-gray-200" />
+
+      {/* File registry */}
+      <button
+        onClick={toggleFileRegistry}
+        className={`px-3 py-1.5 text-sm rounded transition-colors ${
+          fileRegistryOpen
+            ? 'bg-indigo-100 text-indigo-700'
+            : 'bg-gray-100 hover:bg-gray-200'
+        }`}
+        title="Toggle file registry panel"
+      >
+        Files
       </button>
 
       <div className="w-px h-6 bg-gray-200" />

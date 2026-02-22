@@ -6,15 +6,18 @@ export interface FileUploadResult {
   fileUrl: string;
   fileName: string;
   fileType: 'pdf' | 'image';
+  isDuplicate: boolean;
+  existingFileId?: string;
 }
 
 interface UseFileUploadOptions {
   onFileRegistered: (result: FileUploadResult) => void;
   allowedTypes?: ('pdf' | 'image')[];
+  nodeId?: string;
 }
 
-export function useFileUpload({ onFileRegistered, allowedTypes = ['pdf', 'image'] }: UseFileUploadOptions) {
-  const processFile = useCallback((file: File): FileUploadResult | null => {
+export function useFileUpload({ onFileRegistered, allowedTypes = ['pdf', 'image'], nodeId }: UseFileUploadOptions) {
+  const processFile = useCallback(async (file: File): Promise<FileUploadResult | null> => {
     const isPdf = file.type === 'application/pdf';
     const isImage = file.type.startsWith('image/');
 
@@ -22,27 +25,30 @@ export function useFileUpload({ onFileRegistered, allowedTypes = ['pdf', 'image'
     if (isPdf && !allowedTypes.includes('pdf')) return null;
     if (isImage && !allowedTypes.includes('image')) return null;
 
-    const { fileId, blobUrl } = BlobRegistry.register(file);
+    const result = await BlobRegistry.registerWithMetadata(file, nodeId);
+
     return {
-      fileId,
-      fileUrl: blobUrl,
+      fileId: result.fileId,
+      fileUrl: result.blobUrl,
       fileName: file.name,
       fileType: isImage ? 'image' : 'pdf',
+      isDuplicate: result.isDuplicate,
+      existingFileId: result.existingFileId,
     };
-  }, [allowedTypes]);
+  }, [allowedTypes, nodeId]);
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const result = processFile(file);
+    const result = await processFile(file);
     if (result) onFileRegistered(result);
   }, [processFile, onFileRegistered]);
 
-  const handleFileDrop = useCallback((e: React.DragEvent) => {
+  const handleFileDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
     if (!file) return;
-    const result = processFile(file);
+    const result = await processFile(file);
     if (result) onFileRegistered(result);
   }, [processFile, onFileRegistered]);
 

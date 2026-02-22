@@ -13,12 +13,14 @@ import {
   type Viewport,
 } from '@xyflow/react';
 import type { LynkNode, LynkNodeData, LynkNodeType, DisplayNodeData, ViewportRegion } from '../../types';
+import { FileNode } from '../../types';
 import {
   wouldCreateCycle,
   getTopologicalOrder,
   getDependentNodes,
 } from '../../core/engine/dependencyGraph';
 import { validateNodeDataUpdate } from '../../services/canvasValidation';
+import { BlobRegistry } from '../canvasPersistence';
 import type { StateCreator } from './types';
 
 let nodeIdCounter = 0;
@@ -75,6 +77,14 @@ export const createCoreSlice: StateCreator<CoreSlice> = (set, get) => ({
   },
 
   removeNode: (nodeId) => {
+    const node = get().nodes.find((n) => n.id === nodeId);
+    // Clean up file references when removing a FileNode
+    if (node && FileNode.is(node as LynkNode)) {
+      const fileId = FileNode.getFileId(node as LynkNode);
+      if (fileId) {
+        BlobRegistry.removeNodeReference(fileId, nodeId);
+      }
+    }
     set({
       nodes: get().nodes.filter((n) => n.id !== nodeId),
       edges: get().edges.filter((e) => e.source !== nodeId && e.target !== nodeId),

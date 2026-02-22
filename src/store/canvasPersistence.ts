@@ -6,8 +6,38 @@
  */
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// FILE METADATA
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface FileMetadata {
+  fileId: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  fileType: 'pdf' | 'image';
+  contentHash: string;
+  registeredAt: number;
+  nodeIds: Set<string>;
+}
+
+async function computeHash(blob: Blob): Promise<string> {
+  const buffer = await blob.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // BLOB REGISTRY
 // ═══════════════════════════════════════════════════════════════════════════════
+
+export interface RegisterWithMetadataResult {
+  fileId: string;
+  blobUrl: string;
+  metadata: FileMetadata;
+  isDuplicate: boolean;
+  existingFileId?: string;
+}
 
 /**
  * Registry tracking blob URLs and their associated file data.
@@ -20,6 +50,8 @@ export const BlobRegistry = {
   urlToId: new Map<string, string>() as Map<string, string>,
   // Maps fileId -> blobUrl
   idToUrl: new Map<string, string>() as Map<string, string>,
+  // Maps fileId -> metadata
+  metadata: new Map<string, FileMetadata>() as Map<string, FileMetadata>,
 
   generateId(): string {
     return `file-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -34,6 +66,82 @@ export const BlobRegistry = {
     this.idToUrl.set(fileId, blobUrl);
 
     return { fileId, blobUrl };
+  },
+
+  async registerWithMetadata(
+    file: File,
+    nodeId?: string
+  ): Promise<RegisterWithMetadataResult> {
+    const contentHash = await computeHash(file);
+
+    // Check for existing file with same hash
+    const existing = this.findByHash(contentHash);
+    if (existing) {
+      if (nodeId) {
+        existing.nodeIds.add(nodeId);
+      }
+      const blobUrl = this.idToUrl.get(existing.fileId)!;
+      return {
+        fileId: existing.fileId,
+        blobUrl,
+        metadata: existing,
+        isDuplicate: true,
+        existingFileId: existing.fileId,
+      };
+    }
+
+    // Register new file
+    const { fileId, blobUrl } = this.register(file);
+    const isPdf = file.type === 'application/pdf';
+
+    const meta: FileMetadata = {
+      fileId,
+      fileName: file.name,
+      mimeType: file.type,
+      size: file.size,
+      fileType: isPdf ? 'pdf' : 'image',
+      contentHash,
+      registeredAt: Date.now(),
+      nodeIds: new Set(nodeId ? [nodeId] : []),
+    };
+
+    this.metadata.set(fileId, meta);
+
+    return {
+      fileId,
+      blobUrl,
+      metadata: meta,
+      isDuplicate: false,
+    };
+  },
+
+  getMetadata(fileId: string): FileMetadata | undefined {
+    return this.metadata.get(fileId);
+  },
+
+  getAllMetadata(): FileMetadata[] {
+    return Array.from(this.metadata.values());
+  },
+
+  findByHash(hash: string): FileMetadata | undefined {
+    for (const meta of this.metadata.values()) {
+      if (meta.contentHash === hash) return meta;
+    }
+    return undefined;
+  },
+
+  addNodeReference(fileId: string, nodeId: string): void {
+    const meta = this.metadata.get(fileId);
+    if (meta) {
+      meta.nodeIds.add(nodeId);
+    }
+  },
+
+  removeNodeReference(fileId: string, nodeId: string): void {
+    const meta = this.metadata.get(fileId);
+    if (meta) {
+      meta.nodeIds.delete(nodeId);
+    }
   },
 
   getIdFromUrl(blobUrl: string): string | undefined {
@@ -55,5 +163,6 @@ export const BlobRegistry = {
     this.blobs.clear();
     this.urlToId.clear();
     this.idToUrl.clear();
+    this.metadata.clear();
   },
 };

@@ -33,4 +33,10 @@ export interface CanvasStoreState {
   // History state
   history: HistorySnapshot[];
   historyIndex: number;
+
+  // File registry state
+  fileRegistryOpen: boolean;
+  fileRegistrySort: { field: 'name' | 'type' | 'size' | 'date'; direction: 'asc' | 'desc' };
+  fileRegistrySearch: string;
+  _fileRegistryVersion: number;
 }

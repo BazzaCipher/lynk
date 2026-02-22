@@ -4,6 +4,7 @@ interface FileDropZoneProps {
   onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
   accept?: string;
   compact?: boolean;
+  onPickFromRegistry?: () => void;
 }
 
 export function FileDropZone({
@@ -12,6 +13,7 @@ export function FileDropZone({
   onDragOver,
   accept = 'image/*,application/pdf',
   compact = false,
+  onPickFromRegistry,
 }: FileDropZoneProps) {
   return (
     <div onDrop={onDrop} onDragOver={onDragOver}>
@@ -54,6 +56,18 @@ export function FileDropZone({
           )}
         </div>
       </label>
+      {onPickFromRegistry && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onPickFromRegistry();
+          }}
+          className="w-full mt-1 text-[10px] text-indigo-500 hover:text-indigo-700 text-center py-0.5"
+        >
+          or choose from loaded files
+        </button>
+      )}
     </div>
   );
 }

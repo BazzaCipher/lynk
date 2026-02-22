@@ -11,7 +11,7 @@
 
 import { useMemo, useEffect, useCallback } from 'react';
 import type { NodeProps } from '@xyflow/react';
-import { Position, useEdges, useNodes } from '@xyflow/react';
+import { Position, useEdges, useNodes, useReactFlow } from '@xyflow/react';
 import { BaseNode } from './base/BaseNode';
 import { NodeEntry } from './base/NodeEntry';
 import { useCanvasStore } from '../../store/canvasStore';
@@ -21,8 +21,9 @@ import { useNodeOutputs } from '../../hooks/useNodeOutputs';
 import { type ResolvedInput, resolveNodeOutput } from '../../hooks/useDataFlow';
 import { getOperation } from '../../core/operations/operationRegistry';
 import { OperationSelect } from '../ui/OperationSelect';
-import { DATA_TYPE_COLORS, getTypeBadgeClass } from '../../utils/colors';
+import { DATA_TYPE_COLORS } from '../../utils/colors';
 import { formatValue } from '../../utils/formatting';
+import { InputRow } from './base/InputRow';
 import type {
   SheetNode as SheetNodeType,
   SheetSubheader,
@@ -42,41 +43,6 @@ function generateId(): string {
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// ENTRY INPUT ROW COMPONENT (shown when entry is expanded)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-interface EntryInputRowProps {
-  input: ResolvedInput;
-  isHighlighted: boolean;
-  onHover: (input: ResolvedInput | null) => void;
-  onClick: (input: ResolvedInput) => void;
-}
-
-function EntryInputRow({ input, isHighlighted, onHover, onClick }: EntryInputRowProps) {
-  const displayVal = formatValue(input.value, input.dataType, { precision: 2 });
-
-  return (
-    <div
-      className={`flex items-center gap-2 pl-6 pr-2 py-0.5 text-xs cursor-pointer transition-colors ${
-        isHighlighted ? 'bg-blue-50' : 'hover:bg-gray-50'
-      }`}
-      onMouseEnter={() => onHover(input)}
-      onMouseLeave={() => !isHighlighted && onHover(null)}
-      onClick={() => onClick(input)}
-    >
-      <span
-        className={`w-2 h-2 rounded-full flex-shrink-0 ${getTypeBadgeClass(input.dataType)}`}
-        title={input.dataType}
-      />
-      <span className="text-gray-500 truncate max-w-[80px]" title={input.label}>
-        {input.label}:
-      </span>
-      <span className="font-mono text-gray-700 ml-auto">{displayVal}</span>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
 // ENTRY ROW COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -91,6 +57,7 @@ interface EntryRowProps {
   isHighlighted: (nodeId: string, regionId: string) => boolean;
   onInputHover: (input: ResolvedInput | null) => void;
   onInputClick: (input: ResolvedInput) => void;
+  onInputDoubleClick: (input: ResolvedInput) => void;
 }
 
 function EntryRow({
@@ -104,6 +71,7 @@ function EntryRow({
   isHighlighted,
   onInputHover,
   onInputClick,
+  onInputDoubleClick,
 }: EntryRowProps) {
   const outputColor = result
     ? DATA_TYPE_COLORS[result.dataType]?.border || '#6b7280'
@@ -196,12 +164,14 @@ function EntryRow({
       {entry.expanded && inputs.length > 0 && (
         <div className="bg-gray-50 border-t border-gray-100">
           {inputs.map((input) => (
-            <EntryInputRow
+            <InputRow
               key={input.edgeId}
               input={input}
               isHighlighted={isHighlighted(input.sourceNodeId, input.sourceRegionId)}
               onHover={onInputHover}
               onClick={onInputClick}
+              onDoubleClick={onInputDoubleClick}
+              variant="sheet"
             />
           ))}
         </div>
@@ -235,6 +205,7 @@ interface SubheaderRowProps {
   isHighlighted: (nodeId: string, regionId: string) => boolean;
   onInputHover: (input: ResolvedInput | null) => void;
   onInputClick: (input: ResolvedInput) => void;
+  onInputDoubleClick: (input: ResolvedInput) => void;
 }
 
 function SubheaderRow({
@@ -251,6 +222,7 @@ function SubheaderRow({
   isHighlighted,
   onInputHover,
   onInputClick,
+  onInputDoubleClick,
 }: SubheaderRowProps) {
   const outputColor = result
     ? DATA_TYPE_COLORS[result.dataType]?.border || '#6b7280'
@@ -349,6 +321,7 @@ function SubheaderRow({
               isHighlighted={isHighlighted}
               onInputHover={onInputHover}
               onInputClick={onInputClick}
+              onInputDoubleClick={onInputDoubleClick}
             />
           ))}
 
@@ -378,8 +351,13 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
   const nodes = useNodes();
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
   const nodeOutputs = useNodeOutputs(id);
+  const { fitView } = useReactFlow();
 
   const { isHighlighted, handleInputHover, handleInputClick } = useHighlighting();
+
+  const handleInputDoubleClick = useCallback((input: ResolvedInput) => {
+    fitView({ nodes: [{ id: input.sourceNodeId }], duration: 300, padding: 0.5 });
+  }, [fitView]);
 
   // Output highlight state - responds when this node's outputs are highlighted
   const outputHighlights = useNodeHighlights(id, data);
@@ -640,6 +618,7 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
               isHighlighted={isHighlighted}
               onInputHover={handleInputHover}
               onInputClick={handleInputClick}
+              onInputDoubleClick={handleInputDoubleClick}
             />
           ))
         )}

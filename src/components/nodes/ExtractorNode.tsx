@@ -16,6 +16,9 @@ import { useToast } from '../ui/Toast';
 import { useFileUpload, type FileUploadResult } from '../../hooks/useFileUpload';
 import { useNodeOutputs } from '../../hooks/useNodeOutputs';
 import { getColorForType } from '../../utils/colors';
+import { detectDataType, parseDateString } from '../../utils/formatting';
+import { BlobRegistry, type FileMetadata } from '../../store/canvasPersistence';
+import { FilePickerModal } from '../ui/FilePickerModal';
 import type {
   ExtractorNode as ExtractorNodeType,
   NodeOutput,
@@ -42,6 +45,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   const { showToast } = useToast();
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [viewerHeight, setViewerHeight] = useState(400);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState<'box' | 'text'>('box');
@@ -106,6 +110,9 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
 
   const onFileRegistered = useCallback(
     (result: FileUploadResult) => {
+      BlobRegistry.addNodeReference(result.fileId, id);
+      useCanvasStore.getState().refreshFileRegistry();
+
       updateNodeData(id, {
         fileUrl: result.fileUrl,
         fileId: result.fileId,
@@ -119,7 +126,25 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
     [id, updateNodeData]
   );
 
-  const { handleFileSelect, handleFileDrop, handleDragOver } = useFileUpload({ onFileRegistered });
+  const { handleFileSelect, handleFileDrop, handleDragOver } = useFileUpload({ onFileRegistered, nodeId: id });
+
+  const handlePickFromRegistry = useCallback(
+    (_fileId: string, blobUrl: string, meta: FileMetadata) => {
+      BlobRegistry.addNodeReference(meta.fileId, id);
+      useCanvasStore.getState().refreshFileRegistry();
+
+      updateNodeData(id, {
+        fileUrl: blobUrl,
+        fileId: meta.fileId,
+        fileName: meta.fileName,
+        fileType: meta.fileType,
+        currentPage: 1,
+        totalPages: 1,
+        regions: [],
+      });
+    },
+    [id, updateNodeData]
+  );
 
   const handlePdfLoad = useCallback(
     ({ numPages }: { numPages: number }) => {
@@ -140,6 +165,13 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
       setViewerHeight(VIEWER_WIDTH * 1.4);
     },
     [id, updateNodeData]
+  );
+
+  const handleContentResize = useCallback(
+    (_width: number, height: number) => {
+      setViewerHeight(height);
+    },
+    []
   );
 
   const handlePageChange = useCallback(
@@ -172,15 +204,23 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
 
   const handleTextSelect = useCallback(
     (textRange: TextRange) => {
+      const detectedType = detectDataType(textRange.text);
+      // Normalize values: dates → ISO string, currency → strip leading symbol
+      const value = detectedType === 'date'
+        ? (parseDateString(textRange.text) ?? textRange.text)
+        : detectedType === 'currency'
+        ? textRange.text.replace(/^[$€£¥₹₩₪₫₱]\s*/, '').trim()
+        : textRange.text;
+
       const newRegion: ExtractedRegion = {
         id: `region-${Date.now()}`,
         label: `Text ${data.regions.length + 1}`,
         selectionType: 'text',
         textRange,
         pageNumber: data.currentPage,
-        extractedData: { type: 'string', value: textRange.text },
-        dataType: 'string',
-        color: getColorForType('string').border,
+        extractedData: { type: detectedType, value },
+        dataType: detectedType,
+        color: getColorForType(detectedType).border,
       };
 
       updateNodeData(id, {
@@ -405,6 +445,8 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
               onPdfLoad={handlePdfLoad}
               onPdfError={handlePdfError}
               pdfError={pdfError}
+              mimeType={data.fileId ? BlobRegistry.getMetadata(data.fileId)?.mimeType : undefined}
+              fileSize={data.fileId ? BlobRegistry.getMetadata(data.fileId)?.size : undefined}
             />
           ) : (
             <div className="p-2">
@@ -413,6 +455,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
                 onDrop={handleFileDrop}
                 onDragOver={handleDragOver}
                 compact
+                onPickFromRegistry={() => setIsPickerOpen(true)}
               />
             </div>
           )}
@@ -486,6 +529,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
                     imageRef.current = ref;
                   }}
                   onTextSelect={selectionMode === 'text' ? handleTextSelect : undefined}
+                  onContentResize={handleContentResize}
                   onPageOffsetsChange={setPageOffsets}
                   enableTextSelection={selectionMode === 'text'}
                   width={VIEWER_WIDTH}
@@ -551,6 +595,12 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
           </span>
         </div>
       </Modal>
+
+      <FilePickerModal
+        isOpen={isPickerOpen}
+        onClose={() => setIsPickerOpen(false)}
+        onSelect={handlePickFromRegistry}
+      />
     </>
   );
 }

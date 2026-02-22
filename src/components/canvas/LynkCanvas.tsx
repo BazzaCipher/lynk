@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -7,6 +7,7 @@ import {
   useReactFlow,
   type Connection,
   type Edge,
+  type Node,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -22,11 +23,15 @@ import { withErrorBoundary } from '../nodes/base/withErrorBoundary';
 import { Toolbar } from './Toolbar';
 import { ConnectionLine } from './ConnectionLine';
 import { LayoutControls } from './LayoutControls';
+import { FileRegistryPanel } from './FileRegistryPanel';
+import { NodeContextMenu } from './NodeContextMenu';
 import { useToast } from '../ui/Toast';
 import { wouldCreateCycle } from '../../core/engine/dependencyGraph';
 import { getOperation, isTypeCompatible } from '../../core/operations/operationRegistry';
 import { useFileUpload } from '../../hooks/useFileUpload';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
+import { useMagneticConnect } from '../../hooks/useMagneticConnect';
+import { BlobRegistry } from '../../store/canvasPersistence';
 import type { LynkNode, DisplayNodeData, ViewportRegion } from '../../types';
 import { CanExport, CanImport, CalculationNode, ExtractorNode, DisplayNode, ViewportNode } from '../../types';
 
@@ -56,6 +61,15 @@ export function LynkCanvas() {
 
   // Keyboard shortcuts (Delete, Ctrl+S, Ctrl+Z, Ctrl+G, etc.)
   useKeyboardShortcuts();
+
+  const { magneticMode, snapTarget, toggleMagneticMode, onNodeDrag, onNodeDragStop } = useMagneticConnect();
+
+  const [contextMenu, setContextMenu] = useState<{ node: LynkNode; x: number; y: number } | null>(null);
+
+  const handleNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    event.preventDefault();
+    setContextMenu({ node: node as LynkNode, x: event.clientX, y: event.clientY });
+  }, []);
 
   // Wrap onEdgesChange to clean up viewport regions when edges are deleted
   const onEdgesChange = useCallback(
@@ -296,16 +310,16 @@ export function LynkCanvas() {
   }, []);
 
   const handleCanvasDrop = useCallback(
-    (event: React.DragEvent) => {
+    async (event: React.DragEvent) => {
       event.preventDefault();
 
       const files = event.dataTransfer.files;
       if (!files || files.length === 0) return;
 
-      // Process files using the hook's processFile
-      const results = Array.from(files)
-        .map((file) => processFile(file))
-        .filter((r): r is NonNullable<typeof r> => r !== null);
+      // Process files using the hook's async processFile
+      const promises = Array.from(files).map((file) => processFile(file));
+      const processed = await Promise.all(promises);
+      const results = processed.filter((r): r is NonNullable<typeof r> => r !== null);
 
       if (results.length === 0) {
         showToast('No valid files (PDF or images only)', 'warning');
@@ -326,7 +340,7 @@ export function LynkCanvas() {
           y: dropPosition.y + (index * VERTICAL_SPACING),
         };
 
-        addNode('extractor', position, {
+        const nodeId = addNode('extractor', position, {
           label: result.fileName,
           fileId: result.fileId,
           fileUrl: result.fileUrl,
@@ -336,8 +350,11 @@ export function LynkCanvas() {
           totalPages: 1,
           regions: [],
         });
+
+        BlobRegistry.addNodeReference(result.fileId, nodeId);
       });
 
+      useCanvasStore.getState().refreshFileRegistry();
       showToast(`Created ${results.length} extractor node(s)`, 'success');
     },
     [screenToFlowPosition, addNode, pushHistory, showToast, processFile]
@@ -350,6 +367,13 @@ export function LynkCanvas() {
       onDrop={handleCanvasDrop}
     >
       <Toolbar />
+      {magneticMode && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none
+                        bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-full shadow-lg
+                        flex items-center gap-2 select-none">
+          ⊕ Magnetic connect {snapTarget ? '— snap ready' : '— drag near a handle'} · press M to disable
+        </div>
+      )}
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -358,6 +382,9 @@ export function LynkCanvas() {
         onConnect={onConnect}
         onDoubleClick={handleDoubleClick}
         onViewportChange={setViewport}
+        onNodeDrag={onNodeDrag}
+        onNodeDragStop={onNodeDragStop}
+        onNodeContextMenu={handleNodeContextMenu}
         nodeTypes={nodeTypes}
         isValidConnection={isValidConnection}
         connectionLineComponent={ConnectionLine}
@@ -385,6 +412,16 @@ export function LynkCanvas() {
           pannable
         />
       </ReactFlow>
+      <FileRegistryPanel />
+      {contextMenu && (
+        <NodeContextMenu
+          node={contextMenu.node}
+          position={{ x: contextMenu.x, y: contextMenu.y }}
+          onClose={() => setContextMenu(null)}
+          magneticMode={magneticMode}
+          onToggleMagneticMode={toggleMagneticMode}
+        />
+      )}
     </div>
   );
 }

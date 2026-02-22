@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
+import { useMultiPageScroll } from '../../../hooks/useMultiPageScroll';
 import type { TextRange } from '../../../types';
 
 // Configure PDF.js worker
@@ -17,11 +18,13 @@ interface DocumentViewerProps {
   onImageRef?: (element: HTMLImageElement | HTMLCanvasElement | null) => void;
   onTextSelect?: (textRange: TextRange) => void;
   onContentResize?: (width: number, height: number) => void;
-  onPageOffsetsChange?: (offsets: Map<number, number>) => void; // Callback when page offsets are calculated
+  onPageOffsetsChange?: (offsets: Map<number, number>) => void;
+  onSinglePageSize?: (width: number, height: number) => void;
   enableTextSelection?: boolean;
   width?: number;
-  scrollMode?: boolean; // Enable smooth scroll through all pages
-  children?: React.ReactNode; // Overlays to render inside the content area (for correct coordinate alignment)
+  scrollMode?: boolean;
+  deferLoading?: boolean;
+  children?: React.ReactNode;
 }
 
 export function DocumentViewer({
@@ -35,16 +38,24 @@ export function DocumentViewer({
   onTextSelect,
   onContentResize,
   onPageOffsetsChange,
+  onSinglePageSize,
   enableTextSelection = true,
   width = 300,
   scrollMode = false,
+  deferLoading = false,
   children,
 }: DocumentViewerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null); // Ref for document content area only
-  const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Multi-page scroll hook for lazy loading
+  const multiPage = useMultiPageScroll({
+    totalPages,
+    buffer: 2,
+    deferLoading: scrollMode ? deferLoading : false,
+  });
 
   const handlePdfLoadSuccess = useCallback(
     ({ numPages }: { numPages: number }) => {
@@ -88,57 +99,90 @@ export function DocumentViewer({
     return () => observer.disconnect();
   }, [onContentResize]);
 
-  // Calculate page offsets in scrollMode
+  // Forward page offsets from hook to parent
   useEffect(() => {
-    if (!scrollMode || totalPages <= 1 || !onPageOffsetsChange) return;
+    if (scrollMode && onPageOffsetsChange && multiPage.pageOffsets.size > 0) {
+      onPageOffsetsChange(multiPage.pageOffsets);
+    }
+  }, [scrollMode, multiPage.pageOffsets, onPageOffsetsChange]);
 
-    // Use a small delay to ensure pages have rendered
-    const timeoutId = setTimeout(() => {
-      const offsets = new Map<number, number>();
-      pageRefs.current.forEach((el, pageNum) => {
-        offsets.set(pageNum, el.offsetTop);
-      });
-      if (offsets.size > 0) {
-        onPageOffsetsChange(offsets);
+  // Forward single page size to parent
+  useEffect(() => {
+    if (onSinglePageSize && multiPage.singlePageSize) {
+      onSinglePageSize(multiPage.singlePageSize.width, multiPage.singlePageSize.height);
+    }
+  }, [onSinglePageSize, multiPage.singlePageSize]);
+
+  // Assign scroll container ref when in scroll mode
+  useEffect(() => {
+    if (scrollMode && containerRef.current) {
+      const scrollParent = containerRef.current.closest('.overflow-auto');
+      if (scrollParent) {
+        (multiPage.scrollContainerRef as React.MutableRefObject<HTMLElement | null>).current = scrollParent as HTMLElement;
       }
-    }, 100);
-
-    return () => clearTimeout(timeoutId);
-  }, [scrollMode, totalPages, loading, onPageOffsetsChange]);
+    }
+  }, [scrollMode, multiPage.scrollContainerRef]);
 
   // Handle text selection
   useEffect(() => {
     if (!enableTextSelection || !onTextSelect) return;
 
     const handleMouseUp = () => {
-      // Wait for next frame to ensure selection rects are finalized after drag
       requestAnimationFrame(() => {
         const selection = window.getSelection();
         if (!selection || selection.isCollapsed) return;
 
-        const text = selection.toString().trim();
+        let text = selection.toString().trim();
         if (!text) return;
 
-        // Get the range
         const range = selection.getRangeAt(0);
 
-        // Check if selection is within our content area
         if (!contentRef.current?.contains(range.commonAncestorContainer)) return;
 
-        // Get bounding rectangles relative to content area (not including nav bar)
+        // Check if a currency symbol sits immediately before the selection start.
+        // In PDF/HTML layouts the symbol is usually a separate element, so we
+        // check two places: (1) the character before in the same text node, and
+        // (2) the text content of the immediately preceding sibling element.
+        const CURRENCY_CHARS = '$€£¥₹₩₪₫₱';
+        const startContainer = range.startContainer;
+        const startOffset = range.startOffset;
+        let currencyPrefix = '';
+
+        if (startOffset > 0 && startContainer.nodeType === Node.TEXT_NODE) {
+          // Same text node — check char immediately before cursor
+          const charBefore = (startContainer.textContent ?? '')[startOffset - 1];
+          if (CURRENCY_CHARS.includes(charBefore)) {
+            currencyPrefix = charBefore;
+          }
+        } else {
+          // Likely a separate element — walk up to the nearest Element node
+          // and check its previousElementSibling's trimmed text content
+          const el = startContainer.nodeType === Node.TEXT_NODE
+            ? startContainer.parentElement
+            : startContainer as Element;
+          const prev = el?.previousElementSibling ?? el?.previousSibling;
+          if (prev) {
+            const prevText = prev.textContent?.trim() ?? '';
+            const lastChar = prevText[prevText.length - 1] ?? '';
+            if (prevText.length <= 3 && CURRENCY_CHARS.includes(lastChar)) {
+              currencyPrefix = lastChar;
+            }
+          }
+        }
+
+        if (currencyPrefix) text = currencyPrefix + text;
+
         const contentRect = contentRef.current.getBoundingClientRect();
         const clientRects = range.getClientRects();
         const rects: TextRange['rects'] = [];
 
         for (let i = 0; i < clientRects.length; i++) {
           const rect = clientRects[i];
-          // Skip invalid rects (zero dimensions or at origin which indicates unrendered elements)
           if (rect.width <= 0 || rect.height <= 0) continue;
 
           const x = rect.left - contentRect.left;
           const y = rect.top - contentRect.top;
 
-          // Skip rects with negative coordinates (outside content area)
           if (x < 0 || y < 0) continue;
 
           rects.push({
@@ -149,7 +193,6 @@ export function DocumentViewer({
           });
         }
 
-        // If no valid rects, don't create the selection
         if (rects.length === 0) return;
 
         const textRange: TextRange = {
@@ -161,7 +204,6 @@ export function DocumentViewer({
 
         onTextSelect(textRange);
 
-        // Clear selection after capturing
         selection.removeAllRanges();
       });
     };
@@ -173,6 +215,11 @@ export function DocumentViewer({
       content?.removeEventListener('mouseup', handleMouseUp);
     };
   }, [enableTextSelection, onTextSelect]);
+
+  // Estimate placeholder height for non-visible pages
+  const placeholderHeight = multiPage.singlePageSize
+    ? multiPage.singlePageSize.height
+    : width * 1.294; // Letter paper aspect ratio fallback
 
   if (!fileUrl) {
     return (
@@ -192,8 +239,7 @@ export function DocumentViewer({
 
   return (
     <div className="relative" ref={containerRef}>
-      {/* Document display - contentRef for text selection coordinate calculations */}
-      {/* Children (overlays) are rendered inside this container to share the same coordinate space */}
+      {/* Document display */}
       <div className="relative overflow-hidden bg-gray-100" ref={contentRef}>
         {fileType === 'pdf' ? (
           <Document
@@ -207,27 +253,42 @@ export function DocumentViewer({
             }
           >
             {scrollMode && totalPages > 1 ? (
-              // Smooth scroll mode: render all pages
-              Array.from({ length: totalPages }, (_, i) => (
-                <div
-                  key={i + 1}
-                  className="mb-4 last:mb-0"
-                  ref={(el) => {
-                    if (el) pageRefs.current.set(i + 1, el);
-                  }}
-                  data-page-number={i + 1}
-                >
-                  <Page
-                    pageNumber={i + 1}
-                    width={width}
-                    renderTextLayer={enableTextSelection}
-                    renderAnnotationLayer={false}
-                  />
-                  <div className="text-center text-xs text-gray-400 py-1 bg-gray-200">
-                    Page {i + 1} of {totalPages}
+              // Scroll mode with lazy loading
+              Array.from({ length: totalPages }, (_, i) => {
+                const pageNum = i + 1;
+                const isVisible = multiPage.isActivated && multiPage.visiblePages.has(pageNum);
+
+                return (
+                  <div
+                    key={pageNum}
+                    className="mb-4 last:mb-0"
+                    ref={multiPage.setPageRef(pageNum)}
+                    data-page-number={pageNum}
+                  >
+                    {isVisible ? (
+                      <Page
+                        pageNumber={pageNum}
+                        width={width}
+                        renderTextLayer={enableTextSelection}
+                        renderAnnotationLayer={false}
+                      />
+                    ) : (
+                      // Placeholder for non-visible pages
+                      <div
+                        className="flex items-center justify-center bg-gray-50 border border-gray-200"
+                        style={{ width, height: placeholderHeight }}
+                      >
+                        <span className="text-sm text-gray-400">
+                          Page {pageNum}
+                        </span>
+                      </div>
+                    )}
+                    <div className="text-center text-xs text-gray-400 py-1 bg-gray-200">
+                      Page {pageNum} of {totalPages}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               // Single page mode
               <Page
@@ -249,8 +310,33 @@ export function DocumentViewer({
             onError={handleImageError}
           />
         )}
-        {/* Render overlays inside content area for correct coordinate alignment */}
+        {/* Render overlays inside content area */}
         {children}
+
+        {/* Processing gate overlay */}
+        {scrollMode && deferLoading && !multiPage.isActivated && !loading && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm z-20">
+            <div className="text-center">
+              <div className="text-4xl mb-3 text-gray-300">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                </svg>
+              </div>
+              <p className="text-sm text-gray-600 mb-1 font-medium">
+                {totalPages} page{totalPages !== 1 ? 's' : ''} ready
+              </p>
+              <p className="text-xs text-gray-400 mb-4">
+                Pages load as you scroll
+              </p>
+              <button
+                onClick={multiPage.activate}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors shadow-sm"
+              >
+                Start Viewing
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Page navigation for PDFs - only show in single page mode */}

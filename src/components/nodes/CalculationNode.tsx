@@ -14,18 +14,19 @@
 
 import { useMemo, useEffect, useCallback } from 'react';
 import type { NodeProps } from '@xyflow/react';
-import { Position, useEdges } from '@xyflow/react';
+import { Position, useEdges, useReactFlow } from '@xyflow/react';
 import { BaseNode } from './base/BaseNode';
 import { NodeEntry } from './base/NodeEntry';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useHighlighting, useNodeHighlights } from '../../hooks/useHighlighting';
-import { useDataFlow } from '../../hooks/useDataFlow';
+import { useDataFlow, type ResolvedInput } from '../../hooks/useDataFlow';
 import { useNodeOutputs } from '../../hooks/useNodeOutputs';
 import { EditableLabel } from './base/EditableLabel';
 import { getOperation, isTypeCompatible } from '../../core/operations/operationRegistry';
 import { OperationSelect } from '../ui/OperationSelect';
 import { getInputHandleColor, getOutputHandleColor } from '../../utils/colors';
 import { formatValue } from '../../utils/formatting';
+import { InputRow } from './base/InputRow';
 import type {
   CalculationNode as CalculationNodeType,
   CalculationResult,
@@ -41,6 +42,7 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
   const removeEdge = useCanvasStore((state) => state.removeEdge);
   const nodeOutputs = useNodeOutputs(id);
+  const { fitView } = useReactFlow();
 
   // Use highlighting hook with input handlers
   const { isHighlighted, handleInputHover, handleInputClick } = useHighlighting();
@@ -200,6 +202,10 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
     return formatValue(value, dataType, { precision: data.precision ?? 2 });
   }, [data.precision]);
 
+  const handleInputDoubleClick = useCallback((input: ResolvedInput) => {
+    fitView({ nodes: [{ id: input.sourceNodeId }], duration: 300, padding: 0.5 });
+  }, [fitView]);
+
   // ─────────────────────────────────────────────────────────────────────────────
   // DERIVED STATE
   // ─────────────────────────────────────────────────────────────────────────────
@@ -239,51 +245,29 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
                 </span>
 
                 {/* Compatible inputs */}
-                {compatibleInputs.map((input) => {
-                  const inputHighlighted = isHighlighted(input.sourceNodeId, input.sourceRegionId);
-
-                  return (
-                    <div
-                      key={`${input.sourceNodeId}-${input.sourceRegionId}`}
-                      className={`flex items-center gap-2 px-1.5 py-0.5 rounded text-xs
-                                  cursor-pointer transition-colors ${
-                                    inputHighlighted
-                                      ? 'bg-blue-100 ring-1 ring-blue-400'
-                                      : 'hover:bg-gray-100'
-                                  }`}
-                      onMouseEnter={() => handleInputHover(input)}
-                      onMouseLeave={() => {
-                        if (!inputHighlighted) handleInputHover(null);
-                      }}
-                      onClick={() => handleInputClick(input)}
-                    >
-                      <span className="text-gray-500 truncate max-w-[80px]" title={input.label}>
-                        {input.label}:
-                      </span>
-                      <span className="font-mono text-gray-700">
-                        {displayValue(input.value, input.dataType)}
-                      </span>
-                    </div>
-                  );
-                })}
+                {compatibleInputs.map((input) => (
+                  <InputRow
+                    key={`${input.sourceNodeId}-${input.sourceRegionId}`}
+                    input={input}
+                    isHighlighted={isHighlighted(input.sourceNodeId, input.sourceRegionId)}
+                    onHover={handleInputHover}
+                    onClick={handleInputClick}
+                    onDoubleClick={handleInputDoubleClick}
+                  />
+                ))}
 
                 {/* Incompatible inputs with warning */}
                 {incompatibleInputs.map((input) => (
-                  <div
+                  <InputRow
                     key={`incompatible-${input.sourceNodeId}-${input.sourceRegionId}`}
-                    className="flex items-center gap-2 px-1.5 py-0.5 rounded text-xs
-                               bg-red-50 text-red-600"
-                    title={`${input.dataType} is not compatible with ${currentOperation?.label || data.operation}`}
-                  >
-                    <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span className="truncate">{input.label}</span>
-                  </div>
+                    input={input}
+                    isHighlighted={false}
+                    onHover={handleInputHover}
+                    onClick={handleInputClick}
+                    onDoubleClick={handleInputDoubleClick}
+                    isIncompatible
+                    incompatibleReason={`${input.dataType} is not compatible with ${currentOperation?.label || data.operation}`}
+                  />
                 ))}
               </div>
             )}

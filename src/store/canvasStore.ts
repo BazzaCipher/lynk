@@ -27,8 +27,10 @@ import {
   createPersistenceSlice,
   createValidationSlice,
   createLayoutSlice,
+  createFileRegistrySlice,
   type HistorySnapshot,
 } from './slices';
+import type { FileMetadata } from './canvasPersistence';
 
 // Combined store interface (maintains backward compatibility)
 interface CanvasStore {
@@ -108,6 +110,19 @@ interface CanvasStore {
 
   // Maintenance actions
   cleanupInvalidEdges: () => number;
+
+  // File registry
+  fileRegistryOpen: boolean;
+  fileRegistrySort: { field: 'name' | 'type' | 'size' | 'date'; direction: 'asc' | 'desc' };
+  fileRegistrySearch: string;
+  _fileRegistryVersion: number;
+  toggleFileRegistry: () => void;
+  setFileRegistrySort: (field: 'name' | 'type' | 'size' | 'date', direction: 'asc' | 'desc') => void;
+  setFileRegistrySearch: (search: string) => void;
+  getRegisteredFiles: () => FileMetadata[];
+  getSortedFilteredFiles: () => FileMetadata[];
+  getDuplicateGroups: () => Map<string, FileMetadata[]>;
+  refreshFileRegistry: () => void;
 }
 
 /**
@@ -122,4 +137,5 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   ...createPersistenceSlice(set, get),
   ...createValidationSlice(set, get),
   ...createLayoutSlice(set, get),
+  ...createFileRegistrySlice(set, get),
 }));

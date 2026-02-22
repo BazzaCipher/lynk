@@ -29,6 +29,20 @@ export const DATA_TYPE_COLORS: Record<SimpleDataType, { bg: string; border: stri
   },
 };
 
+// File type color mapping
+export const FILE_TYPE_COLORS: Record<string, { bg: string; border: string; text: string; label: string }> = {
+  'application/pdf':  { bg: 'rgba(239,68,68,0.1)',  border: '#ef4444', text: '#dc2626', label: 'PDF' },
+  'image/png':        { bg: 'rgba(59,130,246,0.1)',  border: '#3b82f6', text: '#2563eb', label: 'PNG' },
+  'image/jpeg':       { bg: 'rgba(234,179,8,0.1)',   border: '#eab308', text: '#ca8a04', label: 'JPEG' },
+  'image/webp':       { bg: 'rgba(34,197,94,0.1)',   border: '#22c55e', text: '#16a34a', label: 'WebP' },
+  'image/gif':        { bg: 'rgba(168,85,247,0.1)',  border: '#a855f7', text: '#9333ea', label: 'GIF' },
+  'image/svg+xml':    { bg: 'rgba(236,72,153,0.1)',  border: '#ec4899', text: '#db2777', label: 'SVG' },
+};
+
+export function getFileTypeColor(mimeType: string) {
+  return FILE_TYPE_COLORS[mimeType] || { bg: 'rgba(107,114,128,0.1)', border: '#6b7280', text: '#4b5563', label: mimeType.split('/')[1]?.toUpperCase() || 'FILE' };
+}
+
 export function getColorForType(dataType: SimpleDataType) {
   return DATA_TYPE_COLORS[dataType] || DATA_TYPE_COLORS.string;
 }

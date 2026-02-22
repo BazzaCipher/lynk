@@ -22,6 +22,10 @@ export interface FileEmbeddedData {
     mimeType: string;
     /** Base64-encoded file content */
     data: string;
+    /** File size in bytes */
+    size?: number;
+    /** SHA-256 hash for duplicate detection */
+    contentHash?: string;
   };
 }
 
@@ -153,10 +157,13 @@ export const FileCodec: CanvasCodec<FileEmbeddedData> = {
 
       try {
         const base64 = await blobToBase64(blob);
+        const meta = BlobRegistry.getMetadata(fileId);
         embedded[fileId] = {
-          filename: fileId,
+          filename: meta?.fileName || fileId,
           mimeType: blob.type || 'application/octet-stream',
           data: base64,
+          size: meta?.size,
+          contentHash: meta?.contentHash,
         };
       } catch (err) {
         warnings.push(`Failed to embed file ${fileId}: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -209,6 +216,19 @@ export const FileCodec: CanvasCodec<FileEmbeddedData> = {
         BlobRegistry.idToUrl.set(fileId, blobUrl);
 
         fileIdToUrl[fileId] = blobUrl;
+
+        // Restore metadata
+        const isPdf = file.mimeType === 'application/pdf';
+        BlobRegistry.metadata.set(fileId, {
+          fileId,
+          fileName: file.filename || fileId,
+          mimeType: file.mimeType,
+          size: file.size ?? blob.size,
+          fileType: isPdf ? 'pdf' : 'image',
+          contentHash: file.contentHash ?? '',
+          registeredAt: Date.now(),
+          nodeIds: new Set<string>(),
+        });
       } catch (err) {
         warnings.push(`Failed to extract file ${fileId}: ${err instanceof Error ? err.message : 'Unknown error'}`);
       }
@@ -216,6 +236,16 @@ export const FileCodec: CanvasCodec<FileEmbeddedData> = {
 
     // Restore fileUrls in nodes
     const restoredNodes = restoreFileUrls(canvas.nodes, fileIdToUrl);
+
+    // Rebuild nodeIds references from decoded nodes
+    for (const node of restoredNodes) {
+      if (FileNode.is(node)) {
+        const fid = FileNode.getFileId(node);
+        if (fid) {
+          BlobRegistry.addNodeReference(fid, node.id);
+        }
+      }
+    }
 
     return {
       canvas: {

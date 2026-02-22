@@ -296,6 +296,34 @@ export function RegionList({
                     onClick={(e) => e.stopPropagation()}
                     className="w-full text-sm bg-transparent border-none outline-none focus:ring-0 p-0"
                   />
+                ) : region.dataType === 'currency' ? (
+                  // Currency: uneditable locale symbol prefix + numeric input
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="text-sm font-mono opacity-60 select-none flex-shrink-0 cursor-default"
+                      title={`Currency symbol (${getLocaleCurrencySymbol()})`}
+                    >
+                      {getLocaleCurrencySymbol()}
+                    </span>
+                    <div className="h-3.5 w-px bg-current opacity-20 flex-shrink-0" />
+                    {onValueChange ? (
+                      <input
+                        type="text"
+                        value={rawValue.replace(/^[$€£¥₹₩₪₫₱]\s*/, '')}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          onValueChange(region.id, e.target.value);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-1 text-sm font-mono bg-transparent border-none outline-none focus:ring-0 p-0 min-w-0"
+                        placeholder="0.00"
+                      />
+                    ) : (
+                      <span className={`text-sm font-mono ${hasValue ? '' : 'opacity-50'}`}>
+                        {rawValue.replace(/^[$€£¥₹₩₪₫₱]\s*/, '') || '(no value)'}
+                      </span>
+                    )}
+                  </div>
                 ) : onValueChange ? (
                   <input
                     type="text"
