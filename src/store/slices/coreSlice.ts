@@ -21,6 +21,7 @@ import {
 } from '../../core/engine/dependencyGraph';
 import { validateNodeDataUpdate } from '../../services/canvasValidation';
 import { BlobRegistry } from '../canvasPersistence';
+import { applyGroupAutoFit } from '../../utils/geometry';
 import type { StateCreator } from './types';
 
 let nodeIdCounter = 0;
@@ -56,6 +57,46 @@ export interface CoreSlice {
   updateViewportRegion: (nodeId: string, viewportId: string, updates: Partial<ViewportRegion>) => void;
 }
 
+/**
+ * Intercept selection changes to enforce group-first selection.
+ * When clicking a child inside a group, select the group first.
+ * Only allow child selection if the group is already selected.
+ */
+function rewriteSelectionForGroups(
+  changes: NodeChange<LynkNode>[],
+  nodes: LynkNode[]
+): NodeChange<LynkNode>[] {
+  // Track which groups we're redirecting selection to
+  const groupsToSelect = new Set<string>();
+
+  const rewritten = changes.map((change) => {
+    if (change.type !== 'select' || !change.selected) return change;
+
+    const node = nodes.find((n) => n.id === change.id);
+    if (!node || !node.parentId) return change;
+
+    const parent = nodes.find((n) => n.id === node.parentId);
+    if (!parent || parent.type !== 'group') return change;
+
+    // If the parent group is already selected, allow child selection
+    if (parent.selected) return change;
+
+    // Otherwise redirect selection to the group
+    groupsToSelect.add(parent.id);
+    return { ...change, id: parent.id };
+  });
+
+  if (groupsToSelect.size === 0) return rewritten;
+
+  // Remove conflicting deselections for groups we're selecting
+  return rewritten.filter((change) => {
+    if (change.type === 'select' && !change.selected && groupsToSelect.has(change.id)) {
+      return false;
+    }
+    return true;
+  });
+}
+
 export const createCoreSlice: StateCreator<CoreSlice> = (set, get) => ({
   nodes: [],
   edges: [],
@@ -63,7 +104,22 @@ export const createCoreSlice: StateCreator<CoreSlice> = (set, get) => ({
   highlightedHandle: null,
 
   onNodesChange: (changes) => {
-    set({ nodes: applyNodeChanges(changes, get().nodes) as LynkNode[] });
+    const nodes = get().nodes;
+    const rewritten = rewriteSelectionForGroups(changes, nodes);
+    let updated = applyNodeChanges(rewritten, nodes) as LynkNode[];
+
+    // Auto-fit groups when a child's position/dimensions changed
+    const hasGroupChildChange = rewritten.some((change) => {
+      if (change.type !== 'position' && change.type !== 'dimensions') return false;
+      const node = updated.find((n) => n.id === change.id);
+      return node?.parentId != null;
+    });
+
+    if (hasGroupChildChange) {
+      updated = applyGroupAutoFit(updated);
+    }
+
+    set({ nodes: updated });
   },
 
   onEdgesChange: (changes) => {
@@ -79,8 +135,9 @@ export const createCoreSlice: StateCreator<CoreSlice> = (set, get) => ({
   removeNode: (nodeId) => {
     const node = get().nodes.find((n) => n.id === nodeId);
     // Clean up file references when removing a FileNode
-    if (node && FileNode.is(node as LynkNode)) {
-      const fileId = FileNode.getFileId(node as LynkNode);
+    const lynkNode = node as LynkNode | undefined;
+    if (lynkNode && FileNode.is(lynkNode)) {
+      const fileId = FileNode.getFileId(lynkNode);
       if (fileId) {
         BlobRegistry.removeNodeReference(fileId, nodeId);
       }

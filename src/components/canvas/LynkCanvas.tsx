@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -61,6 +61,20 @@ export function LynkCanvas() {
 
   // Keyboard shortcuts (Delete, Ctrl+S, Ctrl+Z, Ctrl+G, etc.)
   useKeyboardShortcuts();
+
+  // Lock children of unselected groups from being dragged
+  const processedNodes = useMemo(() => {
+    const selectedGroups = new Set(
+      nodes.filter((n) => n.type === 'group' && n.selected).map((n) => n.id)
+    );
+    return nodes.map((node) => {
+      if (!node.parentId) return node;
+      const parentIsGroup = nodes.some((n) => n.id === node.parentId && n.type === 'group');
+      if (!parentIsGroup) return node;
+      const draggable = selectedGroups.has(node.parentId);
+      return node.draggable === draggable ? node : { ...node, draggable };
+    });
+  }, [nodes]);
 
   const { magneticMode, snapTarget, toggleMagneticMode, onNodeDrag, onNodeDragStop } = useMagneticConnect();
 
@@ -375,7 +389,7 @@ export function LynkCanvas() {
         </div>
       )}
       <ReactFlow
-        nodes={nodes}
+        nodes={processedNodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}

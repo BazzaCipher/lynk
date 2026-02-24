@@ -1,49 +1,34 @@
-import { useCallback } from 'react';
 import type { NodeProps } from '@xyflow/react';
-import { NodeResizer } from '@xyflow/react';
-import { useCanvasStore } from '../../store/canvasStore';
 import type { GroupNode as GroupNodeType } from '../../types';
 
-export function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
-  const updateNodeData = useCanvasStore((state) => state.updateNodeData);
+const labelStyles = {
+  selected: 'bg-blue-100 text-blue-700 border border-blue-300',
+  idle: 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 hover:text-gray-700',
+} as const;
 
-  const handleResize = useCallback(
-    (_event: unknown, params: { width: number; height: number }) => {
-      updateNodeData(id, {
-        width: params.width,
-        height: params.height,
-      });
-    },
-    [id, updateNodeData]
-  );
-
+export function GroupNode({ data, selected }: NodeProps<GroupNodeType>) {
   return (
-    <>
-      <NodeResizer
-        minWidth={100}
-        minHeight={100}
-        isVisible={selected}
-        lineClassName="border-blue-400"
-        handleClassName="h-3 w-3 bg-white border-2 border-blue-400 rounded"
-        onResize={handleResize}
-      />
+    <div
+      className={`rounded-xl transition-colors border-2 border-dashed ${selected ? 'border-blue-400 bg-blue-100/60' : 'border-gray-200 bg-gray-50/30'}`}
+      style={{
+        width: data.width,
+        height: data.height,
+        backgroundColor: data.backgroundColor || undefined,
+      }}
+    >
       <div
-        className={`
-          w-full h-full rounded-lg border-2 border-dashed
-          ${selected ? 'border-blue-500 bg-blue-50/30' : 'border-gray-300 bg-gray-50/20'}
-          transition-colors
-        `}
-        style={{
-          width: data.width,
-          height: data.height,
-          backgroundColor: data.backgroundColor || undefined,
-        }}
+        className={`absolute -top-6 left-2 px-2 py-0.5 rounded text-xs cursor-pointer transition-colors select-none ${labelStyles[selected ? 'selected' : 'idle']}`}
       >
-        {/* Group label */}
-        <div className="absolute top-0 left-2 -translate-y-1/2 px-2 py-0.5 bg-white rounded text-xs text-gray-500 border border-gray-200">
-          {data.label}
-        </div>
+        {data.label}
       </div>
-    </>
+      {selected && (
+        <>
+          <div className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-gray-100/80 border-2 border-gray-300 rounded-tl-xl" />
+          <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-gray-100/80 border-2 border-gray-300 rounded-tr-xl" />
+          <div className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-gray-100/80 border-2 border-gray-300 rounded-bl-xl" />
+          <div className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-gray-100/80 border-2 border-gray-300 rounded-br-xl" />
+        </>
+      )}
+    </div>
   );
 }

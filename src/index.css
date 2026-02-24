@@ -29,3 +29,17 @@ html, body, #root {
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
 }
+
+/* Override React Flow's built-in group node styles */
+.react-flow__node-group {
+  width: auto !important;
+  padding: 0 !important;
+  border: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.react-flow__node-group.selected,
+.react-flow__node-group.selectable.selected {
+  box-shadow: none !important;
+}

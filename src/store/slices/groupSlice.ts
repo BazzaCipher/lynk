@@ -9,8 +9,16 @@
 
 import type { Edge } from '@xyflow/react';
 import type { LynkNode } from '../../types';
+import { GroupNode } from '../../types';
 import type { StateCreator } from './types';
 import { generateNodeId } from './coreSlice';
+import {
+  calculateBoundingBox,
+  toRelativePosition,
+  toAbsolutePosition,
+  GROUP_PADDING,
+  GROUP_HEADER_HEIGHT,
+} from '../../utils/geometry';
 
 export interface GroupSlice {
   // Group actions
@@ -27,127 +35,112 @@ export interface GroupSlice {
   clearSelection: () => void;
 }
 
+/** Collect node IDs and their children (one level) for cascading operations */
+function collectWithChildren(nodeIds: Set<string>, nodes: LynkNode[]): Set<string> {
+  const result = new Set(nodeIds);
+  for (const node of nodes) {
+    if (node.parentId && result.has(node.parentId)) {
+      result.add(node.id);
+    }
+  }
+  return result;
+}
+
+/** Deselect all nodes and edges */
+function deselectAll(nodes: LynkNode[], edges: Edge[]) {
+  return {
+    nodes: nodes.map((n) => ({ ...n, selected: false })) as LynkNode[],
+    edges: edges.map((e) => ({ ...e, selected: false })),
+  };
+}
+
 export const createGroupSlice: StateCreator<GroupSlice> = (set, get) => ({
   createGroup: (nodeIds) => {
-    const { nodes } = get();
-    const selectedNodes = nodes.filter((n) => nodeIds.includes(n.id) && n.type !== 'group');
+    const { nodes, edges } = get();
+    const groupableNodes = nodes.filter(
+      (n) => nodeIds.includes(n.id) && !GroupNode.is(n)
+    );
 
-    if (selectedNodes.length < 2) return null;
+    if (groupableNodes.length < 2) return null;
 
-    // Calculate bounding box of selected nodes
-    const padding = 20;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-
-    for (const node of selectedNodes) {
-      const x = node.position.x;
-      const y = node.position.y;
-      // Estimate node dimensions (default to 200x100 if unknown)
-      const width = (node as { width?: number }).width ?? 200;
-      const height = (node as { height?: number }).height ?? 100;
-
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x + width);
-      maxY = Math.max(maxY, y + height);
-    }
-
+    const bounds = calculateBoundingBox(groupableNodes);
     const groupId = generateNodeId();
-    const groupPosition = { x: minX - padding, y: minY - padding };
-    const groupWidth = maxX - minX + padding * 2;
-    const groupHeight = maxY - minY + padding * 2;
+    const groupPosition = {
+      x: bounds.minX - GROUP_PADDING,
+      y: bounds.minY - GROUP_PADDING - GROUP_HEADER_HEIGHT,
+    };
+    const groupWidth = bounds.maxX - bounds.minX + GROUP_PADDING * 2;
+    const groupHeight = bounds.maxY - bounds.minY + GROUP_PADDING * 2 + GROUP_HEADER_HEIGHT;
 
-    // Create group node
     const groupNode: LynkNode = {
       id: groupId,
       type: 'group',
       position: groupPosition,
-      data: {
-        label: 'Group',
-        width: groupWidth,
-        height: groupHeight,
-      },
+      selected: true,
+      style: { width: groupWidth, height: groupHeight },
+      data: { label: 'Group', width: groupWidth, height: groupHeight },
     } as LynkNode;
 
-    // Update selected nodes to have parentId and relative positions
+    const nodeIdSet = new Set(nodeIds);
     const updatedNodes = nodes.map((node) => {
-      if (nodeIds.includes(node.id) && node.type !== 'group') {
+      if (nodeIdSet.has(node.id) && !GroupNode.is(node)) {
         return {
           ...node,
+          selected: false,
           parentId: groupId,
-          position: {
-            x: node.position.x - groupPosition.x,
-            y: node.position.y - groupPosition.y,
-          },
+          position: toRelativePosition(node.position, groupPosition),
         };
       }
-      return node;
+      return { ...node, selected: false };
     });
 
-    set({ nodes: [groupNode, ...updatedNodes] as LynkNode[] });
+    set({
+      nodes: [groupNode, ...updatedNodes] as LynkNode[],
+      edges: edges.map((e) => ({ ...e, selected: false })),
+    });
     return groupId;
   },
 
   ungroupNodes: (groupId) => {
     const { nodes } = get();
-    const groupNode = nodes.find((n) => n.id === groupId && n.type === 'group');
+    const groupNode = nodes.find((n) => n.id === groupId && GroupNode.is(n));
     if (!groupNode) return;
 
-    const groupPosition = groupNode.position;
+    const { position: groupPosition } = groupNode;
 
-    // Update children to have absolute positions and remove parentId
     const updatedNodes = nodes
       .filter((n) => n.id !== groupId)
       .map((node) => {
-        if (node.parentId === groupId) {
-          const { parentId: _parentId, ...rest } = node as LynkNode & { parentId?: string };
-          return {
-            ...rest,
-            position: {
-              x: node.position.x + groupPosition.x,
-              y: node.position.y + groupPosition.y,
-            },
-          };
-        }
-        return node;
+        if (node.parentId !== groupId) return node;
+        const { parentId: _, ...rest } = node as LynkNode & { parentId?: string };
+        return {
+          ...rest,
+          position: toAbsolutePosition(node.position, groupPosition),
+        };
       });
 
     set({ nodes: updatedNodes as LynkNode[] });
   },
 
-  getSelectedNodes: () => {
-    return get().nodes.filter((n) => n.selected);
-  },
+  getSelectedNodes: () => get().nodes.filter((n) => n.selected),
 
-  getSelectedEdges: () => {
-    return get().edges.filter((e) => e.selected);
-  },
+  getSelectedEdges: () => get().edges.filter((e) => e.selected),
 
   removeSelectedEdges: () => {
-    const { edges } = get();
-    set({
-      edges: edges.filter((e) => !e.selected),
-    });
+    set({ edges: get().edges.filter((e) => !e.selected) });
   },
 
   clearSelection: () => {
     const { nodes, edges } = get();
-    set({
-      nodes: nodes.map((n) => ({ ...n, selected: false })) as LynkNode[],
-      edges: edges.map((e) => ({ ...e, selected: false })),
-    });
+    set(deselectAll(nodes, edges));
   },
 
   removeSelectedNodes: () => {
     const { nodes, edges } = get();
-    const selectedIds = nodes.filter((n) => n.selected).map((n) => n.id);
-
-    // Also remove children of selected groups
-    const allIdsToRemove = new Set(selectedIds);
-    for (const node of nodes) {
-      if (node.parentId && allIdsToRemove.has(node.parentId)) {
-        allIdsToRemove.add(node.id);
-      }
-    }
+    const selectedIds = new Set(
+      nodes.filter((n) => n.selected).map((n) => n.id)
+    );
+    const allIdsToRemove = collectWithChildren(selectedIds, nodes);
 
     set({
       nodes: nodes.filter((n) => !allIdsToRemove.has(n.id)),
