@@ -1,0 +1,7 @@
+{
+	"/": [],
+	"/canvas": [],
+	"/canvas/upload": [
+		"src/routes/canvas/upload/+server.ts"
+	]
+}

@@ -9,6 +9,34 @@ import type { DataValue, SimpleDataType } from './data';
 import type { RegionCoordinates, TextRange, SelectionType } from './geometry';
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// FIELD DETECTION TYPES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Types of fields that can be auto-detected from documents */
+export type FieldType =
+  | 'invoice_number'
+  | 'date'
+  | 'total_amount'
+  | 'subtotal'
+  | 'tax'
+  | 'name'
+  | 'address'
+  | 'phone'
+  | 'email'
+  | 'currency_amount'
+  | 'unknown';
+
+/** A field detected by auto-detection OCR */
+export interface DetectedField {
+  text: string;
+  confidence: number;
+  bbox: RegionCoordinates;
+  fieldType: FieldType;
+  label: string;
+  dataType: SimpleDataType;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // EXTRACTED REGIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 

@@ -10,7 +10,8 @@ import { FileNodePreview } from './file/FileNodePreview';
 import { Modal } from '../ui/Modal';
 import { CollapsiblePanel } from '../ui/CollapsiblePanel';
 import { FileDropZone } from '../ui/FileDropZone';
-import { extractTextFromRegion } from '../../core/extraction/ocrExtractor';
+import { extractTextFromRegion, extractFullPage } from '../../core/extraction/ocrExtractor';
+import { detectFields, fieldOverlapsExisting } from '../../core/extraction/fieldDetector';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useToast } from '../ui/Toast';
 import { useFileUpload, type FileUploadResult } from '../../hooks/useFileUpload';
@@ -46,12 +47,15 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   const [selectedRegionId, setSelectedRegionId] = useState<string | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isAutoDetecting, setIsAutoDetecting] = useState(false);
   const [viewerHeight, setViewerHeight] = useState(400);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState<'box' | 'text'>('box');
   const [pageOffsets, setPageOffsets] = useState<Map<number, number>>(new Map());
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
   const imageRef = useRef<HTMLImageElement | HTMLCanvasElement | null>(null);
+  const viewerAreaRef = useRef<HTMLDivElement>(null);
 
   // ── Populate Exportable.outputs from regions ──────────────────────────────
   const outputs = useMemo(() => {
@@ -367,12 +371,126 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
     [id, data.regions, data.fileUrl, updateNodeData, showToast]
   );
 
+  const handleAutoDetect = useCallback(async () => {
+    if (!data.fileUrl) {
+      showToast('No document loaded', 'error');
+      return;
+    }
+
+    // Determine the image source to use for OCR
+    // For images, we can use the file URL directly if the ref isn't available
+    // For PDFs, we need the canvas ref
+    let imageSource: HTMLImageElement | HTMLCanvasElement | string;
+    if (imageRef.current) {
+      imageSource = imageRef.current;
+    } else if (data.fileType === 'image') {
+      // Fall back to URL for images
+      imageSource = data.fileUrl;
+    } else {
+      showToast('PDF not ready. Please wait and try again.', 'warning');
+      return;
+    }
+
+    setIsAutoDetecting(true);
+    try {
+      // 1. Run full-page OCR
+      const ocrResult = await extractFullPage(imageSource);
+
+      // 2. Detect fields
+      const detectedFields = detectFields(ocrResult);
+
+      if (detectedFields.length === 0) {
+        showToast('No fields detected. Try manual selection.', 'warning');
+        return;
+      }
+
+      // 3. Filter out fields that overlap with existing regions
+      const existingCoordinates = data.regions
+        .filter((r) => r.coordinates && r.pageNumber === data.currentPage)
+        .map((r) => r.coordinates!);
+
+      const newFields = detectedFields.filter(
+        (field) => !fieldOverlapsExisting(field, existingCoordinates, 0.8)
+      );
+
+      if (newFields.length === 0) {
+        showToast('All detected fields overlap with existing regions.', 'info');
+        return;
+      }
+
+      // 4. Convert to regions
+      const newRegions: ExtractedRegion[] = newFields.map((field) => {
+        const regionId = `region-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        return {
+          id: regionId,
+          label: field.label,
+          selectionType: 'box' as const,
+          coordinates: field.bbox,
+          pageNumber: data.currentPage,
+          extractedData: {
+            type: field.dataType,
+            value: field.text,
+            source: {
+              nodeId: id,
+              regionId,
+              pageNumber: data.currentPage,
+              coordinates: field.bbox,
+              extractionMethod: 'ocr' as const,
+              confidence: field.confidence,
+            },
+          },
+          dataType: field.dataType,
+          color: getColorForType(field.dataType).border,
+        };
+      });
+
+      // 5. Add to existing regions
+      updateNodeData(id, {
+        regions: [...data.regions, ...newRegions],
+      });
+
+      // 6. Show feedback with confidence warning if needed
+      const lowConfidenceCount = newFields.filter((f) => f.confidence < 50).length;
+      if (lowConfidenceCount > 0) {
+        showToast(
+          `Detected ${newRegions.length} field(s). ${lowConfidenceCount} have low confidence.`,
+          'warning'
+        );
+      } else {
+        showToast(`Detected ${newRegions.length} field(s)`, 'success');
+      }
+    } catch (error) {
+      console.error('Auto-detection failed:', error);
+      showToast('Auto-detection failed. Please try again.', 'error');
+    } finally {
+      setIsAutoDetecting(false);
+    }
+  }, [id, data.fileUrl, data.fileType, data.regions, data.currentPage, updateNodeData, showToast]);
+
+  // Zoom via scroll wheel in the modal viewer area
+  useEffect(() => {
+    const el = viewerAreaRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const delta = -e.deltaY * 0.001;
+      setZoom((prev) => Math.min(5, Math.max(0.25, prev * (1 + delta))));
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [isModalOpen]);
+
   const openModal = useCallback(() => {
     setIsModalOpen(true);
   }, []);
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
+    setZoom(1);
   }, []);
 
   // Convert to DisplayNode
@@ -483,7 +601,11 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
       >
         <div className="flex h-[75vh]">
           {/* Document viewer area */}
-          <div className="flex-1 overflow-auto bg-gray-50">
+          <div
+            className="flex-1 overflow-auto bg-gray-50"
+            ref={viewerAreaRef}
+            onDoubleClick={(e) => e.stopPropagation()}
+          >
             {/* Selection mode toggle */}
             <div className="sticky top-0 z-10 flex items-center justify-center gap-2 py-2 px-4 bg-white border-b border-gray-200 shadow-sm">
               <span className="text-xs text-gray-500 mr-2">Selection:</span>
@@ -513,11 +635,57 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
                 </svg>
                 Text Select
               </button>
+
+              {/* Divider */}
+              <div className="w-px h-6 bg-gray-300 mx-2" />
+
+              {/* Auto-detect button */}
+              <button
+                onClick={handleAutoDetect}
+                disabled={isAutoDetecting}
+                className="px-3 py-1.5 text-xs rounded-md bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5"
+              >
+                {isAutoDetecting ? (
+                  <>
+                    <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Detecting...
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" />
+                    </svg>
+                    Auto-detect Fields
+                  </>
+                )}
+              </button>
             </div>
 
-            {/* Document with overlays */}
+            {/* Zoom indicator */}
+            {zoom !== 1 && (
+              <div className="sticky top-0 z-20 flex items-center justify-center gap-2 py-1 bg-gray-100/90 border-b border-gray-200">
+                <span className="text-xs text-gray-500">{Math.round(zoom * 100)}%</span>
+                <button
+                  onClick={() => setZoom(1)}
+                  className="px-1.5 py-0.5 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Reset
+                </button>
+              </div>
+            )}
+
+            {/* Document with overlays — CSS transform zoom (GPU, no re-render) */}
             <div className="relative p-6 flex justify-center">
-              <div className="relative bg-white shadow-lg">
+              <div
+                className="relative bg-white shadow-lg"
+                style={{
+                  transform: `scale(${zoom})`,
+                  transformOrigin: 'top center',
+                }}
+              >
                 <DocumentViewer
                   fileUrl={data.fileUrl ?? null}
                   fileType={data.fileType}
@@ -533,9 +701,10 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
                   onPageOffsetsChange={setPageOffsets}
                   enableTextSelection={selectionMode === 'text'}
                   width={VIEWER_WIDTH}
+                  devicePixelRatio={Math.max(window.devicePixelRatio, zoom) * window.devicePixelRatio}
                   scrollMode={true}
                 >
-                  {/* Overlays rendered as children to share coordinate space with content */}
+                  {/* Overlays share coordinate space at base width */}
                   {data.fileUrl && (
                     <HighlightOverlay
                       regions={data.regions}

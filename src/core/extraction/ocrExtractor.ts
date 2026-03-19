@@ -127,3 +127,112 @@ export async function extractTextFromPdfPage(
 ): Promise<ExtractionResult> {
   return extractTextFromRegion(pdfCanvas, region);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FULL PAGE OCR
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Word detected by OCR with bounding box */
+export interface OcrWord {
+  text: string;
+  confidence: number;
+  bbox: { x0: number; y0: number; x1: number; y1: number };
+}
+
+/** Line detected by OCR with bounding box */
+export interface OcrLine {
+  text: string;
+  confidence: number;
+  bbox: { x0: number; y0: number; x1: number; y1: number };
+  words: OcrWord[];
+}
+
+/** Result of full-page OCR extraction */
+export interface FullPageOcrResult {
+  text: string;
+  confidence: number;
+  words: OcrWord[];
+  lines: OcrLine[];
+  imageWidth: number;
+  imageHeight: number;
+}
+
+/**
+ * Extract all text from an entire page/image using OCR.
+ * Returns words and lines with their bounding boxes for field detection.
+ */
+export async function extractFullPage(
+  imageSource: HTMLImageElement | HTMLCanvasElement | string
+): Promise<FullPageOcrResult> {
+  const tesseractWorker = await getWorker();
+
+  // Load image if string URL provided
+  let img: HTMLImageElement | HTMLCanvasElement;
+  if (typeof imageSource === 'string') {
+    img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.crossOrigin = 'anonymous';
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('Failed to load image for OCR'));
+      image.src = imageSource;
+    });
+  } else {
+    img = imageSource;
+  }
+
+  // Get image dimensions
+  const imageWidth = img instanceof HTMLImageElement ? img.naturalWidth : img.width;
+  const imageHeight = img instanceof HTMLImageElement ? img.naturalHeight : img.height;
+
+  // Run OCR on the full image
+  const result = await tesseractWorker.recognize(img);
+
+  // Tesseract structure: Page -> blocks[] -> paragraphs[] -> lines[] -> words[]
+  // Flatten the hierarchy to get all words and lines
+  const words: OcrWord[] = [];
+  const lines: OcrLine[] = [];
+
+  if (result.data.blocks) {
+    for (const block of result.data.blocks) {
+      for (const paragraph of block.paragraphs) {
+        for (const line of paragraph.lines) {
+          // Collect line with its words
+          const lineWords: OcrWord[] = line.words.map((word) => ({
+            text: word.text,
+            confidence: word.confidence,
+            bbox: {
+              x0: word.bbox.x0,
+              y0: word.bbox.y0,
+              x1: word.bbox.x1,
+              y1: word.bbox.y1,
+            },
+          }));
+
+          lines.push({
+            text: line.text,
+            confidence: line.confidence,
+            bbox: {
+              x0: line.bbox.x0,
+              y0: line.bbox.y0,
+              x1: line.bbox.x1,
+              y1: line.bbox.y1,
+            },
+            words: lineWords,
+          });
+
+          // Also add to flat words array
+          words.push(...lineWords);
+        }
+      }
+    }
+  }
+
+  return {
+    text: result.data.text,
+    confidence: result.data.confidence,
+    words,
+    lines,
+    imageWidth,
+    imageHeight,
+  };
+}

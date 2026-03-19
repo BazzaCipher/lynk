@@ -25,6 +25,7 @@ interface DocumentViewerProps {
   scrollMode?: boolean;
   deferLoading?: boolean;
   children?: React.ReactNode;
+  devicePixelRatio?: number;
 }
 
 export function DocumentViewer({
@@ -44,11 +45,13 @@ export function DocumentViewer({
   scrollMode = false,
   deferLoading = false,
   children,
+  devicePixelRatio,
 }: DocumentViewerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Multi-page scroll hook for lazy loading
   const multiPage = useMultiPageScroll({
@@ -56,6 +59,23 @@ export function DocumentViewer({
     buffer: 2,
     deferLoading: scrollMode ? deferLoading : false,
   });
+
+  // For PDFs, call onImageRef with the first canvas after render
+  useEffect(() => {
+    if (fileType === 'pdf' && !loading && onImageRef) {
+      const timer = setTimeout(() => {
+        if (pdfCanvasRef.current) {
+          onImageRef(pdfCanvasRef.current);
+        } else if (contentRef.current) {
+          const canvas = contentRef.current.querySelector('canvas');
+          if (canvas) {
+            onImageRef(canvas as HTMLCanvasElement);
+          }
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [fileType, loading, onImageRef, currentPage]);
 
   const handlePdfLoadSuccess = useCallback(
     ({ numPages }: { numPages: number }) => {
@@ -123,9 +143,54 @@ export function DocumentViewer({
     }
   }, [scrollMode, multiPage.scrollContainerRef]);
 
-  // Handle text selection
+  // Handle text selection (drag and double-click)
   useEffect(() => {
     if (!enableTextSelection || !onTextSelect) return;
+
+    const captureSelection = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) return;
+
+      const text = selection.toString().trim();
+      if (!text) return;
+
+      const range = selection.getRangeAt(0);
+
+      if (!contentRef.current?.contains(range.commonAncestorContainer)) return;
+
+      const contentRect = contentRef.current.getBoundingClientRect();
+      const clientRects = range.getClientRects();
+      const rects: TextRange['rects'] = [];
+
+      for (let i = 0; i < clientRects.length; i++) {
+        const rect = clientRects[i];
+        if (rect.width <= 0 || rect.height <= 0) continue;
+
+        const x = rect.left - contentRect.left;
+        const y = rect.top - contentRect.top;
+
+        if (x < 0 || y < 0) continue;
+
+        rects.push({
+          x,
+          y,
+          width: rect.width,
+          height: rect.height,
+        });
+      }
+
+      if (rects.length === 0) return;
+
+      const textRange: TextRange = {
+        startOffset: range.startOffset,
+        endOffset: range.endOffset,
+        text,
+        rects,
+      };
+
+      onTextSelect(textRange);
+      selection.removeAllRanges();
+    };
 
     const handleMouseUp = () => {
       requestAnimationFrame(() => {
@@ -140,23 +205,17 @@ export function DocumentViewer({
         if (!contentRef.current?.contains(range.commonAncestorContainer)) return;
 
         // Check if a currency symbol sits immediately before the selection start.
-        // In PDF/HTML layouts the symbol is usually a separate element, so we
-        // check two places: (1) the character before in the same text node, and
-        // (2) the text content of the immediately preceding sibling element.
         const CURRENCY_CHARS = '$€£¥₹₩₪₫₱';
         const startContainer = range.startContainer;
         const startOffset = range.startOffset;
         let currencyPrefix = '';
 
         if (startOffset > 0 && startContainer.nodeType === Node.TEXT_NODE) {
-          // Same text node — check char immediately before cursor
           const charBefore = (startContainer.textContent ?? '')[startOffset - 1];
           if (CURRENCY_CHARS.includes(charBefore)) {
             currencyPrefix = charBefore;
           }
         } else {
-          // Likely a separate element — walk up to the nearest Element node
-          // and check its previousElementSibling's trimmed text content
           const el = startContainer.nodeType === Node.TEXT_NODE
             ? startContainer.parentElement
             : startContainer as Element;
@@ -203,16 +262,21 @@ export function DocumentViewer({
         };
 
         onTextSelect(textRange);
-
         selection.removeAllRanges();
       });
     };
 
+    const handleDblClick = () => {
+      captureSelection();
+    };
+
     const content = contentRef.current;
     content?.addEventListener('mouseup', handleMouseUp);
+    content?.addEventListener('dblclick', handleDblClick);
 
     return () => {
       content?.removeEventListener('mouseup', handleMouseUp);
+      content?.removeEventListener('dblclick', handleDblClick);
     };
   }, [enableTextSelection, onTextSelect]);
 
@@ -253,7 +317,6 @@ export function DocumentViewer({
             }
           >
             {scrollMode && totalPages > 1 ? (
-              // Scroll mode with lazy loading
               Array.from({ length: totalPages }, (_, i) => {
                 const pageNum = i + 1;
                 const isVisible = multiPage.isActivated && multiPage.visiblePages.has(pageNum);
@@ -271,9 +334,9 @@ export function DocumentViewer({
                         width={width}
                         renderTextLayer={enableTextSelection}
                         renderAnnotationLayer={false}
+                        devicePixelRatio={devicePixelRatio}
                       />
                     ) : (
-                      // Placeholder for non-visible pages
                       <div
                         className="flex items-center justify-center bg-gray-50 border border-gray-200"
                         style={{ width, height: placeholderHeight }}
@@ -290,12 +353,13 @@ export function DocumentViewer({
                 );
               })
             ) : (
-              // Single page mode
               <Page
                 pageNumber={currentPage}
                 width={width}
                 renderTextLayer={enableTextSelection}
                 renderAnnotationLayer={false}
+                canvasRef={pdfCanvasRef}
+                devicePixelRatio={devicePixelRatio}
               />
             )}
           </Document>

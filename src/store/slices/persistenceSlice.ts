@@ -5,7 +5,7 @@
  */
 
 import type { CanvasState } from '../../types';
-import type { ValidationResult } from '../codecs';
+import type { ValidationResult, ExportedCanvas } from '../codecs';
 import * as persistenceService from '../../services/canvasPersistence';
 import { filterValidEdges } from '../../services/canvasValidation';
 import type { StateCreator } from './types';
@@ -21,7 +21,7 @@ export interface PersistenceSlice {
   clearCanvas: () => void;
   setCanvasName: (name: string) => void;
   exportCanvas: () => CanvasState;
-  importCanvas: (state: CanvasState) => { success: boolean; error?: string };
+  importCanvas: (state: CanvasState | ExportedCanvas) => { success: boolean; error?: string };
   validateCanvas: () => ValidationResult;
   saveToFile: () => Promise<{ success: boolean; warnings: string[] }>;
   loadFromFile: () => Promise<{ success: boolean; error?: string }>;

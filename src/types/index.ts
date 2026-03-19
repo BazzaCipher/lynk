@@ -30,8 +30,8 @@ export type {
   DataSourceReference,
 } from './geometry';
 
-// Extracted regions
-export type { ExtractedRegion } from './regions';
+// Extracted regions and field detection
+export type { ExtractedRegion, FieldType, DetectedField } from './regions';
 
 // Viewport types
 export type { ViewportRegion } from './viewport';

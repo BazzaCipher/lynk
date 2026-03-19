@@ -45,6 +45,7 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
       <div
         className={`relative bg-white rounded-lg shadow-xl max-h-[90vh] max-w-[90vw] overflow-hidden flex flex-col ${className}`}
         onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         {title && (

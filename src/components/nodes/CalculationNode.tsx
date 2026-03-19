@@ -99,6 +99,7 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
   const result = useMemo((): CalculationResult | null => {
     if (!currentOperation) return null;
     if (compatibleInputs.length < (currentOperation.minInputs ?? 1)) return null;
+    if (currentOperation.maxInputs != null && compatibleInputs.length > currentOperation.maxInputs) return null;
 
     const operationResult = currentOperation.calculate(compatibleInputs, data.precision ?? 2);
     if (!operationResult) return null;
