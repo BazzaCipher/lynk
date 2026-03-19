@@ -422,7 +422,7 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
 
         // Calculate entry result
         const operation = getOperation(entry.operation);
-        if (operation && inputs.length >= (operation.minInputs ?? 1)) {
+        if (operation && inputs.length >= (operation.minInputs ?? 1) && (operation.maxInputs == null || inputs.length <= operation.maxInputs)) {
           const calcResult = operation.calculate(
             inputs.map((inp) => ({
               value: inp.value,
@@ -453,7 +453,7 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
 
       // Calculate subheader result (aggregate of all entry outputs)
       const subheaderOp = getOperation(subheader.operation);
-      if (subheaderOp && entryOutputs.length >= (subheaderOp.minInputs ?? 1)) {
+      if (subheaderOp && entryOutputs.length >= (subheaderOp.minInputs ?? 1) && (subheaderOp.maxInputs == null || entryOutputs.length <= subheaderOp.maxInputs)) {
         const subheaderCalcResult = subheaderOp.calculate(
           entryOutputs.map((out, idx) => ({
             value: out.value,

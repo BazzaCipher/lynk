@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useCanvasStore } from '../store/canvasStore';
 import type { CanvasState } from '../types';
 import { SourceNode } from '../types';
+import { defaultPipeline, type ExportedCanvas } from '../store/codecs';
 
 // localStorage keys
 export const STORAGE_KEYS = {
@@ -17,63 +18,88 @@ const AUTO_SAVE_INTERVAL = 30_000;
 const DEBOUNCE_DELAY = 1_000;
 
 export interface StoredCanvasData {
-  /** Canvas state without embedded files (to stay within localStorage limits) */
-  canvas: CanvasState;
+  /** Canvas state with embedded file data (base64-encoded) */
+  canvas: ExportedCanvas;
   /** When the draft was saved */
   savedAt: string;
   /** Whether this is an unsaved draft vs explicitly saved file */
   isDraft: boolean;
-  /** File IDs that need to be re-imported on restore */
+  /** File IDs that need to be re-imported on restore (only if save exceeded quota) */
   missingFileIds: string[];
 }
 
 /**
- * Prepare canvas for localStorage (strip embedded files, track missing)
+ * Collect file IDs from source nodes
  */
-function prepareForStorage(canvas: CanvasState): { stripped: CanvasState; missingFileIds: string[] } {
-  // Collect file IDs from all Source nodes
-  const missingFileIds: string[] = [];
+function collectFileIds(canvas: CanvasState): string[] {
+  const fileIds: string[] = [];
   for (const node of canvas.nodes) {
     if (SourceNode.is(node)) {
       const fileId = SourceNode.getFileId(node);
       if (fileId) {
-        missingFileIds.push(fileId);
+        fileIds.push(fileId);
       }
     }
   }
-
-  // Strip embedded data from canvas (too large for localStorage)
-  const stripped: CanvasState = {
-    ...canvas,
-    embedded: undefined,
-  };
-
-  return { stripped, missingFileIds };
+  return fileIds;
 }
 
 /**
- * Save canvas state to localStorage
+ * Encode canvas with embedded file data via the codec pipeline.
+ * Falls back to stripping files if encoding fails.
  */
-export function saveToLocalStorage(canvas: CanvasState, isDraft = true): boolean {
+async function prepareForStorage(canvas: CanvasState): Promise<{ prepared: ExportedCanvas; missingFileIds: string[] }> {
+  const fileIds = collectFileIds(canvas);
+
   try {
-    const { stripped, missingFileIds } = prepareForStorage(canvas);
+    const { canvas: exported } = await defaultPipeline.export(canvas);
+    return { prepared: exported, missingFileIds: [] };
+  } catch (err) {
+    console.warn('Failed to encode files for localStorage, saving without files:', err);
+    return {
+      prepared: { ...canvas, embedded: undefined },
+      missingFileIds: fileIds,
+    };
+  }
+}
+
+/**
+ * Save canvas state to localStorage (with embedded file data)
+ */
+export async function saveToLocalStorage(canvas: CanvasState, isDraft = true): Promise<boolean> {
+  try {
+    const { prepared, missingFileIds } = await prepareForStorage(canvas);
 
     const data: StoredCanvasData = {
-      canvas: stripped,
+      canvas: prepared,
       savedAt: new Date().toISOString(),
       isDraft,
       missingFileIds,
     };
 
-    localStorage.setItem(STORAGE_KEYS.CURRENT_CANVAS, JSON.stringify(data));
-    return true;
-  } catch (err) {
-    // Handle quota exceeded or other errors
-    if (err instanceof DOMException && err.name === 'QuotaExceededError') {
-      console.warn('localStorage quota exceeded - unable to save draft');
-    } else {
-      console.warn('Failed to save to localStorage:', err);
+    const json = JSON.stringify(data);
+
+    try {
+      localStorage.setItem(STORAGE_KEYS.CURRENT_CANVAS, json);
+      return true;
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+        // Files too large for localStorage - save without embedded files
+        console.warn('localStorage quota exceeded with files, retrying without file data');
+        const fileIds = collectFileIds(canvas);
+        const fallbackData: StoredCanvasData = {
+          canvas: { ...canvas, embedded: undefined },
+          savedAt: new Date().toISOString(),
+          isDraft,
+          missingFileIds: fileIds,
+        };
+        localStorage.setItem(STORAGE_KEYS.CURRENT_CANVAS, JSON.stringify(fallbackData));
+        return true;
+      }
+      throw err;
     }
+  } catch (err) {
+    console.warn('Failed to save to localStorage:', err);
     return false;
   }
 }
@@ -155,22 +181,21 @@ export function useLocalStorageSync(): void {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastSavedRef = useRef<string>('');
 
-  const saveCanvas = useCallback(() => {
+  const saveCanvas = useCallback(async () => {
     const state = useCanvasStore.getState();
     const canvas = state.exportCanvas();
 
     // Only save if there are changes (compare serialized state without timestamps)
-    const { stripped } = prepareForStorage(canvas);
     const serialized = JSON.stringify({
-      nodes: stripped.nodes,
-      edges: stripped.edges,
+      nodes: canvas.nodes,
+      edges: canvas.edges,
     });
 
     if (serialized === lastSavedRef.current) {
       return;
     }
 
-    const success = saveToLocalStorage(canvas, true);
+    const success = await saveToLocalStorage(canvas, true);
     if (success) {
       lastSavedRef.current = serialized;
     }

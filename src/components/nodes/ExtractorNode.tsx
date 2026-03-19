@@ -45,7 +45,9 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   const [viewerHeight, setViewerHeight] = useState(400);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState<'box' | 'text'>('box');
+  const [zoom, setZoom] = useState(1);
   const imageRef = useRef<HTMLImageElement | HTMLCanvasElement | null>(null);
+  const viewerAreaRef = useRef<HTMLDivElement>(null);
 
   // ── Populate Exportable.outputs from regions ──────────────────────────────
   const outputs = useMemo(() => {
@@ -408,12 +410,30 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
     }
   }, [id, data.fileUrl, data.fileType, data.regions, data.currentPage, updateNodeData, showToast]);
 
+  // Zoom via scroll wheel in the modal viewer area
+  useEffect(() => {
+    const el = viewerAreaRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const delta = -e.deltaY * 0.001;
+      setZoom((prev) => Math.min(5, Math.max(0.25, prev * (1 + delta))));
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, [isModalOpen]);
+
   const openModal = useCallback(() => {
     setIsModalOpen(true);
   }, []);
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
+    setZoom(1);
   }, []);
 
   // Convert to DisplayNode
@@ -560,7 +580,11 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
       >
         <div className="flex h-[75vh]">
           {/* Document viewer area */}
-          <div className="flex-1 overflow-auto bg-gray-50">
+          <div
+            className="flex-1 overflow-auto bg-gray-50"
+            ref={viewerAreaRef}
+            onDoubleClick={(e) => e.stopPropagation()}
+          >
             {/* Selection mode toggle */}
             <div className="sticky top-0 z-10 flex items-center justify-center gap-2 py-2 px-4 bg-white border-b border-gray-200 shadow-sm">
               <span className="text-xs text-gray-500 mr-2">Selection:</span>
@@ -619,9 +643,28 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
               </button>
             </div>
 
-            {/* Document with overlays */}
+            {/* Zoom indicator */}
+            {zoom !== 1 && (
+              <div className="sticky top-0 z-20 flex items-center justify-center gap-2 py-1 bg-gray-100/90 border-b border-gray-200">
+                <span className="text-xs text-gray-500">{Math.round(zoom * 100)}%</span>
+                <button
+                  onClick={() => setZoom(1)}
+                  className="px-1.5 py-0.5 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Reset
+                </button>
+              </div>
+            )}
+
+            {/* Document with overlays — CSS transform zoom (GPU, no re-render) */}
             <div className="relative p-6 flex justify-center">
-              <div className="relative bg-white shadow-lg">
+              <div
+                className="relative bg-white shadow-lg"
+                style={{
+                  transform: `scale(${zoom})`,
+                  transformOrigin: 'top center',
+                }}
+              >
                 <DocumentViewer
                   fileUrl={data.fileUrl ?? null}
                   fileType={data.fileType}
@@ -635,9 +678,10 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
                   onTextSelect={selectionMode === 'text' ? handleTextSelect : undefined}
                   enableTextSelection={selectionMode === 'text'}
                   width={VIEWER_WIDTH}
+                  devicePixelRatio={Math.max(window.devicePixelRatio, zoom) * window.devicePixelRatio}
                   scrollMode={true}
                 >
-                  {/* Overlays rendered as children to share coordinate space with content */}
+                  {/* Overlays share coordinate space at base width */}
                   {data.fileUrl && (
                     <HighlightOverlay
                       regions={data.regions}

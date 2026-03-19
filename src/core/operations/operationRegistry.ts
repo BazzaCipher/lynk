@@ -246,8 +246,69 @@ export const OPERATIONS: OperationDefinition[] = [
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // ARITHMETIC OPERATIONS
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  {
+    id: 'subtract',
+    label: 'Subtract',
+    category: 'multiple',
+    description: 'Subtract second from first (A − B)',
+    compatibleTypes: ['number', 'currency'],
+    minInputs: 2,
+    maxInputs: 2,
+    calculate: (inputs, precision) => {
+      if (inputs.length < 2) return null;
+      const a = toSafeNumber(inputs[0].value);
+      const b = toSafeNumber(inputs[1].value);
+      if (a === null || b === null) return null;
+      return {
+        value: Number((a - b).toFixed(precision)),
+        dataType: 'number',
+      };
+    },
+  },
+
+  {
+    id: 'multiply',
+    label: 'Multiply',
+    category: 'multiple',
+    description: 'Multiply all input values together',
+    compatibleTypes: ['number', 'currency'],
+    minInputs: 1,
+    calculate: (inputs, precision) => {
+      const numbers = inputs.map(inp => toSafeNumber(inp.value)).filter((n): n is number => n !== null);
+      if (numbers.length === 0) return null;
+      const product = numbers.reduce((acc, n) => acc * n, 1);
+      return {
+        value: Number(product.toFixed(precision)),
+        dataType: 'number',
+      };
+    },
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // SINGLE INPUT OPERATIONS
   // ─────────────────────────────────────────────────────────────────────────────
+
+  {
+    id: 'negate',
+    label: 'Negate',
+    category: 'single',
+    description: 'Flip the sign of the value (−x)',
+    compatibleTypes: ['number', 'currency'],
+    minInputs: 1,
+    maxInputs: 1,
+    calculate: (inputs, precision) => {
+      if (inputs.length === 0) return null;
+      const num = toSafeNumber(inputs[0].value);
+      if (num === null) return null;
+      return {
+        value: Number((-num).toFixed(precision)),
+        dataType: 'number',
+      };
+    },
+  },
 
   {
     id: 'round',

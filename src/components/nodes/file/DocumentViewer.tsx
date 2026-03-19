@@ -18,8 +18,9 @@ interface DocumentViewerProps {
   onTextSelect?: (textRange: TextRange) => void;
   enableTextSelection?: boolean;
   width?: number;
-  scrollMode?: boolean; // Enable smooth scroll through all pages
-  children?: React.ReactNode; // Overlays to render inside the content area (for correct coordinate alignment)
+  scrollMode?: boolean;
+  children?: React.ReactNode;
+  devicePixelRatio?: number;
 }
 
 export function DocumentViewer({
@@ -35,23 +36,21 @@ export function DocumentViewer({
   width = 300,
   scrollMode = false,
   children,
+  devicePixelRatio,
 }: DocumentViewerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null); // Ref for document content area only
+  const contentRef = useRef<HTMLDivElement>(null);
   const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // For PDFs, call onImageRef with the first canvas after render
-  // In scroll mode, we find the canvas from the DOM
   useEffect(() => {
     if (fileType === 'pdf' && !loading && onImageRef) {
-      // Small delay to ensure canvas is rendered
       const timer = setTimeout(() => {
         if (pdfCanvasRef.current) {
           onImageRef(pdfCanvasRef.current);
         } else if (contentRef.current) {
-          // For scroll mode, find the first canvas in the content area
           const canvas = contentRef.current.querySelector('canvas');
           if (canvas) {
             onImageRef(canvas as HTMLCanvasElement);
@@ -87,71 +86,70 @@ export function DocumentViewer({
     setError('Failed to load image');
   }, []);
 
-  // Handle text selection
+  // Handle text selection (drag and double-click)
   useEffect(() => {
     if (!enableTextSelection || !onTextSelect) return;
 
+    const captureSelection = () => {
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed) return;
+
+      const text = selection.toString().trim();
+      if (!text) return;
+
+      const range = selection.getRangeAt(0);
+
+      if (!contentRef.current?.contains(range.commonAncestorContainer)) return;
+
+      const contentRect = contentRef.current.getBoundingClientRect();
+      const clientRects = range.getClientRects();
+      const rects: TextRange['rects'] = [];
+
+      for (let i = 0; i < clientRects.length; i++) {
+        const rect = clientRects[i];
+        if (rect.width <= 0 || rect.height <= 0) continue;
+
+        const x = rect.left - contentRect.left;
+        const y = rect.top - contentRect.top;
+
+        if (x < 0 || y < 0) continue;
+
+        rects.push({
+          x,
+          y,
+          width: rect.width,
+          height: rect.height,
+        });
+      }
+
+      if (rects.length === 0) return;
+
+      const textRange: TextRange = {
+        startOffset: range.startOffset,
+        endOffset: range.endOffset,
+        text,
+        rects,
+      };
+
+      onTextSelect(textRange);
+      selection.removeAllRanges();
+    };
+
     const handleMouseUp = () => {
-      // Wait for next frame to ensure selection rects are finalized after drag
-      requestAnimationFrame(() => {
-        const selection = window.getSelection();
-        if (!selection || selection.isCollapsed) return;
+      requestAnimationFrame(captureSelection);
+    };
 
-        const text = selection.toString().trim();
-        if (!text) return;
-
-        // Get the range
-        const range = selection.getRangeAt(0);
-
-        // Check if selection is within our content area
-        if (!contentRef.current?.contains(range.commonAncestorContainer)) return;
-
-        // Get bounding rectangles relative to content area (not including nav bar)
-        const contentRect = contentRef.current.getBoundingClientRect();
-        const clientRects = range.getClientRects();
-        const rects: TextRange['rects'] = [];
-
-        for (let i = 0; i < clientRects.length; i++) {
-          const rect = clientRects[i];
-          // Skip invalid rects (zero dimensions or at origin which indicates unrendered elements)
-          if (rect.width <= 0 || rect.height <= 0) continue;
-
-          const x = rect.left - contentRect.left;
-          const y = rect.top - contentRect.top;
-
-          // Skip rects with negative coordinates (outside content area)
-          if (x < 0 || y < 0) continue;
-
-          rects.push({
-            x,
-            y,
-            width: rect.width,
-            height: rect.height,
-          });
-        }
-
-        // If no valid rects, don't create the selection
-        if (rects.length === 0) return;
-
-        const textRange: TextRange = {
-          startOffset: range.startOffset,
-          endOffset: range.endOffset,
-          text,
-          rects,
-        };
-
-        onTextSelect(textRange);
-
-        // Clear selection after capturing
-        selection.removeAllRanges();
-      });
+    const handleDblClick = () => {
+      captureSelection();
     };
 
     const content = contentRef.current;
     content?.addEventListener('mouseup', handleMouseUp);
+    content?.addEventListener('dblclick', handleDblClick);
 
     return () => {
       content?.removeEventListener('mouseup', handleMouseUp);
+      content?.removeEventListener('dblclick', handleDblClick);
     };
   }, [enableTextSelection, onTextSelect]);
 
@@ -173,8 +171,6 @@ export function DocumentViewer({
 
   return (
     <div className="relative" ref={containerRef}>
-      {/* Document display - contentRef for text selection coordinate calculations */}
-      {/* Children (overlays) are rendered inside this container to share the same coordinate space */}
       <div className="relative overflow-hidden bg-gray-100" ref={contentRef}>
         {fileType === 'pdf' ? (
           <Document
@@ -188,7 +184,6 @@ export function DocumentViewer({
             }
           >
             {scrollMode && totalPages > 1 ? (
-              // Smooth scroll mode: render all pages
               Array.from({ length: totalPages }, (_, i) => (
                 <div key={i + 1} className="mb-4 last:mb-0">
                   <Page
@@ -196,6 +191,7 @@ export function DocumentViewer({
                     width={width}
                     renderTextLayer={enableTextSelection}
                     renderAnnotationLayer={false}
+                    devicePixelRatio={devicePixelRatio}
                   />
                   <div className="text-center text-xs text-gray-400 py-1 bg-gray-200">
                     Page {i + 1} of {totalPages}
@@ -203,13 +199,13 @@ export function DocumentViewer({
                 </div>
               ))
             ) : (
-              // Single page mode
               <Page
                 pageNumber={currentPage}
                 width={width}
                 renderTextLayer={enableTextSelection}
                 renderAnnotationLayer={false}
                 canvasRef={pdfCanvasRef}
+                devicePixelRatio={devicePixelRatio}
               />
             )}
           </Document>
@@ -224,7 +220,6 @@ export function DocumentViewer({
             onError={handleImageError}
           />
         )}
-        {/* Render overlays inside content area for correct coordinate alignment */}
         {children}
       </div>
 
