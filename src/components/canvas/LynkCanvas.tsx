@@ -25,15 +25,15 @@ import { ConnectionLine } from './ConnectionLine';
 import { LayoutControls } from './LayoutControls';
 import { FileRegistryPanel } from './FileRegistryPanel';
 import { NodeContextMenu } from './NodeContextMenu';
+import { EmptyState } from './EmptyState';
+import { SuggestionBar } from './SuggestionBar';
 import { useToast } from '../ui/Toast';
-import { wouldCreateCycle } from '../../core/engine/dependencyGraph';
-import { getOperation, isTypeCompatible } from '../../core/operations/operationRegistry';
-import { useFileUpload } from '../../hooks/useFileUpload';
+import { validateConnection } from '../../core/engine/connectionValidation';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useMagneticConnect } from '../../hooks/useMagneticConnect';
-import { BlobRegistry } from '../../store/canvasPersistence';
+import { useCanvasDrop } from '../../hooks/useCanvasDrop';
 import type { LynkNode, DisplayNodeData, ViewportRegion } from '../../types';
-import { CanExport, CanImport, CalculationNode, ExtractorNode, DisplayNode, ViewportNode } from '../../types';
+import { DisplayNode } from '../../types';
 
 // Wrap node components with error boundaries to prevent crashes
 const nodeTypes = {
@@ -55,7 +55,6 @@ export function LynkCanvas() {
   const storeAddEdge = useCanvasStore((state) => state.addEdge);
   const addNode = useCanvasStore((state) => state.addNode);
   const setViewport = useCanvasStore((state) => state.setViewport);
-  const pushHistory = useCanvasStore((state) => state.pushHistory);
   const { showToast } = useToast();
   const { screenToFlowPosition } = useReactFlow();
 
@@ -114,171 +113,23 @@ export function LynkCanvas() {
 
   const isValidConnection = useCallback(
     (connection: Edge | Connection): boolean => {
-      if (!connection.source || !connection.target) return false;
-
-      // Prevent self-connections
-      if (connection.source === connection.target) {
-        return false;
-      }
-
-      // Check for cycles
-      if (wouldCreateCycle(edges, connection.source, connection.target)) {
-        return false;
-      }
-
-      // Get source and target nodes
-      const sourceNode = nodes.find((n) => n.id === connection.source);
-      const targetNode = nodes.find((n) => n.id === connection.target);
-      if (!sourceNode || !targetNode) return false;
-
-      // Check if source node can export (has output handles)
-      if (!CanExport.is(sourceNode as LynkNode)) {
-        return false;
-      }
-
-      // Check if target node can import (has input handles)
-      if (!CanImport.is(targetNode as LynkNode)) {
-        return false;
-      }
-
-      const targetLynkNode = targetNode as LynkNode;
-      const sourceLynkNode = sourceNode as LynkNode;
-
-      // ViewportNode targets: only accept from DisplayNode, max 1 input
-      if (ViewportNode.is(targetLynkNode)) {
-        if (!DisplayNode.is(sourceLynkNode)) {
-          return false;
-        }
-        const existingInputs = edges.filter(
-          (e) => e.target === targetNode.id && e.targetHandle === 'viewport-in'
-        );
-        if (existingInputs.length >= 1) {
-          return false;
-        }
-      }
-
-      // Type compatibility check for CalculationNode targets
-      if (CalculationNode.is(targetLynkNode)) {
-        const operation = getOperation(targetLynkNode.data.operation);
-
-        if (operation) {
-          // Check if source data type is compatible with the operation
-          if (ExtractorNode.is(sourceLynkNode)) {
-            const regionId = connection.sourceHandle;
-            const region = sourceLynkNode.data.regions.find((r) => r.id === regionId);
-
-            if (region && !isTypeCompatible(targetLynkNode.data.operation, region.dataType)) {
-              return false; // Incompatible type
-            }
-          }
-
-          // Check single-input operation limits
-          if (operation.maxInputs === 1) {
-            const existingInputs = edges.filter(
-              (e) => e.target === targetNode.id && e.targetHandle === 'inputs'
-            );
-            if (existingInputs.length >= 1) {
-              return false; // Already has an input
-            }
-          }
-        }
-      }
-
-      return true;
+      return validateConnection(connection, { nodes: nodes as LynkNode[], edges }).valid;
     },
     [edges, nodes]
   );
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      if (!connection.source || !connection.target) return;
-
-      // Prevent self-connections
-      if (connection.source === connection.target) {
-        showToast('Cannot connect a node to itself', 'warning');
+      const result = validateConnection(connection, { nodes: nodes as LynkNode[], edges });
+      if (!result.valid) {
+        if (result.reason) showToast(result.reason, 'warning');
         return;
       }
 
-      // Check for cycles
-      if (wouldCreateCycle(edges, connection.source, connection.target)) {
-        showToast('Cannot create circular dependency', 'error');
-        return;
-      }
-
-      // Get source and target nodes for validation
-      const sourceNode = nodes.find((n) => n.id === connection.source);
-      const targetNode = nodes.find((n) => n.id === connection.target);
-
-      if (!sourceNode || !targetNode) return;
-
-      // Check if source node can export (has output handles)
-      if (!CanExport.is(sourceNode as LynkNode)) {
-        showToast('This node type cannot be a data source', 'warning');
-        return;
-      }
-
-      // Check if target node can import (has input handles)
-      if (!CanImport.is(targetNode as LynkNode)) {
-        showToast('This node type cannot receive data', 'warning');
-        return;
-      }
-
-      const targetLynkNode = targetNode as LynkNode;
-      const sourceLynkNode = sourceNode as LynkNode;
-
-      // ViewportNode targets: only accept from DisplayNode, max 1 input
-      if (ViewportNode.is(targetLynkNode)) {
-        if (!DisplayNode.is(sourceLynkNode)) {
-          showToast('Viewport nodes only accept connections from Display nodes', 'warning');
-          return;
-        }
-        const existingInputs = edges.filter(
-          (e) => e.target === targetNode.id && e.targetHandle === 'viewport-in'
-        );
-        if (existingInputs.length >= 1) {
-          showToast('Viewport node already has a connection', 'warning');
-          return;
-        }
-      }
-
-      // Type compatibility check for CalculationNode targets
-      if (CalculationNode.is(targetLynkNode)) {
-        const operation = getOperation(targetLynkNode.data.operation);
-
-        if (operation) {
-          // Check if source data type is compatible with the operation
-          if (ExtractorNode.is(sourceLynkNode)) {
-            const regionId = connection.sourceHandle;
-            const region = sourceLynkNode.data.regions.find((r) => r.id === regionId);
-
-            if (region && !isTypeCompatible(targetLynkNode.data.operation, region.dataType)) {
-              showToast(
-                `${region.dataType} is not compatible with ${operation.label}. ` +
-                `Supported types: ${operation.compatibleTypes.join(', ')}`,
-                'warning'
-              );
-              return;
-            }
-          }
-
-          // Check single-input operation limits
-          if (operation.maxInputs === 1) {
-            const existingInputs = edges.filter(
-              (e) => e.target === targetNode.id && e.targetHandle === 'inputs'
-            );
-            if (existingInputs.length >= 1) {
-              showToast(`${operation.label} only accepts one input`, 'warning');
-              return;
-            }
-          }
-        }
-      }
-
-      // Include handles in edge ID for uniqueness when multiple edges connect same nodes
       const edge = {
         id: `edge-${connection.source}-${connection.sourceHandle || 'default'}-${connection.target}-${connection.targetHandle || 'default'}`,
-        source: connection.source,
-        target: connection.target,
+        source: connection.source!,
+        target: connection.target!,
         sourceHandle: connection.sourceHandle,
         targetHandle: connection.targetHandle,
       };
@@ -309,70 +160,7 @@ export function LynkCanvas() {
     [screenToFlowPosition, addNode]
   );
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // FILE DROP HANDLING
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  // Use the file upload hook's processFile function
-  const { processFile } = useFileUpload({
-    onFileRegistered: () => {}, // Not used for canvas drops
-  });
-
-  const handleCanvasDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'copy';
-  }, []);
-
-  const handleCanvasDrop = useCallback(
-    async (event: React.DragEvent) => {
-      event.preventDefault();
-
-      const files = event.dataTransfer.files;
-      if (!files || files.length === 0) return;
-
-      // Process files using the hook's async processFile
-      const promises = Array.from(files).map((file) => processFile(file));
-      const processed = await Promise.all(promises);
-      const results = processed.filter((r): r is NonNullable<typeof r> => r !== null);
-
-      if (results.length === 0) {
-        showToast('No valid files (PDF or images only)', 'warning');
-        return;
-      }
-
-      // Get drop position
-      const dropPosition = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-
-      // Create ExtractorNodes positioned vertically
-      const VERTICAL_SPACING = 350;
-
-      pushHistory();
-
-      results.forEach((result, index) => {
-        const position = {
-          x: dropPosition.x,
-          y: dropPosition.y + (index * VERTICAL_SPACING),
-        };
-
-        const nodeId = addNode('extractor', position, {
-          label: result.fileName,
-          fileId: result.fileId,
-          fileUrl: result.fileUrl,
-          fileName: result.fileName,
-          fileType: result.fileType,
-          currentPage: 1,
-          totalPages: 1,
-          regions: [],
-        });
-
-        BlobRegistry.addNodeReference(result.fileId, nodeId);
-      });
-
-      useCanvasStore.getState().refreshFileRegistry();
-      showToast(`Created ${results.length} extractor node(s)`, 'success');
-    },
-    [screenToFlowPosition, addNode, pushHistory, showToast, processFile]
-  );
+  const { handleCanvasDragOver, handleCanvasDrop } = useCanvasDrop();
 
   return (
     <div
@@ -381,6 +169,8 @@ export function LynkCanvas() {
       onDrop={handleCanvasDrop}
     >
       <Toolbar />
+      {nodes.length === 0 && <EmptyState />}
+      {nodes.length > 0 && <SuggestionBar />}
       {magneticMode && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none
                         bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-full shadow-lg

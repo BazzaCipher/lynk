@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useReactFlow } from '@xyflow/react';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useToast } from '../ui/Toast';
@@ -107,6 +108,19 @@ export function Toolbar() {
 
   return (
     <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-white rounded-lg shadow-md p-2">
+      {/* Back to site */}
+      <Link
+        to="/"
+        className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+        title="Back to home"
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+      </Link>
+
+      <div className="w-px h-6 bg-gray-200" />
+
       {/* Canvas name input */}
       <input
         type="text"
