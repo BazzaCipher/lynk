@@ -56,6 +56,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   const [zoom, setZoom] = useState(1);
   const imageRef = useRef<HTMLImageElement | HTMLCanvasElement | null>(null);
   const viewerAreaRef = useRef<HTMLDivElement>(null);
+  const lastScrolledRef = useRef<string | null>(null);
 
   // ── Populate Exportable.outputs from regions ──────────────────────────────
   const outputs = useMemo(() => {
@@ -247,9 +248,6 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
     if (region) {
       updateNodeData(id, { currentPage: region.pageNumber });
       setIsModalOpen(true);
-
-      // Auto-clear selection after scrolling so it's not sticky
-      setTimeout(() => setSelectedRegionId(null), 1500);
     }
   }, [data.regions, id, updateNodeData, selectedRegionId]);
 
@@ -498,9 +496,14 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
     return () => el.removeEventListener('wheel', handleWheel);
   }, [isModalOpen]);
 
-  // Scroll to selected region when modal opens
+  // Scroll to selected region once when selection changes
   useEffect(() => {
-    if (!isModalOpen || !selectedRegionId || !viewerAreaRef.current) return;
+    if (!isModalOpen || !selectedRegionId || !viewerAreaRef.current) {
+      lastScrolledRef.current = null;
+      return;
+    }
+    if (lastScrolledRef.current === selectedRegionId) return;
+
     const region = data.regions.find(r => r.id === selectedRegionId);
     if (!region) return;
 
@@ -508,14 +511,16 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
     const regionY = region.coordinates?.y ?? region.textRange?.rects?.[0]?.y ?? 0;
     const targetY = pageOffset + regionY - 60;
 
+    lastScrolledRef.current = selectedRegionId;
     requestAnimationFrame(() => {
       viewerAreaRef.current?.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
     });
   }, [isModalOpen, selectedRegionId, pageOffsets, data.regions]);
 
   const openModal = useCallback(() => {
+    if (data.fileType !== 'pdf') setSelectionMode('box');
     setIsModalOpen(true);
-  }, []);
+  }, [data.fileType]);
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
@@ -651,19 +656,21 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
                 </svg>
                 Box
               </button>
-              <button
-                onClick={() => setSelectionMode('text')}
-                className={`px-3 py-1.5 text-xs rounded-md transition-colors flex items-center gap-1.5 ${
-                  selectionMode === 'text'
-                    ? 'bg-blue-500 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                </svg>
-                Text Select
-              </button>
+              {data.fileType === 'pdf' && (
+                <button
+                  onClick={() => setSelectionMode('text')}
+                  className={`px-3 py-1.5 text-xs rounded-md transition-colors flex items-center gap-1.5 ${
+                    selectionMode === 'text'
+                      ? 'bg-blue-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                  </svg>
+                  Text
+                </button>
+              )}
 
               {/* Divider */}
               <div className="w-px h-6 bg-gray-300 mx-2" />
