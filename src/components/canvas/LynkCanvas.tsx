@@ -167,6 +167,7 @@ export function LynkCanvas() {
       className="w-full h-full relative"
       onDragOver={handleCanvasDragOver}
       onDrop={handleCanvasDrop}
+      onDoubleClick={handleDoubleClick}
     >
       <Toolbar />
       {nodes.length === 0 && <EmptyState />}
@@ -184,7 +185,7 @@ export function LynkCanvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onDoubleClick={handleDoubleClick}
+        zoomOnDoubleClick={false}
         onViewportChange={setViewport}
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}

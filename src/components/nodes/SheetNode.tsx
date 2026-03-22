@@ -84,6 +84,21 @@ function EntryRow({
   const inputHandleId = `entry-in-${subheaderId}-${entry.id}`;
   const outputHandleId = `entry-out-${subheaderId}-${entry.id}`;
 
+  // Click entry row to cycle-highlight connected sources
+  const handleEntryClick = useCallback(() => {
+    if (inputs.length === 0) return;
+    const idx = inputs.findIndex(
+      (inp) => isHighlighted(inp.sourceNodeId, inp.sourceRegionId)
+    );
+    if (idx === -1) {
+      onInputClick(inputs[0]);
+    } else if (idx < inputs.length - 1) {
+      onInputClick(inputs[idx + 1]);
+    } else {
+      onInputClick(inputs[idx]); // toggle off
+    }
+  }, [inputs, isHighlighted, onInputClick]);
+
   return (
     <div className={`relative border-b border-gray-100 last:border-b-0 ${
       isOutputHighlighted ? 'bg-blue-100 ring-1 ring-blue-400 animate-pulse' : ''
@@ -109,10 +124,10 @@ function EntryRow({
       </NodeEntry>
 
       {/* Content row — padded to avoid overlapping handle hit areas */}
-      <div className="flex items-center gap-1 py-1 px-3">
+      <div className="flex items-center gap-1 py-1 px-3 cursor-pointer" onClick={handleEntryClick}>
         {/* Expand/collapse toggle */}
         <button
-          onClick={() => onUpdateEntry(entry.id, { expanded: !entry.expanded })}
+          onClick={(e) => { e.stopPropagation(); onUpdateEntry(entry.id, { expanded: !entry.expanded }); }}
           className="p-0.5 hover:bg-gray-100 rounded text-gray-400"
           title={entry.expanded ? 'Collapse' : 'Expand'}
         >
@@ -150,7 +165,7 @@ function EntryRow({
 
         {/* Delete button */}
         <button
-          onClick={() => onDeleteEntry(entry.id)}
+          onClick={(e) => { e.stopPropagation(); onDeleteEntry(entry.id); }}
           className="p-0.5 hover:bg-red-100 rounded text-gray-400 hover:text-red-500"
           title="Delete entry"
         >
