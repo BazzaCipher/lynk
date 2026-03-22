@@ -237,7 +237,12 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
 
   const handleRegionSelect = useCallback((regionId: string) => {
     setSelectedRegionId(regionId);
-  }, []);
+    const region = data.regions.find((r) => r.id === regionId);
+    if (region) {
+      updateNodeData(id, { currentPage: region.pageNumber });
+      setIsModalOpen(true);
+    }
+  }, [data.regions, id, updateNodeData]);
 
   const handleRegionDelete = useCallback(
     (regionId: string) => {
