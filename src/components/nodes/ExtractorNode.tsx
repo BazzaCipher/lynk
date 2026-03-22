@@ -236,13 +236,22 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   );
 
   const handleRegionSelect = useCallback((regionId: string) => {
+    // Toggle: deselect if already selected
+    if (selectedRegionId === regionId) {
+      setSelectedRegionId(null);
+      return;
+    }
+
     setSelectedRegionId(regionId);
     const region = data.regions.find((r) => r.id === regionId);
     if (region) {
       updateNodeData(id, { currentPage: region.pageNumber });
       setIsModalOpen(true);
+
+      // Auto-clear selection after scrolling so it's not sticky
+      setTimeout(() => setSelectedRegionId(null), 1500);
     }
-  }, [data.regions, id, updateNodeData]);
+  }, [data.regions, id, updateNodeData, selectedRegionId]);
 
   const handleRegionDelete = useCallback(
     (regionId: string) => {
@@ -488,6 +497,21 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
     el.addEventListener('wheel', handleWheel, { passive: false });
     return () => el.removeEventListener('wheel', handleWheel);
   }, [isModalOpen]);
+
+  // Scroll to selected region when modal opens
+  useEffect(() => {
+    if (!isModalOpen || !selectedRegionId || !viewerAreaRef.current) return;
+    const region = data.regions.find(r => r.id === selectedRegionId);
+    if (!region) return;
+
+    const pageOffset = pageOffsets.get(region.pageNumber) ?? 0;
+    const regionY = region.coordinates?.y ?? region.textRange?.rects?.[0]?.y ?? 0;
+    const targetY = pageOffset + regionY - 60;
+
+    requestAnimationFrame(() => {
+      viewerAreaRef.current?.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
+    });
+  }, [isModalOpen, selectedRegionId, pageOffsets, data.regions]);
 
   const openModal = useCallback(() => {
     setIsModalOpen(true);

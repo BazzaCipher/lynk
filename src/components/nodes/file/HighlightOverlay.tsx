@@ -65,18 +65,18 @@ export function HighlightOverlay({
             data-region-id={region.id}
             className={`absolute transition-all duration-150 ${
               interactive ? 'pointer-events-auto cursor-pointer' : ''
-            } ${isExternal ? 'animate-pulse' : ''}`}
+            }`}
             style={{
               left: region.coordinates!.x,
               top: getPageOffset(region.pageNumber) + region.coordinates!.y,
               width: region.coordinates!.width,
               height: region.coordinates!.height,
               backgroundColor: isSelected || isExternal ? colors.bg : 'transparent',
-              borderWidth: 2,
+              borderWidth: isExternal ? 3 : 2,
               borderStyle: isSelected || isExternal ? 'solid' : 'dashed',
               borderColor: colors.border,
               boxShadow: isExternal
-                ? `0 0 0 3px ${colors.border}, 0 0 12px 4px ${colors.bg}`
+                ? `0 0 0 4px ${colors.border}60, 0 0 20px 6px ${colors.bg}`
                 : isSelected
                 ? `0 0 0 2px ${colors.bg}`
                 : 'none',
@@ -85,10 +85,11 @@ export function HighlightOverlay({
           >
             {/* Region label - positioned at top-left corner */}
             <div
-              className={`absolute -top-5 left-0 px-1.5 py-0.5 text-xs text-white rounded-t whitespace-nowrap font-medium ${
-                isExternal ? 'animate-pulse' : ''
-              }`}
-              style={{ backgroundColor: colors.border }}
+              className="absolute -top-5 left-0 px-1.5 py-0.5 text-xs text-white rounded-t whitespace-nowrap font-medium transition-opacity duration-150"
+              style={{
+                backgroundColor: colors.border,
+                opacity: (isSelected || isExternal) ? 1 : 0.5,
+              }}
             >
               {region.label}
             </div>
@@ -173,8 +174,11 @@ export function HighlightOverlay({
               onClick={interactive ? () => onRegionSelect(region.id) : undefined}
             >
               <div
-                className="px-1.5 py-0.5 text-[10px] text-white rounded whitespace-nowrap font-medium shadow-sm"
-                style={{ backgroundColor: colors.border }}
+                className="px-1.5 py-0.5 text-[10px] text-white rounded whitespace-nowrap font-medium shadow-sm transition-opacity duration-150"
+                style={{
+                  backgroundColor: colors.border,
+                  opacity: (isSelected || isExternal) ? 1 : 0.5,
+                }}
               >
                 {region.label}
               </div>

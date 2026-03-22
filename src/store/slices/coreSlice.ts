@@ -58,43 +58,48 @@ export interface CoreSlice {
 }
 
 /**
- * Intercept selection changes to enforce group-first selection.
- * When clicking a child inside a group, select the group first.
- * Only allow child selection if the group is already selected.
+ * Intercept selection changes to ensure parent group is also selected
+ * when a child node is selected (so the child becomes draggable).
  */
 function rewriteSelectionForGroups(
   changes: NodeChange<LynkNode>[],
   nodes: LynkNode[]
 ): NodeChange<LynkNode>[] {
-  // Track which groups we're redirecting selection to
   const groupsToSelect = new Set<string>();
 
-  const rewritten = changes.map((change) => {
-    if (change.type !== 'select' || !change.selected) return change;
+  for (const change of changes) {
+    if (change.type !== 'select' || !change.selected) continue;
 
     const node = nodes.find((n) => n.id === change.id);
-    if (!node || !node.parentId) return change;
+    if (!node || !node.parentId) continue;
 
     const parent = nodes.find((n) => n.id === node.parentId);
-    if (!parent || parent.type !== 'group') return change;
+    if (!parent || parent.type !== 'group') continue;
 
-    // If the parent group is already selected, allow child selection
-    if (parent.selected) return change;
-
-    // Otherwise redirect selection to the group
-    groupsToSelect.add(parent.id);
-    return { ...change, id: parent.id };
-  });
-
-  if (groupsToSelect.size === 0) return rewritten;
-
-  // Remove conflicting deselections for groups we're selecting
-  return rewritten.filter((change) => {
-    if (change.type === 'select' && !change.selected && groupsToSelect.has(change.id)) {
-      return false;
+    // Ensure parent group is also selected so child is draggable
+    if (!parent.selected) {
+      groupsToSelect.add(parent.id);
     }
-    return true;
-  });
+  }
+
+  if (groupsToSelect.size === 0) return changes;
+
+  // Add selection changes for parent groups and remove conflicting deselections
+  const extra: NodeChange<LynkNode>[] = [...groupsToSelect].map((id) => ({
+    type: 'select' as const,
+    id,
+    selected: true,
+  }));
+
+  return [
+    ...changes.filter((change) => {
+      if (change.type === 'select' && !change.selected && groupsToSelect.has(change.id)) {
+        return false;
+      }
+      return true;
+    }),
+    ...extra,
+  ];
 }
 
 export const createCoreSlice: StateCreator<CoreSlice> = (set, get) => ({

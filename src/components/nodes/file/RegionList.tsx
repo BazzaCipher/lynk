@@ -124,7 +124,7 @@ export function RegionList({
               handleColor={region.color}
               className={`group hover:bg-gray-50 cursor-pointer ${
                 selectedRegionId === region.id ? 'bg-blue-50' : ''
-              } ${isExternal ? 'bg-blue-100 ring-1 ring-blue-400 animate-pulse' : ''}`}
+              } ${isExternal ? 'bg-blue-100 ring-2 ring-blue-400' : ''}`}
             >
               <div
                 className="flex items-center gap-2 flex-1 min-w-0 py-0.5"
@@ -180,7 +180,7 @@ export function RegionList({
               key={region.id}
               className={`px-3 py-2 hover:bg-gray-50 cursor-pointer flex items-center gap-2 ${
                 selectedRegionId === region.id ? 'bg-blue-50' : ''
-              } ${isExternal ? 'bg-blue-100 ring-1 ring-blue-400 animate-pulse' : ''}`}
+              } ${isExternal ? 'bg-blue-100 ring-2 ring-blue-400' : ''}`}
               onClick={() => onRegionSelect(region.id)}
             >
               <div className={`w-2 h-2 rounded-full flex-shrink-0 ${typeColor}`} />

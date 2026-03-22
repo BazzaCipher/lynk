@@ -135,38 +135,88 @@ export function Toolbar() {
       {/* Node creation buttons */}
       <button
         onClick={() => handleAddNode('extractor', defaultExtractorData)}
-        className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
         title="Add Extractor Node - Extract data from documents"
       >
-        + Extractor
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+          {/* Document with crosshair/target overlay */}
+          <rect x="4" y="2" width="12" height="16" rx="1.5" />
+          <line x1="7" y1="6" x2="13" y2="6" />
+          <line x1="7" y1="9" x2="11" y2="9" />
+          {/* Crosshair target */}
+          <circle cx="16.5" cy="16.5" r="5" strokeWidth={1.5} />
+          <circle cx="16.5" cy="16.5" r="1.5" fill="currentColor" stroke="none" />
+          <line x1="16.5" y1="10" x2="16.5" y2="13" />
+          <line x1="16.5" y1="20" x2="16.5" y2="23" />
+          <line x1="10" y1="16.5" x2="13" y2="16.5" />
+          <line x1="20" y1="16.5" x2="23" y2="16.5" />
+        </svg>
+        Extractor
       </button>
       <button
         onClick={() => handleAddNode('display', defaultDisplayData)}
-        className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
         title="Add Display Node - Visual reference for images and PDFs"
       >
-        + Display
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+          {/* Image frame with mountain/sun scene */}
+          <rect x="2" y="3" width="20" height="18" rx="2" />
+          <circle cx="8" cy="9" r="2.5" />
+          <polyline points="22,17 16,11 10,17" />
+          <polyline points="14,15 17,12 22,17" />
+        </svg>
+        Display
       </button>
       <button
         onClick={() => handleAddNode('calculation', defaultCalculationData)}
-        className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
         title="Add Calculation Node"
       >
-        + Calc
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+          {/* Function/math symbol: f(x) style */}
+          <rect x="2" y="2" width="20" height="20" rx="3" />
+          {/* Plus sign top-left */}
+          <line x1="7" y1="7" x2="7" y2="11" />
+          <line x1="5" y1="9" x2="9" y2="9" />
+          {/* Minus sign top-right */}
+          <line x1="15" y1="9" x2="19" y2="9" />
+          {/* Multiply (×) bottom-left */}
+          <line x1="5.5" y1="15.5" x2="8.5" y2="18.5" />
+          <line x1="8.5" y1="15.5" x2="5.5" y2="18.5" />
+          {/* Equals sign bottom-right */}
+          <line x1="15" y1="16" x2="19" y2="16" />
+          <line x1="15" y1="18.5" x2="19" y2="18.5" />
+        </svg>
+        Calc
       </button>
       <button
         onClick={() => handleAddNode('sheet', defaultSheetData)}
-        className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
         title="Add Sheet Node"
       >
-        + Sheet
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+          {/* Spreadsheet grid */}
+          <rect x="2" y="2" width="20" height="20" rx="2" />
+          {/* Horizontal dividers */}
+          <line x1="2" y1="8" x2="22" y2="8" />
+          <line x1="2" y1="14" x2="22" y2="14" />
+          {/* Vertical dividers */}
+          <line x1="9" y1="2" x2="9" y2="22" />
+          <line x1="16" y1="2" x2="16" y2="22" />
+        </svg>
+        Sheet
       </button>
       <button
         onClick={() => handleAddNode('label', defaultLabelData)}
-        className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
         title="Add Label Node"
       >
-        + Label
+        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+          {/* Tag/label shape */}
+          <path d="M2 4.5A1.5 1.5 0 013.5 3h7.59a1.5 1.5 0 011.06.44l8.41 8.41a1.5 1.5 0 010 2.12l-7.59 7.59a1.5 1.5 0 01-2.12 0L2.44 13.15A1.5 1.5 0 012 12.09V4.5z" />
+          <circle cx="7" cy="8" r="1.5" fill="currentColor" stroke="none" />
+        </svg>
+        Label
       </button>
 
       <div className="w-px h-6 bg-gray-200" />
