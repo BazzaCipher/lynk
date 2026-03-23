@@ -97,6 +97,39 @@ export function CanvasContextMenu({ mode, position, flowPosition, onClose }: Can
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
+  // Close on scroll, wheel, or drag
+  useEffect(() => {
+    const close = () => onClose();
+    let dragOrigin: { x: number; y: number } | null = null;
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) {
+        dragOrigin = { x: e.clientX, y: e.clientY };
+      }
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (dragOrigin) {
+        const dx = e.clientX - dragOrigin.x;
+        const dy = e.clientY - dragOrigin.y;
+        if (dx * dx + dy * dy > 16) close();
+      }
+    };
+    const onPointerUp = () => { dragOrigin = null; };
+
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('wheel', close, { passive: true });
+    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('wheel', close);
+      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+  }, [onClose]);
+
   const handleAddNode = (type: 'display' | 'extractor' | 'calculation' | 'sheet' | 'label', data: Record<string, unknown>) => {
     addNode(type, flowPosition, data);
     onClose();
