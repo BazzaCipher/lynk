@@ -126,7 +126,7 @@ export function LynkCanvas() {
   );
 
   const handlePaneContextMenu = useCallback(
-    (event: React.MouseEvent) => {
+    (event: React.MouseEvent | MouseEvent) => {
       event.preventDefault();
       const flowPosition = screenToFlowPosition({ x: event.clientX, y: event.clientY });
       setCanvasMenu({
@@ -335,8 +335,6 @@ export function LynkCanvas() {
   }, []);
 
   // Register new projects when loading files
-  const importCanvas = useCanvasStore((state) => state.importCanvas);
-
   // Track canvasId changes to register new projects
   const lastKnownIdRef = useRef(canvasId);
   if (canvasId !== lastKnownIdRef.current) {

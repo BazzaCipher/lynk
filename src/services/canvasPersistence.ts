@@ -189,7 +189,7 @@ export async function saveToFile(data: CanvasData): Promise<SaveResult> {
     files,
   });
 
-  const blob = new Blob([archiveBytes], { type: 'application/octet-stream' });
+  const blob = new Blob([archiveBytes as BlobPart], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
 
   const a = document.createElement('a');
@@ -217,7 +217,7 @@ function importLynkArchive(archiveData: Uint8Array): ImportResult {
     const fileMeta = manifest.files[fileId];
     if (!fileMeta) continue;
 
-    const blob = new Blob([bytes], { type: fileMeta.mimeType });
+    const blob = new Blob([bytes as BlobPart], { type: fileMeta.mimeType });
     const blobUrl = URL.createObjectURL(blob);
 
     BlobRegistry.blobs.set(fileId, blob);

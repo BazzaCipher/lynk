@@ -4,6 +4,7 @@ import { useCanvasStore } from '../../store/canvasStore';
 import { useToast } from '../ui/Toast';
 import { nodeTypeConfig } from './nodeDefaults';
 import type { XYPosition } from '@xyflow/react';
+import type { LynkNodeData } from '../../types/nodes';
 
 interface CanvasContextMenuProps {
   mode: 'create' | 'actions';
@@ -131,7 +132,7 @@ export function CanvasContextMenu({ mode, position, flowPosition, onClose }: Can
   }, [onClose]);
 
   const handleAddNode = (type: 'display' | 'extractor' | 'calculation' | 'sheet' | 'label', data: Record<string, unknown>) => {
-    addNode(type, flowPosition, data);
+    addNode(type, flowPosition, data as LynkNodeData);
     onClose();
   };
 
