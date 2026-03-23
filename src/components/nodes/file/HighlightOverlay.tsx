@@ -83,16 +83,15 @@ export function HighlightOverlay({
             }}
             onClick={interactive ? () => onRegionSelect(region.id) : undefined}
           >
-            {/* Region label - positioned at top-left corner */}
-            <div
-              className="absolute -top-5 left-0 px-1.5 py-0.5 text-xs text-white rounded-t whitespace-nowrap font-medium transition-opacity duration-150"
-              style={{
-                backgroundColor: colors.border,
-                opacity: (isSelected || isExternal) ? 1 : 0.5,
-              }}
-            >
-              {region.label}
-            </div>
+            {/* Region label - only shown when selected */}
+            {(isSelected || isExternal) && (
+              <div
+                className="absolute -top-5 left-0 px-1.5 py-0.5 text-xs text-white rounded-t whitespace-nowrap font-medium"
+                style={{ backgroundColor: colors.border }}
+              >
+                {region.label}
+              </div>
+            )}
 
             {/* Corner handles for selected region */}
             {(isSelected || isExternal) && (
@@ -161,33 +160,32 @@ export function HighlightOverlay({
               );
             })}
 
-            {/* Label positioned directly above the first rect */}
-            <div
-              className={`absolute flex items-center gap-1 ${
-                interactive ? 'pointer-events-auto cursor-pointer' : ''
-              }`}
-              style={{
-                left: firstRect.x - 2,
-                top: Math.max(0, pageOffset + firstRect.y - 18),
-                zIndex: 10,
-              }}
-              onClick={interactive ? () => onRegionSelect(region.id) : undefined}
-            >
+            {/* Label positioned directly above the first rect - only shown when selected */}
+            {(isSelected || isExternal) && (
               <div
-                className="px-1.5 py-0.5 text-[10px] text-white rounded whitespace-nowrap font-medium shadow-sm transition-opacity duration-150"
+                className={`absolute flex items-center gap-1 ${
+                  interactive ? 'pointer-events-auto cursor-pointer' : ''
+                }`}
                 style={{
-                  backgroundColor: colors.border,
-                  opacity: (isSelected || isExternal) ? 1 : 0.5,
+                  left: firstRect.x - 2,
+                  top: Math.max(0, pageOffset + firstRect.y - 18),
+                  zIndex: 10,
                 }}
+                onClick={interactive ? () => onRegionSelect(region.id) : undefined}
               >
-                {region.label}
+                <div
+                  className="px-1.5 py-0.5 text-[10px] text-white rounded whitespace-nowrap font-medium shadow-sm"
+                  style={{ backgroundColor: colors.border }}
+                >
+                  {region.label}
+                </div>
+                {/* Small connector line */}
+                <div
+                  className="w-px h-2 -ml-1"
+                  style={{ backgroundColor: colors.border, opacity: 0.5 }}
+                />
               </div>
-              {/* Small connector line */}
-              <div
-                className="w-px h-2 -ml-1"
-                style={{ backgroundColor: colors.border, opacity: 0.5 }}
-              />
-            </div>
+            )}
           </div>
         );
       })}

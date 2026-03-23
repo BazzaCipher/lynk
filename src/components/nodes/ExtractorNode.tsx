@@ -50,7 +50,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   const [isAutoDetecting, setIsAutoDetecting] = useState(false);
   const [viewerHeight, setViewerHeight] = useState(400);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectionMode, setSelectionMode] = useState<'box' | 'text'>('box');
+  const [selectionMode, setSelectionMode] = useState<'select' | 'box' | 'text'>('select');
   const [pageOffsets, setPageOffsets] = useState<Map<number, number>>(new Map());
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -518,7 +518,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   }, [isModalOpen, selectedRegionId, pageOffsets, data.regions]);
 
   const openModal = useCallback(() => {
-    if (data.fileType !== 'pdf') setSelectionMode('box');
+    if (data.fileType !== 'pdf') setSelectionMode('select');
     setIsModalOpen(true);
   }, [data.fileType]);
 
@@ -641,8 +641,20 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
             onDoubleClick={(e) => e.stopPropagation()}
           >
             {/* Selection mode toggle */}
-            <div className="sticky top-0 z-10 flex items-center justify-center gap-2 py-2 px-4 bg-white border-b border-gray-200 shadow-sm">
-              <span className="text-xs text-gray-500 mr-2">Selection:</span>
+            <div className="sticky top-0 z-10 flex items-center gap-2 py-2 px-4 bg-white border-b border-gray-200 shadow-sm">
+              <button
+                onClick={() => setSelectionMode('select')}
+                className={`px-3 py-1.5 text-xs rounded-md transition-colors flex items-center gap-1.5 ${
+                  selectionMode === 'select'
+                    ? 'bg-blue-500 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M6.672 1.911a1 1 0 10-1.932.518l.259.966a1 1 0 001.932-.518l-.26-.966zM2.429 4.74a1 1 0 10-.517 1.932l.966.259a1 1 0 00.517-1.932l-.966-.26zm8.814-.569a1 1 0 00-1.415-1.414l-.707.707a1 1 0 101.414 1.415l.708-.708zm-7.071 7.072l.707-.708A1 1 0 003.465 9.12l-.708.707a1 1 0 001.415 1.415zm3.2-5.171a1 1 0 00-1.3 1.3l4 10a1 1 0 001.823.075l1.38-2.759 3.018 3.02a1 1 0 001.414-1.415l-3.019-3.02 2.76-1.379a1 1 0 00-.076-1.822l-10-4z" />
+                </svg>
+                Select
+              </button>
               <button
                 onClick={() => setSelectionMode('box')}
                 className={`px-3 py-1.5 text-xs rounded-md transition-colors flex items-center gap-1.5 ${
@@ -698,20 +710,35 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
                   </>
                 )}
               </button>
-            </div>
 
-            {/* Zoom indicator */}
-            {zoom !== 1 && (
-              <div className="sticky top-0 z-20 flex items-center justify-center gap-2 py-1 bg-gray-100/90 border-b border-gray-200">
-                <span className="text-xs text-gray-500">{Math.round(zoom * 100)}%</span>
+              {/* Spacer */}
+              <div className="flex-1" />
+
+              {/* Zoom controls */}
+              <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setZoom(1)}
-                  className="px-1.5 py-0.5 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50"
+                  onClick={() => setZoom((prev) => Math.max(0.25, prev - 0.1))}
+                  className="w-6 h-6 flex items-center justify-center text-xs rounded bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
                 >
-                  Reset
+                  −
                 </button>
+                <span className="text-xs text-gray-500 w-10 text-center">{Math.round(zoom * 100)}%</span>
+                <button
+                  onClick={() => setZoom((prev) => Math.min(5, prev + 0.1))}
+                  className="w-6 h-6 flex items-center justify-center text-xs rounded bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                >
+                  +
+                </button>
+                {zoom !== 1 && (
+                  <button
+                    onClick={() => setZoom(1)}
+                    className="px-1.5 py-0.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    Reset
+                  </button>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Document with overlays — CSS transform zoom (GPU, no re-render) */}
             <div className="relative p-6 flex justify-center">
@@ -747,7 +774,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
                       currentPage={data.currentPage}
                       selectedRegionId={selectedRegionId}
                       onRegionSelect={handleRegionSelect}
-                      interactive={selectionMode === 'box'}
+                      interactive={selectionMode === 'select' || selectionMode === 'box'}
                       nodeId={id}
                       scrollMode={true}
                       pageOffsets={pageOffsets}
@@ -759,6 +786,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
                       width={VIEWER_WIDTH}
                       height={viewerHeight}
                       pageOffsets={pageOffsets}
+                      zoom={zoom}
                     />
                   )}
                 </DocumentViewer>
@@ -791,7 +819,9 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
         {/* Footer instructions */}
         <div className="px-4 py-2 bg-gray-100 border-t border-gray-200 text-xs text-gray-500 flex items-center justify-between">
           <span>
-            {selectionMode === 'box'
+            {selectionMode === 'select'
+              ? 'Click on a highlight to select it.'
+              : selectionMode === 'box'
               ? 'Draw a box to create a field.'
               : 'Select text directly to create a field with that value.'}
           </span>

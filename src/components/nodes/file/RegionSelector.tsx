@@ -6,6 +6,7 @@ interface RegionSelectorProps {
   width: number;
   height: number;
   pageOffsets?: Map<number, number>; // Y offset for each page in scrollMode
+  zoom?: number; // Current zoom level for coordinate correction
 }
 
 interface DragState {
@@ -20,6 +21,7 @@ export function RegionSelector({
   width,
   height,
   pageOffsets,
+  zoom = 1,
 }: RegionSelectorProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const [dragState, setDragState] = useState<DragState | null>(null);
@@ -50,11 +52,11 @@ export function RegionSelector({
       if (!overlayRef.current) return { x: 0, y: 0 };
       const rect = overlayRef.current.getBoundingClientRect();
       return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
+        x: (e.clientX - rect.left) / zoom,
+        y: (e.clientY - rect.top) / zoom,
       };
     },
-    []
+    [zoom]
   );
 
   const handleMouseDown = useCallback(
