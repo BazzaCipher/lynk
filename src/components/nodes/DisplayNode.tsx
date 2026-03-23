@@ -1,13 +1,15 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useDocumentZoom } from '../../hooks/useDocumentZoom';
 import type { NodeProps } from '@xyflow/react';
 import { useEdges, useReactFlow } from '@xyflow/react';
 import { BaseNode } from './base/BaseNode';
 import { DocumentViewer } from './file/DocumentViewer';
 import { RegionSelector } from './file/RegionSelector';
-import { ViewportOverlay } from './file/ViewportOverlay';
+import { HighlightOverlay } from './file/HighlightOverlay';
 import { ViewportList } from './file/ViewportList';
 import { FileNodePreview } from './file/FileNodePreview';
 import { Modal } from '../ui/Modal';
+import { ZoomControls } from '../ui/ZoomControls';
 import { CollapsiblePanel } from '../ui/CollapsiblePanel';
 import { FileDropZone } from '../ui/FileDropZone';
 import { useCanvasStore } from '../../store/canvasStore';
@@ -22,6 +24,7 @@ import type {
   RegionCoordinates,
   ViewportRegion,
   ViewportNodeData,
+  ExtractedRegion,
 } from '../../types';
 import { createImageView, createPdfView } from '../../types';
 
@@ -40,15 +43,33 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const viewerAreaRef = useRef<HTMLDivElement>(null);
   const [selectedViewportId, setSelectedViewportId] = useState<string | null>(null);
   const [viewerHeight, setViewerHeight] = useState(400);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [pageOffsets, setPageOffsets] = useState<Map<number, number>>(new Map());
+  const { zoom, zoomIn, zoomOut, resetZoom } = useDocumentZoom(viewerAreaRef, isModalOpen);
   const [singlePageSize, setSinglePageSize] = useState<{ width: number; height: number } | null>(null);
 
   // Get current page number from view target
   const currentPage = data.view.target.type === 'page' ? data.view.target.pageNumber : 1;
   const viewports = data.viewports || [];
+
+  // Map viewports to ExtractedRegion shape for HighlightOverlay reuse
+  const viewportAsRegions: ExtractedRegion[] = useMemo(
+    () =>
+      viewports.map((v) => ({
+        id: v.id,
+        label: v.label,
+        selectionType: 'box' as const,
+        coordinates: v.pixelRect,
+        pageNumber: v.pageNumber,
+        extractedData: { type: 'string' as const, value: '' },
+        dataType: 'string' as const,
+        color: '#6366f1',
+      })),
+    [viewports]
+  );
 
   // Track viewer container dimensions for normalizing coordinates
   const viewerContainerRef = useRef<{ width: number; height: number }>({
@@ -362,7 +383,8 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
-  }, []);
+    resetZoom();
+  }, [resetZoom]);
 
   // ── Convert to ExtractorNode ──────────────────────────────────────────────
   const convertToExtractor = useCallback(() => {
@@ -478,20 +500,32 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
       >
         <div className="flex h-[75vh]">
           {/* Document viewer area */}
-          <div className="flex-1 overflow-auto bg-gray-50">
+          <div
+            className="flex-1 overflow-auto bg-gray-50"
+            ref={viewerAreaRef}
+            onDoubleClick={(e) => e.stopPropagation()}
+          >
             {/* Instruction bar */}
-            <div className="sticky top-0 z-10 flex items-center justify-center gap-2 py-2 px-4 bg-white border-b border-gray-200 shadow-sm">
+            <div className="sticky top-0 z-10 flex items-center gap-2 py-2 px-4 bg-white border-b border-gray-200 shadow-sm">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-500" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zm0 2h10v10H5V5z" />
               </svg>
               <span className="text-xs text-gray-600">
                 Draw a box to create a viewport region
               </span>
+              <div className="flex-1" />
+              <ZoomControls zoom={zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} />
             </div>
 
-            {/* Document with overlays */}
+            {/* Document with overlays — CSS transform zoom */}
             <div className="relative p-6 flex justify-center">
-              <div className="relative bg-white shadow-lg">
+              <div
+                className="relative bg-white shadow-lg"
+                style={{
+                  transform: `scale(${zoom})`,
+                  transformOrigin: 'top center',
+                }}
+              >
                 <DocumentViewer
                   fileUrl={data.fileUrl ?? null}
                   fileType={data.fileType}
@@ -504,15 +538,16 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
                   onSinglePageSize={handleSinglePageSize}
                   enableTextSelection={false}
                   width={VIEWER_WIDTH}
+                  devicePixelRatio={Math.max(window.devicePixelRatio, zoom) * window.devicePixelRatio}
                   scrollMode={true}
                 >
-                  {/* Viewport overlays */}
+                  {/* Viewport overlays (reusing HighlightOverlay) */}
                   {data.fileUrl && (
-                    <ViewportOverlay
-                      viewports={viewports}
+                    <HighlightOverlay
+                      regions={viewportAsRegions}
                       currentPage={currentPage}
-                      selectedViewportId={selectedViewportId}
-                      onViewportSelect={handleViewportSelect}
+                      selectedRegionId={selectedViewportId}
+                      onRegionSelect={handleViewportSelect}
                       interactive
                       nodeId={id}
                       scrollMode={true}
@@ -526,6 +561,7 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
                       width={VIEWER_WIDTH}
                       height={viewerHeight}
                       pageOffsets={pageOffsets}
+                      zoom={zoom}
                     />
                   )}
                 </DocumentViewer>

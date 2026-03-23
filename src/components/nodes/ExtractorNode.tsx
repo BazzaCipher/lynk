@@ -8,6 +8,7 @@ import { HighlightOverlay } from './file/HighlightOverlay';
 import { RegionList } from './file/RegionList';
 import { FileNodePreview } from './file/FileNodePreview';
 import { Modal } from '../ui/Modal';
+import { ZoomControls } from '../ui/ZoomControls';
 import { CollapsiblePanel } from '../ui/CollapsiblePanel';
 import { FileDropZone } from '../ui/FileDropZone';
 import { extractTextFromRegion, extractFullPage } from '../../core/extraction/ocrExtractor';
@@ -16,6 +17,7 @@ import { useCanvasStore } from '../../store/canvasStore';
 import { useToast } from '../ui/Toast';
 import { useFileUpload, type FileUploadResult } from '../../hooks/useFileUpload';
 import { useNodeOutputs } from '../../hooks/useNodeOutputs';
+import { useDocumentZoom } from '../../hooks/useDocumentZoom';
 import { getColorForType } from '../../utils/colors';
 import { detectDataType, parseDateString } from '../../utils/formatting';
 import { BlobRegistry, type FileMetadata } from '../../store/canvasPersistence';
@@ -50,13 +52,13 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   const [isAutoDetecting, setIsAutoDetecting] = useState(false);
   const [viewerHeight, setViewerHeight] = useState(400);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectionMode, setSelectionMode] = useState<'select' | 'box' | 'text'>('select');
+  const [selectionMode, setSelectionMode] = useState<'select' | 'box' | 'text'>('box');
   const [pageOffsets, setPageOffsets] = useState<Map<number, number>>(new Map());
   const [pdfError, setPdfError] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(1);
   const imageRef = useRef<HTMLImageElement | HTMLCanvasElement | null>(null);
   const viewerAreaRef = useRef<HTMLDivElement>(null);
   const lastScrolledRef = useRef<string | null>(null);
+  const { zoom, zoomIn, zoomOut, resetZoom } = useDocumentZoom(viewerAreaRef, isModalOpen);
 
   // ── Populate Exportable.outputs from regions ──────────────────────────────
   const outputs = useMemo(() => {
@@ -479,23 +481,6 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
     }
   }, [id, data.fileUrl, data.fileType, data.regions, data.currentPage, updateNodeData, showToast]);
 
-  // Zoom via scroll wheel in the modal viewer area
-  useEffect(() => {
-    const el = viewerAreaRef.current;
-    if (!el) return;
-
-    const handleWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const delta = -e.deltaY * 0.001;
-      setZoom((prev) => Math.min(5, Math.max(0.25, prev * (1 + delta))));
-    };
-
-    el.addEventListener('wheel', handleWheel, { passive: false });
-    return () => el.removeEventListener('wheel', handleWheel);
-  }, [isModalOpen]);
-
   // Scroll to selected region once when selection changes
   useEffect(() => {
     if (!isModalOpen || !selectedRegionId || !viewerAreaRef.current) {
@@ -518,14 +503,14 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   }, [isModalOpen, selectedRegionId, pageOffsets, data.regions]);
 
   const openModal = useCallback(() => {
-    if (data.fileType !== 'pdf') setSelectionMode('select');
+    if (data.fileType !== 'pdf') setSelectionMode('box');
     setIsModalOpen(true);
   }, [data.fileType]);
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
-    setZoom(1);
-  }, []);
+    resetZoom();
+  }, [resetZoom]);
 
   // Convert to DisplayNode
   const convertToDisplay = useCallback(() => {
@@ -715,29 +700,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
               <div className="flex-1" />
 
               {/* Zoom controls */}
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setZoom((prev) => Math.max(0.25, prev - 0.1))}
-                  className="w-6 h-6 flex items-center justify-center text-xs rounded bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-                >
-                  −
-                </button>
-                <span className="text-xs text-gray-500 w-10 text-center">{Math.round(zoom * 100)}%</span>
-                <button
-                  onClick={() => setZoom((prev) => Math.min(5, prev + 0.1))}
-                  className="w-6 h-6 flex items-center justify-center text-xs rounded bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-                >
-                  +
-                </button>
-                {zoom !== 1 && (
-                  <button
-                    onClick={() => setZoom(1)}
-                    className="px-1.5 py-0.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
-                  >
-                    Reset
-                  </button>
-                )}
-              </div>
+              <ZoomControls zoom={zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} />
             </div>
 
             {/* Document with overlays — CSS transform zoom (GPU, no re-render) */}
