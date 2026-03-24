@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { BlobRegistry } from '../store/canvasPersistence';
+import { useCanvasStore } from '../store/canvasStore';
 
 export interface FileUploadResult {
   fileId: string;
@@ -8,7 +9,7 @@ export interface FileUploadResult {
   fileType: 'pdf' | 'image';
   isDuplicate: boolean;
   existingFileId?: string;
-  folderPath?: string;
+  folderId?: string;
 }
 
 interface UseFileUploadOptions {
@@ -53,8 +54,39 @@ async function readEntriesRecursively(
   return [];
 }
 
+/**
+ * Given a path like "reports/2024/jan", ensure virtual folders exist
+ * for each segment and return the leaf folder ID.
+ */
+function ensureVirtualFoldersForPath(folderPath: string): string | undefined {
+  if (!folderPath) return undefined;
+
+  const segments = folderPath.split('/').filter(Boolean);
+  if (segments.length === 0) return undefined;
+
+  const state = useCanvasStore.getState();
+  let folders = state.virtualFolders;
+  let parentId: string | null = null;
+
+  for (const segment of segments) {
+    const existing = folders.find(
+      (f) => f.name === segment && f.parentId === parentId
+    );
+    if (existing) {
+      parentId = existing.id;
+    } else {
+      const newId = state.createVirtualFolder(segment, parentId);
+      // Re-read folders since createVirtualFolder updated the state
+      folders = useCanvasStore.getState().virtualFolders;
+      parentId = newId;
+    }
+  }
+
+  return parentId ?? undefined;
+}
+
 export function useFileUpload({ onFileRegistered, allowedTypes = ['pdf', 'image'], nodeId }: UseFileUploadOptions) {
-  const processFile = useCallback(async (file: File, folderPath?: string): Promise<FileUploadResult | null> => {
+  const processFile = useCallback(async (file: File, folderId?: string): Promise<FileUploadResult | null> => {
     const isPdf = file.type === 'application/pdf';
     const isImage = file.type.startsWith('image/');
 
@@ -62,7 +94,7 @@ export function useFileUpload({ onFileRegistered, allowedTypes = ['pdf', 'image'
     if (isPdf && !allowedTypes.includes('pdf')) return null;
     if (isImage && !allowedTypes.includes('image')) return null;
 
-    const result = await BlobRegistry.registerWithMetadata(file, nodeId, folderPath);
+    const result = await BlobRegistry.registerWithMetadata(file, nodeId, folderId);
 
     return {
       fileId: result.fileId,
@@ -71,7 +103,7 @@ export function useFileUpload({ onFileRegistered, allowedTypes = ['pdf', 'image'
       fileType: isImage ? 'image' : 'pdf',
       isDuplicate: result.isDuplicate,
       existingFileId: result.existingFileId,
-      folderPath,
+      folderId,
     };
   }, [allowedTypes, nodeId]);
 
@@ -79,14 +111,14 @@ export function useFileUpload({ onFileRegistered, allowedTypes = ['pdf', 'image'
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    // Support multiple files (from webkitdirectory or multi-select)
     for (const file of Array.from(files)) {
       // webkitRelativePath gives folder structure for directory uploads
       const relativePath = (file as any).webkitRelativePath as string | undefined;
       const folderPath = relativePath
         ? relativePath.substring(0, relativePath.lastIndexOf('/')) || undefined
         : undefined;
-      const result = await processFile(file, folderPath);
+      const folderId = folderPath ? ensureVirtualFoldersForPath(folderPath) : undefined;
+      const result = await processFile(file, folderId);
       if (result) onFileRegistered(result);
     }
   }, [processFile, onFileRegistered]);
@@ -115,11 +147,9 @@ export function useFileUpload({ onFileRegistered, allowedTypes = ['pdf', 'image'
 
     if (entries.length === 0) return [];
 
-    // Check if any entries are directories
     const hasDirectories = entries.some((e) => e.isDirectory);
 
     if (hasDirectories) {
-      // Recursively read all files from all entries
       const allFiles: { file: File; path: string }[] = [];
       for (const entry of entries) {
         const files = await readEntriesRecursively(
@@ -131,8 +161,10 @@ export function useFileUpload({ onFileRegistered, allowedTypes = ['pdf', 'image'
 
       const results: FileUploadResult[] = [];
       for (const { file, path } of allFiles) {
-        const folderPath = path || undefined;
-        const result = await processFile(file, folderPath);
+        // path is like "folderName/subfolder/file.pdf" — take the directory part
+        const dirPath = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : path;
+        const folderId = dirPath ? ensureVirtualFoldersForPath(dirPath) : undefined;
+        const result = await processFile(file, folderId);
         if (result) results.push(result);
       }
       return results;
@@ -166,7 +198,6 @@ export function useFileUpload({ onFileRegistered, allowedTypes = ['pdf', 'image'
         const blob = item.getAsFile();
         if (!blob) continue;
 
-        // Create a named file from the blob
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const ext = item.type.split('/')[1] || 'png';
         const file = new File([blob], `Pasted Image ${timestamp}.${ext}`, {

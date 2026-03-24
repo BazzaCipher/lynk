@@ -19,6 +19,7 @@ export interface LynkFileEntry {
   mimeType: string;
   size?: number;
   contentHash?: string;
+  folderId?: string;
 }
 
 /** The manifest.json structure inside a .lynk archive */
@@ -38,6 +39,8 @@ export interface LynkManifest {
   viewport: { x: number; y: number; zoom: number };
   /** File metadata keyed by fileId. Binary data lives in files/<id>.bin */
   files: Record<string, LynkFileEntry>;
+  /** Virtual folder hierarchy for file organization */
+  virtualFolders?: { id: string; name: string; parentId: string | null }[];
 }
 
 export interface PackInput {

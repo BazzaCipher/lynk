@@ -9,7 +9,8 @@
 
 import type { Edge } from '@xyflow/react';
 import type { LynkNode } from '../../types';
-import { GroupNode } from '../../types';
+import { GroupNode, FileNode } from '../../types';
+import { BlobRegistry } from '../canvasPersistence';
 import type { StateCreator } from './types';
 import { generateNodeId } from './coreSlice';
 import {
@@ -141,6 +142,15 @@ export const createGroupSlice: StateCreator<GroupSlice> = (set, get) => ({
       nodes.filter((n) => n.selected).map((n) => n.id)
     );
     const allIdsToRemove = collectWithChildren(selectedIds, nodes);
+
+    // Clean up file references before removing nodes
+    for (const nodeId of allIdsToRemove) {
+      const node = nodes.find((n) => n.id === nodeId) as LynkNode | undefined;
+      if (node && FileNode.is(node)) {
+        const fileId = FileNode.getFileId(node);
+        if (fileId) BlobRegistry.removeNodeReference(fileId, nodeId);
+      }
+    }
 
     set({
       nodes: nodes.filter((n) => !allIdsToRemove.has(n.id)),

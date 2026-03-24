@@ -18,7 +18,17 @@ export interface FileMetadata {
   contentHash: string;
   registeredAt: number;
   nodeIds: Set<string>;
-  folderPath?: string;
+  folderId?: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VIRTUAL FOLDERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface VirtualFolder {
+  id: string;
+  name: string;
+  parentId: string | null;
 }
 
 async function computeHash(blob: Blob): Promise<string> {
@@ -83,7 +93,7 @@ export const BlobRegistry = {
   async registerWithMetadata(
     file: File,
     nodeId?: string,
-    folderPath?: string
+    folderId?: string
   ): Promise<RegisterWithMetadataResult> {
     const contentHash = await computeHash(file);
 
@@ -116,7 +126,7 @@ export const BlobRegistry = {
       contentHash,
       registeredAt: Date.now(),
       nodeIds: new Set(nodeId ? [nodeId] : []),
-      folderPath,
+      folderId,
     };
 
     this.metadata.set(fileId, meta);
@@ -149,6 +159,11 @@ export const BlobRegistry = {
     if (meta) {
       meta.nodeIds.add(nodeId);
     }
+  },
+
+  renameFile(fileId: string, newName: string): void {
+    const meta = this.metadata.get(fileId);
+    if (meta) meta.fileName = newName;
   },
 
   removeNodeReference(fileId: string, nodeId: string): void {

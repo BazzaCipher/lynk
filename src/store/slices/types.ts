@@ -4,6 +4,7 @@
 
 import type { Edge, Viewport } from '@xyflow/react';
 import type { LynkNode } from '../../types';
+import type { VirtualFolder } from '../canvasPersistence';
 
 // History snapshot for undo/redo
 export interface HistorySnapshot {
@@ -39,5 +40,6 @@ export interface CanvasStoreState {
   fileRegistrySort: { field: 'name' | 'type' | 'size' | 'date'; direction: 'asc' | 'desc' };
   fileRegistrySearch: string;
   fileRegistryViewMode: 'flat' | 'hierarchy';
+  virtualFolders: VirtualFolder[];
   _fileRegistryVersion: number;
 }

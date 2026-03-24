@@ -30,7 +30,7 @@ import {
   createFileRegistrySlice,
   type HistorySnapshot,
 } from './slices';
-import type { FileMetadata } from './canvasPersistence';
+import type { FileMetadata, VirtualFolder } from './canvasPersistence';
 
 // Combined store interface (maintains backward compatibility)
 interface CanvasStore {
@@ -117,14 +117,18 @@ interface CanvasStore {
   fileRegistrySearch: string;
   _fileRegistryVersion: number;
   fileRegistryViewMode: 'flat' | 'hierarchy';
+  virtualFolders: VirtualFolder[];
   toggleFileRegistry: () => void;
   setFileRegistrySort: (field: 'name' | 'type' | 'size' | 'date', direction: 'asc' | 'desc') => void;
   setFileRegistrySearch: (search: string) => void;
   setFileRegistryViewMode: (mode: 'flat' | 'hierarchy') => void;
+  createVirtualFolder: (name: string, parentId?: string | null) => string;
+  renameVirtualFolder: (folderId: string, name: string) => void;
+  deleteVirtualFolder: (folderId: string) => void;
+  moveFileToFolder: (fileId: string, folderId: string | null) => void;
   getRegisteredFiles: () => FileMetadata[];
   getSortedFilteredFiles: () => FileMetadata[];
   getDuplicateGroups: () => Map<string, FileMetadata[]>;
-  getFilesByFolder: () => Map<string, FileMetadata[]>;
   refreshFileRegistry: () => void;
 }
 

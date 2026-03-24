@@ -6,6 +6,7 @@
 
 import type { Edge, Viewport } from '@xyflow/react';
 import type { LynkNode } from './nodes';
+import type { VirtualFolder } from '../store/canvasPersistence';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CANVAS METADATA
@@ -32,4 +33,6 @@ export interface CanvasState {
   viewport: Viewport;
   /** Codec-managed embedded data (files, etc.) */
   embedded?: Record<string, unknown>;
+  /** Virtual folder hierarchy for file organization */
+  virtualFolders?: VirtualFolder[];
 }

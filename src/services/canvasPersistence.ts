@@ -6,6 +6,7 @@
  */
 
 import type { LynkNode, CanvasState } from '../types';
+import type { VirtualFolder } from '../store/canvasPersistence';
 import { CanvasStateSchema } from '../schemas/canvas';
 import { clearLocalStorageDraft } from '../hooks/useLocalStorageSync';
 import { defaultPipeline, type ValidationResult, type ExportedCanvas } from '../store/codecs';
@@ -23,6 +24,7 @@ export interface CanvasData {
   canvasName: string;
   canvasId: string;
   lastSaved: string | null;
+  virtualFolders?: VirtualFolder[];
 }
 
 export interface ImportResult {
@@ -52,6 +54,7 @@ export function exportCanvas(data: CanvasData): CanvasState {
     nodes: data.nodes,
     edges: data.edges,
     viewport: data.viewport,
+    virtualFolders: data.virtualFolders,
   };
 }
 
@@ -98,6 +101,7 @@ export function importCanvas(state: ExportedCanvas): ImportResult {
       canvasName: restoredState.metadata.name,
       canvasId: restoredState.metadata.id,
       lastSaved: restoredState.metadata.updatedAt,
+      virtualFolders: restoredState.virtualFolders,
     },
   };
 }
@@ -141,6 +145,7 @@ async function collectFileData(
           mimeType: blob.type || 'application/octet-stream',
           size: meta?.size ?? blob.size,
           contentHash: meta?.contentHash,
+          folderId: meta?.folderId,
         },
         data: new Uint8Array(arrayBuffer),
       });
@@ -185,6 +190,7 @@ export async function saveToFile(data: CanvasData): Promise<SaveResult> {
       nodes: cleanedNodes,
       edges: state.edges,
       viewport: state.viewport,
+      virtualFolders: state.virtualFolders,
     },
     files,
   });
@@ -235,6 +241,7 @@ function importLynkArchive(archiveData: Uint8Array): ImportResult {
       contentHash: fileMeta.contentHash ?? '',
       registeredAt: Date.now(),
       nodeIds: new Set<string>(),
+      folderId: fileMeta.folderId,
     });
   }
 
@@ -261,6 +268,7 @@ function importLynkArchive(archiveData: Uint8Array): ImportResult {
     nodes: restoredNodes,
     edges: manifest.edges as import('@xyflow/react').Edge[],
     viewport: manifest.viewport,
+    virtualFolders: manifest.virtualFolders,
   };
 
   // Validate via schema (skip file codec since we already restored files)
@@ -292,6 +300,7 @@ function importLynkArchive(archiveData: Uint8Array): ImportResult {
       canvasName: canvasState.metadata.name,
       canvasId: canvasState.metadata.id,
       lastSaved: canvasState.metadata.updatedAt,
+      virtualFolders: canvasState.virtualFolders,
     },
   };
 }

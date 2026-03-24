@@ -1,18 +1,124 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { useCanvasStore } from '../../store/canvasStore';
-import { BlobRegistry, type FileMetadata } from '../../store/canvasPersistence';
+import { BlobRegistry, type FileMetadata, type VirtualFolder } from '../../store/canvasPersistence';
 import { getFileTypeColor } from '../../utils/colors';
 import { formatFileSize } from '../../utils/formatting';
 
-function FileThumbnail({ meta }: { meta: FileMetadata }) {
+// ═══════════════════════════════════════════════════════════════════════════════
+// Helpers
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function downloadFile(meta: FileMetadata) {
+  const blob = BlobRegistry.getBlob(meta.fileId);
+  if (!blob) return;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = meta.fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function previewFile(meta: FileMetadata) {
+  const blobUrl = BlobRegistry.getUrlFromId(meta.fileId);
+  if (blobUrl) window.open(blobUrl, '_blank');
+}
+
+function startFileDrag(e: React.DragEvent, fileId: string) {
+  e.dataTransfer.setData('application/x-lynk-file', fileId);
+  e.dataTransfer.effectAllowed = 'copyMove';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Editable inline label (shared by folder names and file names)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function EditableLabel({
+  value: initialValue,
+  onCommit,
+  className,
+}: {
+  value: string;
+  onCommit: (newValue: string) => void;
+  className?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(initialValue);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [editing]);
+
+  const commit = () => {
+    const trimmed = value.trim();
+    if (trimmed && trimmed !== initialValue) {
+      onCommit(trimmed);
+    } else {
+      setValue(initialValue);
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+          if (e.key === 'Escape') {
+            setValue(initialValue);
+            setEditing(false);
+          }
+        }}
+        className="text-xs font-medium text-gray-700 bg-white border border-indigo-300 rounded px-1 py-0 w-full outline-none"
+        onClick={(e) => e.stopPropagation()}
+      />
+    );
+  }
+
+  return (
+    <span
+      className={className || 'text-xs font-medium text-gray-700 truncate flex-1 cursor-text'}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        setEditing(true);
+      }}
+      title="Double-click to rename"
+    >
+      {initialValue}
+    </span>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Shared thumbnail
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function FileThumbnail({ meta, size = 'md' }: { meta: FileMetadata; size?: 'sm' | 'md' }) {
   const blobUrl = BlobRegistry.getUrlFromId(meta.fileId);
   const typeColor = getFileTypeColor(meta.mimeType);
+  const dim = size === 'sm' ? 'w-6 h-6' : 'w-10 h-10';
+  const textSize = size === 'sm' ? 'text-[6px]' : 'text-xs';
+  const iconSize = size === 'sm' ? 'h-3 w-3' : 'h-5 w-5';
 
   if (!blobUrl) {
     return (
       <div
-        className="w-10 h-10 rounded flex items-center justify-center text-xs font-bold"
+        className={`${dim} rounded flex items-center justify-center ${textSize} font-bold`}
         style={{ backgroundColor: typeColor.bg, color: typeColor.text }}
       >
         {typeColor.label}
@@ -25,33 +131,39 @@ function FileThumbnail({ meta }: { meta: FileMetadata }) {
       <img
         src={blobUrl}
         alt={meta.fileName}
-        className="w-10 h-10 rounded object-cover"
+        className={`${dim} rounded object-cover`}
       />
     );
   }
 
   return (
     <div
-      className="w-10 h-10 rounded flex items-center justify-center"
+      className={`${dim} rounded flex items-center justify-center`}
       style={{ backgroundColor: typeColor.bg }}
     >
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill={typeColor.text}>
+      <svg xmlns="http://www.w3.org/2000/svg" className={iconSize} viewBox="0 0 20 20" fill={typeColor.text}>
         <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
       </svg>
     </div>
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// Flat view file row (full detail)
+// ═══════════════════════════════════════════════════════════════════════════════
+
 function FileEntryRow({
   meta,
   onJumpToNode,
   onReuse,
   onDelete,
+  onRename,
 }: {
   meta: FileMetadata;
   onJumpToNode: (nodeId: string) => void;
   onReuse: (meta: FileMetadata) => void;
   onDelete: (fileId: string) => void;
+  onRename: (fileId: string, newName: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const typeColor = getFileTypeColor(meta.mimeType);
@@ -59,11 +171,23 @@ function FileEntryRow({
   const date = new Date(meta.registeredAt);
 
   return (
-    <div className="p-2 border-b border-gray-100 hover:bg-gray-50">
+    <div
+      className="p-2 border-b border-gray-100 hover:bg-gray-50"
+      draggable
+      onDragStart={(e) => startFileDrag(e, meta.fileId)}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        previewFile(meta);
+      }}
+    >
       <div className="flex items-center gap-2">
         <FileThumbnail meta={meta} />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-gray-900 truncate">{meta.fileName}</p>
+          <EditableLabel
+            value={meta.fileName}
+            onCommit={(newName) => onRename(meta.fileId, newName)}
+            className="text-xs font-medium text-gray-900 truncate block cursor-text"
+          />
           <div className="flex items-center gap-1.5 mt-0.5">
             <span
               className="px-1 py-0.5 text-[8px] font-semibold rounded"
@@ -127,6 +251,13 @@ function FileEntryRow({
         >
           Reuse
         </button>
+        <button
+          onClick={() => downloadFile(meta)}
+          className="px-1.5 py-0.5 text-[10px] bg-gray-50 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+          title="Download file"
+        >
+          Download
+        </button>
         {nodeIds.length === 0 && (
           <button
             onClick={() => onDelete(meta.fileId)}
@@ -141,82 +272,183 @@ function FileEntryRow({
   );
 }
 
-// Tree node structure for folder hierarchy
-interface FolderTreeNode {
-  name: string;
-  path: string;
-  children: Map<string, FolderTreeNode>;
-  files: FileMetadata[];
-}
+// ═══════════════════════════════════════════════════════════════════════════════
+// Hierarchy view — compact file row (name + small thumbnail only)
+// ═══════════════════════════════════════════════════════════════════════════════
 
-function buildFolderTree(files: FileMetadata[]): FolderTreeNode {
-  const root: FolderTreeNode = { name: '', path: '', children: new Map(), files: [] };
-
-  for (const file of files) {
-    if (!file.folderPath) {
-      root.files.push(file);
-      continue;
-    }
-
-    const segments = file.folderPath.split('/').filter(Boolean);
-    let current = root;
-
-    for (let i = 0; i < segments.length; i++) {
-      const seg = segments[i];
-      if (!current.children.has(seg)) {
-        current.children.set(seg, {
-          name: seg,
-          path: segments.slice(0, i + 1).join('/'),
-          children: new Map(),
-          files: [],
-        });
-      }
-      current = current.children.get(seg)!;
-    }
-
-    current.files.push(file);
-  }
-
-  return root;
-}
-
-function countFilesInTree(node: FolderTreeNode): number {
-  let count = node.files.length;
-  for (const child of node.children.values()) {
-    count += countFilesInTree(child);
-  }
-  return count;
-}
-
-function FolderNode({
-  node,
+function CompactFileRow({
+  meta,
   depth,
   onJumpToNode,
   onReuse,
   onDelete,
+  onRename,
 }: {
-  node: FolderTreeNode;
+  meta: FileMetadata;
   depth: number;
   onJumpToNode: (nodeId: string) => void;
   onReuse: (meta: FileMetadata) => void;
   onDelete: (fileId: string) => void;
+  onRename: (fileId: string, newName: string) => void;
+}) {
+  const [showActions, setShowActions] = useState(false);
+  const typeColor = getFileTypeColor(meta.mimeType);
+  const nodeIds = Array.from(meta.nodeIds);
+
+  return (
+    <div
+      className="flex items-center gap-1.5 py-1 px-2 hover:bg-gray-50 group"
+      style={{ paddingLeft: `${12 + depth * 16}px` }}
+      draggable
+      onDragStart={(e) => startFileDrag(e, meta.fileId)}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        previewFile(meta);
+      }}
+      onMouseEnter={() => setShowActions(true)}
+      onMouseLeave={() => setShowActions(false)}
+    >
+      <FileThumbnail meta={meta} size="sm" />
+      <EditableLabel
+        value={meta.fileName}
+        onCommit={(newName) => onRename(meta.fileId, newName)}
+        className="text-xs text-gray-800 truncate flex-1 cursor-text"
+      />
+      <span
+        className="px-1 py-0.5 text-[7px] font-semibold rounded shrink-0"
+        style={{
+          backgroundColor: typeColor.bg,
+          color: typeColor.text,
+          border: `1px solid ${typeColor.border}`,
+        }}
+      >
+        {typeColor.label}
+      </span>
+      {showActions && (
+        <div className="flex gap-0.5 shrink-0">
+          {nodeIds.length > 0 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onJumpToNode(nodeIds[0]); }}
+              className="px-1 py-0.5 text-[8px] bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100"
+              title="Jump"
+            >
+              J
+            </button>
+          )}
+          <button
+            onClick={(e) => { e.stopPropagation(); onReuse(meta); }}
+            className="px-1 py-0.5 text-[8px] bg-green-50 text-green-600 rounded hover:bg-green-100"
+            title="Reuse"
+          >
+            R
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); downloadFile(meta); }}
+            className="px-1 py-0.5 text-[8px] bg-gray-50 text-gray-600 rounded hover:bg-gray-100"
+            title="Download"
+          >
+            DL
+          </button>
+          {nodeIds.length === 0 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(meta.fileId); }}
+              className="px-1 py-0.5 text-[8px] bg-red-50 text-red-600 rounded hover:bg-red-100"
+              title="Delete"
+            >
+              X
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Virtual folder tree node (with drop target support)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function VirtualFolderNode({
+  folder,
+  childFolders,
+  allFolders,
+  filesInFolder,
+  allFiles,
+  depth,
+  onJumpToNode,
+  onReuse,
+  onDeleteFile,
+  onRenameFile,
+  onRenameFolder,
+  onDeleteFolder,
+  onCreateFolder,
+  onMoveFileToFolder,
+}: {
+  folder: VirtualFolder;
+  childFolders: VirtualFolder[];
+  allFolders: VirtualFolder[];
+  filesInFolder: FileMetadata[];
+  allFiles: FileMetadata[];
+  depth: number;
+  onJumpToNode: (nodeId: string) => void;
+  onReuse: (meta: FileMetadata) => void;
+  onDeleteFile: (fileId: string) => void;
+  onRenameFile: (fileId: string, newName: string) => void;
+  onRenameFolder: (folderId: string, name: string) => void;
+  onDeleteFolder: (folderId: string) => void;
+  onCreateFolder: (name: string, parentId: string) => void;
+  onMoveFileToFolder: (fileId: string, folderId: string | null) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
-  const totalFiles = countFilesInTree(node);
-  const sortedChildren = Array.from(node.children.values()).sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  const [showActions, setShowActions] = useState(false);
+  const [isDragTarget, setIsDragTarget] = useState(false);
+
+  const countFiles = useCallback((fId: string): number => {
+    let count = allFiles.filter((f) => f.folderId === fId).length;
+    for (const child of allFolders.filter((f) => f.parentId === fId)) {
+      count += countFiles(child.id);
+    }
+    return count;
+  }, [allFolders, allFiles]);
+
+  const totalFiles = countFiles(folder.id);
+  const sortedChildren = childFolders.sort((a, b) => a.name.localeCompare(b.name));
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('application/x-lynk-file')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      setIsDragTarget(true);
+    }
+  };
+
+  const handleDragLeave = () => setIsDragTarget(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragTarget(false);
+    const fileId = e.dataTransfer.getData('application/x-lynk-file');
+    if (fileId) onMoveFileToFolder(fileId, folder.id);
+  };
 
   return (
     <div>
-      <button
+      <div
+        className={`flex items-center gap-1 py-1 px-2 hover:bg-gray-50 group cursor-pointer transition-colors ${
+          isDragTarget ? 'bg-indigo-50 outline outline-1 outline-indigo-300' : ''
+        }`}
+        style={{ paddingLeft: `${4 + depth * 16}px` }}
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-1.5 px-2 py-1.5 hover:bg-gray-50 text-left"
-        style={{ paddingLeft: `${8 + depth * 12}px` }}
+        onMouseEnter={() => setShowActions(true)}
+        onMouseLeave={() => setShowActions(false)}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className={`h-3 w-3 text-gray-400 transition-transform ${expanded ? 'rotate-90' : ''}`}
+          className={`h-3 w-3 text-gray-400 transition-transform shrink-0 ${expanded ? 'rotate-90' : ''}`}
           viewBox="0 0 20 20"
           fill="currentColor"
         >
@@ -224,7 +456,7 @@ function FolderNode({
         </svg>
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="h-3.5 w-3.5 text-amber-500"
+          className={`h-3.5 w-3.5 shrink-0 ${isDragTarget ? 'text-indigo-500' : 'text-amber-500'}`}
           viewBox="0 0 20 20"
           fill="currentColor"
         >
@@ -234,91 +466,199 @@ function FolderNode({
             <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
           )}
         </svg>
-        <span className="text-xs font-medium text-gray-700 truncate flex-1">
-          {node.name}
-        </span>
-        <span className="text-[10px] text-gray-400">{totalFiles}</span>
-      </button>
+        <EditableLabel
+          value={folder.name}
+          onCommit={(newName) => onRenameFolder(folder.id, newName)}
+        />
+        <span className="text-[10px] text-gray-400 shrink-0">{totalFiles}</span>
+        {showActions && (
+          <div className="flex gap-0.5 shrink-0">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCreateFolder('New Folder', folder.id);
+              }}
+              className="px-1 py-0.5 text-[8px] bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+              title="New subfolder"
+            >
+              +
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteFolder(folder.id);
+              }}
+              className="px-1 py-0.5 text-[8px] bg-red-50 text-red-600 rounded hover:bg-red-100"
+              title="Delete folder"
+            >
+              x
+            </button>
+          </div>
+        )}
+      </div>
       {expanded && (
         <div>
           {sortedChildren.map((child) => (
-            <FolderNode
-              key={child.path}
-              node={child}
+            <VirtualFolderNode
+              key={child.id}
+              folder={child}
+              childFolders={allFolders.filter((f) => f.parentId === child.id)}
+              allFolders={allFolders}
+              filesInFolder={allFiles.filter((f) => f.folderId === child.id)}
+              allFiles={allFiles}
               depth={depth + 1}
               onJumpToNode={onJumpToNode}
               onReuse={onReuse}
-              onDelete={onDelete}
+              onDeleteFile={onDeleteFile}
+              onRenameFile={onRenameFile}
+              onRenameFolder={onRenameFolder}
+              onDeleteFolder={onDeleteFolder}
+              onCreateFolder={onCreateFolder}
+              onMoveFileToFolder={onMoveFileToFolder}
             />
           ))}
-          {node.files.map((meta) => (
-            <div key={meta.fileId} style={{ paddingLeft: `${depth * 12}px` }}>
-              <FileEntryRow
-                meta={meta}
-                onJumpToNode={onJumpToNode}
-                onReuse={onReuse}
-                onDelete={onDelete}
-              />
-            </div>
+          {filesInFolder.map((meta) => (
+            <CompactFileRow
+              key={meta.fileId}
+              meta={meta}
+              depth={depth + 1}
+              onJumpToNode={onJumpToNode}
+              onReuse={onReuse}
+              onDelete={onDeleteFile}
+              onRename={onRenameFile}
+            />
           ))}
         </div>
       )}
     </div>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Hierarchy view
+// ═══════════════════════════════════════════════════════════════════════════════
 
 function FolderTreeView({
   files,
+  folders,
   onJumpToNode,
   onReuse,
-  onDelete,
+  onDeleteFile,
+  onRenameFile,
+  onRenameFolder,
+  onDeleteFolder,
+  onCreateFolder,
+  onMoveFileToFolder,
 }: {
   files: FileMetadata[];
+  folders: VirtualFolder[];
   onJumpToNode: (nodeId: string) => void;
   onReuse: (meta: FileMetadata) => void;
-  onDelete: (fileId: string) => void;
+  onDeleteFile: (fileId: string) => void;
+  onRenameFile: (fileId: string, newName: string) => void;
+  onRenameFolder: (folderId: string, name: string) => void;
+  onDeleteFolder: (folderId: string) => void;
+  onCreateFolder: (name: string, parentId: string | null) => void;
+  onMoveFileToFolder: (fileId: string, folderId: string | null) => void;
 }) {
-  const tree = useMemo(() => buildFolderTree(files), [files]);
-
-  const sortedChildren = Array.from(tree.children.values()).sort((a, b) =>
-    a.name.localeCompare(b.name)
+  const rootFolders = useMemo(
+    () => folders.filter((f) => f.parentId === null).sort((a, b) => a.name.localeCompare(b.name)),
+    [folders]
   );
+  const ungroupedFiles = useMemo(
+    () => files.filter((f) => !f.folderId),
+    [files]
+  );
+
+  const [isUngroupedDragTarget, setIsUngroupedDragTarget] = useState(false);
+
+  const handleUngroupedDragOver = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('application/x-lynk-file')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      setIsUngroupedDragTarget(true);
+    }
+  };
+
+  const handleUngroupedDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsUngroupedDragTarget(false);
+    const fileId = e.dataTransfer.getData('application/x-lynk-file');
+    if (fileId) onMoveFileToFolder(fileId, null);
+  };
 
   return (
     <div>
+      {/* New folder button */}
+      <button
+        onClick={() => onCreateFolder('New Folder', null)}
+        className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[10px] text-gray-500 hover:text-indigo-600 hover:bg-gray-50"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+        </svg>
+        New folder
+      </button>
+
       {/* Root-level folders */}
-      {sortedChildren.map((child) => (
-        <FolderNode
-          key={child.path}
-          node={child}
+      {rootFolders.map((folder) => (
+        <VirtualFolderNode
+          key={folder.id}
+          folder={folder}
+          childFolders={folders.filter((f) => f.parentId === folder.id)}
+          allFolders={folders}
+          filesInFolder={files.filter((f) => f.folderId === folder.id)}
+          allFiles={files}
           depth={0}
           onJumpToNode={onJumpToNode}
           onReuse={onReuse}
-          onDelete={onDelete}
+          onDeleteFile={onDeleteFile}
+          onRenameFile={onRenameFile}
+          onRenameFolder={onRenameFolder}
+          onDeleteFolder={onDeleteFolder}
+          onCreateFolder={onCreateFolder}
+          onMoveFileToFolder={onMoveFileToFolder}
         />
       ))}
-      {/* Root-level files (no folder) */}
-      {tree.files.length > 0 && (
-        <div>
-          {sortedChildren.length > 0 && tree.files.length > 0 && (
-            <div className="px-2 py-1 text-[10px] text-gray-400 font-medium border-t border-gray-100">
+
+      {/* Ungrouped files (also a drop target to unassign from folder) */}
+      {(ungroupedFiles.length > 0 || rootFolders.length > 0) && (
+        <div
+          onDragOver={handleUngroupedDragOver}
+          onDragLeave={() => setIsUngroupedDragTarget(false)}
+          onDrop={handleUngroupedDrop}
+          className={`transition-colors ${isUngroupedDragTarget ? 'bg-gray-100' : ''}`}
+        >
+          {rootFolders.length > 0 && (
+            <div className="px-3 py-1 text-[10px] text-gray-400 font-medium border-t border-gray-100 mt-1">
               Ungrouped
             </div>
           )}
-          {tree.files.map((meta) => (
-            <FileEntryRow
+          {ungroupedFiles.map((meta) => (
+            <CompactFileRow
               key={meta.fileId}
               meta={meta}
+              depth={0}
               onJumpToNode={onJumpToNode}
               onReuse={onReuse}
-              onDelete={onDelete}
+              onDelete={onDeleteFile}
+              onRename={onRenameFile}
             />
           ))}
+          {ungroupedFiles.length === 0 && rootFolders.length > 0 && (
+            <div className="px-3 py-2 text-[10px] text-gray-300 italic">
+              Drop files here to ungroup
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Main panel
+// ═══════════════════════════════════════════════════════════════════════════════
 
 export function FileRegistryPanel() {
   const fileRegistryOpen = useCanvasStore((s) => s.fileRegistryOpen);
@@ -333,8 +673,12 @@ export function FileRegistryPanel() {
   const getDuplicateGroups = useCanvasStore((s) => s.getDuplicateGroups);
   const refreshFileRegistry = useCanvasStore((s) => s.refreshFileRegistry);
   const addNode = useCanvasStore((s) => s.addNode);
+  const virtualFolders = useCanvasStore((s) => s.virtualFolders);
+  const createVirtualFolder = useCanvasStore((s) => s.createVirtualFolder);
+  const renameVirtualFolder = useCanvasStore((s) => s.renameVirtualFolder);
+  const deleteVirtualFolder = useCanvasStore((s) => s.deleteVirtualFolder);
+  const moveFileToFolder = useCanvasStore((s) => s.moveFileToFolder);
 
-  // Read version to trigger reactivity
   useCanvasStore((s) => s._fileRegistryVersion);
 
   const { fitView, screenToFlowPosition } = useReactFlow();
@@ -380,7 +724,7 @@ export function FileRegistryPanel() {
   const handleDelete = useCallback(
     (fileId: string) => {
       const meta = BlobRegistry.getMetadata(fileId);
-      if (meta && meta.nodeIds.size > 0) return; // Can't delete referenced files
+      if (meta && meta.nodeIds.size > 0) return;
 
       const blobUrl = BlobRegistry.getUrlFromId(fileId);
       if (blobUrl) {
@@ -390,6 +734,14 @@ export function FileRegistryPanel() {
       BlobRegistry.idToUrl.delete(fileId);
       BlobRegistry.blobs.delete(fileId);
       BlobRegistry.metadata.delete(fileId);
+      refreshFileRegistry();
+    },
+    [refreshFileRegistry]
+  );
+
+  const handleRename = useCallback(
+    (fileId: string, newName: string) => {
+      BlobRegistry.renameFile(fileId, newName);
       refreshFileRegistry();
     },
     [refreshFileRegistry]
@@ -406,10 +758,24 @@ export function FileRegistryPanel() {
     [fileRegistrySort, setFileRegistrySort]
   );
 
+  const handleCreateFolder = useCallback(
+    (name: string, parentId: string | null) => {
+      createVirtualFolder(name, parentId);
+    },
+    [createVirtualFolder]
+  );
+
   if (!fileRegistryOpen) return null;
 
   return (
-    <div className="absolute top-0 right-0 h-full w-72 bg-white shadow-lg border-l border-gray-200 z-20 flex flex-col">
+    <div
+      className="absolute top-0 right-0 h-full w-72 bg-white shadow-lg border-l border-gray-200 z-20 flex flex-col"
+      onDoubleClick={(e) => e.stopPropagation()}
+      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      onDrop={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); }}
+    >
       {/* Header */}
       <div className="p-3 border-b border-gray-200 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -499,16 +865,22 @@ export function FileRegistryPanel() {
 
       {/* File list */}
       <div className="flex-1 overflow-y-auto">
-        {files.length === 0 ? (
+        {files.length === 0 && virtualFolders.length === 0 ? (
           <div className="p-4 text-center text-xs text-gray-400">
             No files loaded
           </div>
         ) : fileRegistryViewMode === 'hierarchy' ? (
           <FolderTreeView
             files={files}
+            folders={virtualFolders}
             onJumpToNode={handleJumpToNode}
             onReuse={handleReuse}
-            onDelete={handleDelete}
+            onDeleteFile={handleDelete}
+            onRenameFile={handleRename}
+            onRenameFolder={renameVirtualFolder}
+            onDeleteFolder={deleteVirtualFolder}
+            onCreateFolder={handleCreateFolder}
+            onMoveFileToFolder={moveFileToFolder}
           />
         ) : (
           files.map((meta) => (
@@ -518,6 +890,7 @@ export function FileRegistryPanel() {
               onJumpToNode={handleJumpToNode}
               onReuse={handleReuse}
               onDelete={handleDelete}
+              onRename={handleRename}
             />
           ))
         )}

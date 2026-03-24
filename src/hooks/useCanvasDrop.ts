@@ -59,6 +59,30 @@ export function useCanvasDrop() {
 
       const dropPosition = screenToFlowPosition({ x: event.clientX, y: event.clientY });
 
+      // Check for internal file drag from FileRegistryPanel
+      const internalFileId = event.dataTransfer.getData('application/x-lynk-file');
+      if (internalFileId) {
+        const meta = BlobRegistry.getMetadata(internalFileId);
+        const blobUrl = BlobRegistry.getUrlFromId(internalFileId);
+        if (meta && blobUrl) {
+          pushHistory();
+          const nodeId = addNode('extractor', dropPosition, {
+            label: meta.fileName,
+            fileId: meta.fileId,
+            fileUrl: blobUrl,
+            fileName: meta.fileName,
+            fileType: meta.fileType,
+            currentPage: 1,
+            totalPages: 1,
+            regions: [],
+          });
+          BlobRegistry.addNodeReference(meta.fileId, nodeId);
+          useCanvasStore.getState().refreshFileRegistry();
+          showToast('Created extractor node', 'success');
+        }
+        return;
+      }
+
       // Try folder-aware processing via DataTransferItems first
       if (event.dataTransfer.items && event.dataTransfer.items.length > 0) {
         const results = await processDataTransferItems(event.dataTransfer.items);

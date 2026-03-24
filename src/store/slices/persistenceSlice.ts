@@ -40,6 +40,7 @@ export const createPersistenceSlice: StateCreator<PersistenceSlice> = (set, get)
       canvasName: 'Untitled Canvas',
       canvasId: generateCanvasId(),
       lastSaved: null,
+      virtualFolders: [],
     });
     resetNodeIdCounter();
   },
@@ -47,8 +48,8 @@ export const createPersistenceSlice: StateCreator<PersistenceSlice> = (set, get)
   setCanvasName: (name) => set({ canvasName: name }),
 
   exportCanvas: () => {
-    const { nodes, edges, viewport, canvasName, canvasId, lastSaved } = get();
-    return persistenceService.exportCanvas({ nodes, edges, viewport, canvasName, canvasId, lastSaved });
+    const { nodes, edges, viewport, canvasName, canvasId, lastSaved, virtualFolders } = get();
+    return persistenceService.exportCanvas({ nodes, edges, viewport, canvasName, canvasId, lastSaved, virtualFolders });
   },
 
   importCanvas: (state) => {
@@ -64,6 +65,7 @@ export const createPersistenceSlice: StateCreator<PersistenceSlice> = (set, get)
       canvasName: result.data.canvasName,
       canvasId: result.data.canvasId,
       lastSaved: result.data.lastSaved,
+      virtualFolders: result.data.virtualFolders || [],
       highlightedHandle: null,
     });
 
@@ -79,13 +81,13 @@ export const createPersistenceSlice: StateCreator<PersistenceSlice> = (set, get)
   },
 
   validateCanvas: () => {
-    const { nodes, edges, viewport, canvasName, canvasId, lastSaved } = get();
-    return persistenceService.validateCanvas({ nodes, edges, viewport, canvasName, canvasId, lastSaved });
+    const { nodes, edges, viewport, canvasName, canvasId, lastSaved, virtualFolders } = get();
+    return persistenceService.validateCanvas({ nodes, edges, viewport, canvasName, canvasId, lastSaved, virtualFolders });
   },
 
   saveToFile: async () => {
-    const { nodes, edges, viewport, canvasName, canvasId, lastSaved } = get();
-    const result = await persistenceService.saveToFile({ nodes, edges, viewport, canvasName, canvasId, lastSaved });
+    const { nodes, edges, viewport, canvasName, canvasId, lastSaved, virtualFolders } = get();
+    const result = await persistenceService.saveToFile({ nodes, edges, viewport, canvasName, canvasId, lastSaved, virtualFolders });
     if (result.success) {
       set({ lastSaved: new Date().toISOString() });
     }
@@ -105,6 +107,7 @@ export const createPersistenceSlice: StateCreator<PersistenceSlice> = (set, get)
       canvasName: result.data.canvasName,
       canvasId: result.data.canvasId,
       lastSaved: result.data.lastSaved,
+      virtualFolders: result.data.virtualFolders || [],
       highlightedHandle: null,
     });
 

@@ -26,6 +26,8 @@ export interface FileEmbeddedData {
     size?: number;
     /** SHA-256 hash for duplicate detection */
     contentHash?: string;
+    /** Virtual folder assignment */
+    folderId?: string;
   };
 }
 
@@ -164,6 +166,7 @@ export const FileCodec: CanvasCodec<FileEmbeddedData> = {
           data: base64,
           size: meta?.size,
           contentHash: meta?.contentHash,
+          folderId: meta?.folderId,
         };
       } catch (err) {
         warnings.push(`Failed to embed file ${fileId}: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -228,6 +231,7 @@ export const FileCodec: CanvasCodec<FileEmbeddedData> = {
           contentHash: file.contentHash ?? '',
           registeredAt: Date.now(),
           nodeIds: new Set<string>(),
+          folderId: file.folderId,
         });
       } catch (err) {
         warnings.push(`Failed to extract file ${fileId}: ${err instanceof Error ? err.message : 'Unknown error'}`);

@@ -1,10 +1,11 @@
 /**
  * File Registry Slice
  *
- * Manages reactive state for the file registry panel.
+ * Manages reactive state for the file registry panel,
+ * including virtual folders for organising files.
  */
 
-import { BlobRegistry, type FileMetadata } from '../canvasPersistence';
+import { BlobRegistry, type FileMetadata, type VirtualFolder } from '../canvasPersistence';
 import type { StateCreator } from './types';
 
 export interface FileRegistrySlice {
@@ -14,16 +15,24 @@ export interface FileRegistrySlice {
   _fileRegistryVersion: number;
 
   fileRegistryViewMode: 'flat' | 'hierarchy';
+  virtualFolders: VirtualFolder[];
 
   toggleFileRegistry: () => void;
   setFileRegistrySort: (field: 'name' | 'type' | 'size' | 'date', direction: 'asc' | 'desc') => void;
   setFileRegistrySearch: (search: string) => void;
   setFileRegistryViewMode: (mode: 'flat' | 'hierarchy') => void;
+  createVirtualFolder: (name: string, parentId?: string | null) => string;
+  renameVirtualFolder: (folderId: string, name: string) => void;
+  deleteVirtualFolder: (folderId: string) => void;
+  moveFileToFolder: (fileId: string, folderId: string | null) => void;
   getRegisteredFiles: () => FileMetadata[];
   getSortedFilteredFiles: () => FileMetadata[];
   getDuplicateGroups: () => Map<string, FileMetadata[]>;
-  getFilesByFolder: () => Map<string, FileMetadata[]>;
   refreshFileRegistry: () => void;
+}
+
+function generateFolderId(): string {
+  return `folder-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 export const createFileRegistrySlice: StateCreator<FileRegistrySlice> = (set, get) => ({
@@ -31,6 +40,7 @@ export const createFileRegistrySlice: StateCreator<FileRegistrySlice> = (set, ge
   fileRegistrySort: { field: 'date', direction: 'desc' },
   fileRegistrySearch: '',
   fileRegistryViewMode: 'flat',
+  virtualFolders: [],
   _fileRegistryVersion: 0,
 
   toggleFileRegistry: () => {
@@ -49,8 +59,55 @@ export const createFileRegistrySlice: StateCreator<FileRegistrySlice> = (set, ge
     set({ fileRegistryViewMode: mode });
   },
 
+  createVirtualFolder: (name, parentId = null) => {
+    const id = generateFolderId();
+    const folder: VirtualFolder = { id, name, parentId: parentId ?? null };
+    set({ virtualFolders: [...get().virtualFolders, folder] });
+    return id;
+  },
+
+  renameVirtualFolder: (folderId, name) => {
+    set({
+      virtualFolders: get().virtualFolders.map((f) =>
+        f.id === folderId ? { ...f, name } : f
+      ),
+    });
+  },
+
+  deleteVirtualFolder: (folderId) => {
+    // Collect folder and all descendants
+    const folders = get().virtualFolders;
+    const toDelete = new Set<string>();
+    const collect = (id: string) => {
+      toDelete.add(id);
+      for (const f of folders) {
+        if (f.parentId === id) collect(f.id);
+      }
+    };
+    collect(folderId);
+
+    // Unassign files in deleted folders
+    for (const meta of BlobRegistry.getAllMetadata()) {
+      if (meta.folderId && toDelete.has(meta.folderId)) {
+        meta.folderId = undefined;
+      }
+    }
+
+    set({
+      virtualFolders: folders.filter((f) => !toDelete.has(f.id)),
+    });
+    set((state) => ({ _fileRegistryVersion: state._fileRegistryVersion + 1 }));
+  },
+
+  moveFileToFolder: (fileId, folderId) => {
+    const meta = BlobRegistry.getMetadata(fileId);
+    if (meta) {
+      meta.folderId = folderId ?? undefined;
+    }
+    set((state) => ({ _fileRegistryVersion: state._fileRegistryVersion + 1 }));
+  },
+
   getRegisteredFiles: () => {
-    // Access version to create reactive dependency
     get()._fileRegistryVersion;
     return BlobRegistry.getAllMetadata();
   },
@@ -60,13 +117,11 @@ export const createFileRegistrySlice: StateCreator<FileRegistrySlice> = (set, ge
     const { fileRegistrySort, fileRegistrySearch } = get();
     let files = BlobRegistry.getAllMetadata();
 
-    // Filter by search
     if (fileRegistrySearch) {
       const search = fileRegistrySearch.toLowerCase();
       files = files.filter((f) => f.fileName.toLowerCase().includes(search));
     }
 
-    // Sort
     const { field, direction } = fileRegistrySort;
     const dir = direction === 'asc' ? 1 : -1;
     files.sort((a, b) => {
@@ -101,46 +156,11 @@ export const createFileRegistrySlice: StateCreator<FileRegistrySlice> = (set, ge
       }
     }
 
-    // Only return groups with duplicates
     for (const [hash, group] of hashMap) {
       if (group.length <= 1) hashMap.delete(hash);
     }
 
     return hashMap;
-  },
-
-  getFilesByFolder: () => {
-    get()._fileRegistryVersion;
-    // Inline sorted/filtered files since get() doesn't expose slice methods
-    const allFiles = BlobRegistry.getAllMetadata();
-    const search = get().fileRegistrySearch.toLowerCase();
-    const { field, direction } = get().fileRegistrySort;
-    let files = search
-      ? allFiles.filter((f) => f.fileName.toLowerCase().includes(search))
-      : allFiles;
-    files = [...files].sort((a, b) => {
-      let cmp = 0;
-      switch (field) {
-        case 'name': cmp = a.fileName.localeCompare(b.fileName); break;
-        case 'type': cmp = a.fileType.localeCompare(b.fileType); break;
-        case 'size': cmp = a.size - b.size; break;
-        case 'date': cmp = a.registeredAt - b.registeredAt; break;
-      }
-      return direction === 'asc' ? cmp : -cmp;
-    });
-    const folderMap = new Map<string, FileMetadata[]>();
-
-    for (const file of files) {
-      const key = file.folderPath || '';
-      const group = folderMap.get(key);
-      if (group) {
-        group.push(file);
-      } else {
-        folderMap.set(key, [file]);
-      }
-    }
-
-    return folderMap;
   },
 
   refreshFileRegistry: () => {

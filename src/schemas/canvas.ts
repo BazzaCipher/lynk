@@ -329,6 +329,13 @@ const MetadataSchema = z.object({
 });
 
 // Full canvas state schema
+// Virtual folder for file organization
+const VirtualFolderSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  parentId: z.string().nullable(),
+});
+
 export const CanvasStateSchema = z.object({
   version: z.string(),
   metadata: MetadataSchema,
@@ -336,6 +343,7 @@ export const CanvasStateSchema = z.object({
   edges: z.array(EdgeSchema),
   viewport: ViewportSchema,
   embedded: z.record(z.string(), z.unknown()).optional(),
+  virtualFolders: z.array(VirtualFolderSchema).optional(),
 });
 
 export type ValidatedCanvasState = z.infer<typeof CanvasStateSchema>;

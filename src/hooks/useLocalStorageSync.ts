@@ -189,6 +189,7 @@ export function useLocalStorageSync(): void {
     const serialized = JSON.stringify({
       nodes: canvas.nodes,
       edges: canvas.edges,
+      virtualFolders: canvas.virtualFolders,
     });
 
     if (serialized === lastSavedRef.current) {
@@ -216,7 +217,7 @@ export function useLocalStorageSync(): void {
     // Subscribe to store changes
     const unsubscribe = useCanvasStore.subscribe((state, prevState) => {
       // Only trigger save if nodes or edges changed
-      if (state.nodes !== prevState.nodes || state.edges !== prevState.edges) {
+      if (state.nodes !== prevState.nodes || state.edges !== prevState.edges || state.virtualFolders !== prevState.virtualFolders) {
         debouncedSave();
       }
     });
