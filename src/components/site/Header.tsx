@@ -9,13 +9,7 @@ export function Header() {
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" className="text-white">
-              <path d="M3 6L9 3L15 6V12L9 15L3 12V6Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-              <path d="M9 3V15" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M3 6L9 9L15 6" stroke="currentColor" strokeWidth="1.5" />
-            </svg>
-          </div>
+          <img src="/logo lynk.jpg" alt="Lynk" className="w-8 h-8 rounded-lg object-cover" />
           <span className="text-xl font-bold text-gray-900 tracking-tight">Lynk</span>
         </Link>
 
