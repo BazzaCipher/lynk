@@ -9,7 +9,7 @@ export function Header() {
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <img src="/logo lynk.jpg" alt="Lynk" className="w-8 h-8 rounded-lg object-cover" />
+          <img src="/logo-lynk.jpg" alt="Lynk" className="w-8 h-8 rounded-lg object-cover" />
           <span className="text-xl font-bold text-gray-900 tracking-tight">Lynk</span>
         </Link>
 
