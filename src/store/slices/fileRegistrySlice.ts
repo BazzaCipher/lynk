@@ -13,12 +13,16 @@ export interface FileRegistrySlice {
   fileRegistrySearch: string;
   _fileRegistryVersion: number;
 
+  fileRegistryViewMode: 'flat' | 'hierarchy';
+
   toggleFileRegistry: () => void;
   setFileRegistrySort: (field: 'name' | 'type' | 'size' | 'date', direction: 'asc' | 'desc') => void;
   setFileRegistrySearch: (search: string) => void;
+  setFileRegistryViewMode: (mode: 'flat' | 'hierarchy') => void;
   getRegisteredFiles: () => FileMetadata[];
   getSortedFilteredFiles: () => FileMetadata[];
   getDuplicateGroups: () => Map<string, FileMetadata[]>;
+  getFilesByFolder: () => Map<string, FileMetadata[]>;
   refreshFileRegistry: () => void;
 }
 
@@ -26,6 +30,7 @@ export const createFileRegistrySlice: StateCreator<FileRegistrySlice> = (set, ge
   fileRegistryOpen: false,
   fileRegistrySort: { field: 'date', direction: 'desc' },
   fileRegistrySearch: '',
+  fileRegistryViewMode: 'flat',
   _fileRegistryVersion: 0,
 
   toggleFileRegistry: () => {
@@ -38,6 +43,10 @@ export const createFileRegistrySlice: StateCreator<FileRegistrySlice> = (set, ge
 
   setFileRegistrySearch: (search) => {
     set({ fileRegistrySearch: search });
+  },
+
+  setFileRegistryViewMode: (mode) => {
+    set({ fileRegistryViewMode: mode });
   },
 
   getRegisteredFiles: () => {
@@ -98,6 +107,40 @@ export const createFileRegistrySlice: StateCreator<FileRegistrySlice> = (set, ge
     }
 
     return hashMap;
+  },
+
+  getFilesByFolder: () => {
+    get()._fileRegistryVersion;
+    // Inline sorted/filtered files since get() doesn't expose slice methods
+    const allFiles = BlobRegistry.getAllMetadata();
+    const search = get().fileRegistrySearch.toLowerCase();
+    const { field, direction } = get().fileRegistrySort;
+    let files = search
+      ? allFiles.filter((f) => f.fileName.toLowerCase().includes(search))
+      : allFiles;
+    files = [...files].sort((a, b) => {
+      let cmp = 0;
+      switch (field) {
+        case 'name': cmp = a.fileName.localeCompare(b.fileName); break;
+        case 'type': cmp = a.fileType.localeCompare(b.fileType); break;
+        case 'size': cmp = a.size - b.size; break;
+        case 'date': cmp = a.registeredAt - b.registeredAt; break;
+      }
+      return direction === 'asc' ? cmp : -cmp;
+    });
+    const folderMap = new Map<string, FileMetadata[]>();
+
+    for (const file of files) {
+      const key = file.folderPath || '';
+      const group = folderMap.get(key);
+      if (group) {
+        group.push(file);
+      } else {
+        folderMap.set(key, [file]);
+      }
+    }
+
+    return folderMap;
   },
 
   refreshFileRegistry: () => {

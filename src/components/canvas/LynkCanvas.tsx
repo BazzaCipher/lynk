@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -191,7 +191,41 @@ export function LynkCanvas() {
     [edges, nodes, storeAddEdge, showToast]
   );
 
-  const { handleCanvasDragOver, handleCanvasDrop } = useCanvasDrop();
+  const { handleCanvasDragOver, handleCanvasDrop, handleCanvasPaste } = useCanvasDrop();
+
+  // Drag overlay state
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dragCounterRef = useRef(0);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current++;
+    if (dragCounterRef.current === 1) setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounterRef.current--;
+    if (dragCounterRef.current === 0) setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    dragCounterRef.current = 0;
+    setIsDragOver(false);
+    handleCanvasDrop(e);
+  }, [handleCanvasDrop]);
+
+  // Clipboard paste listener
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      // Don't intercept paste in input/textarea elements
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) return;
+      handleCanvasPaste(e);
+    };
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  }, [handleCanvasPaste]);
 
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -377,7 +411,9 @@ export function LynkCanvas() {
       <div
         className="flex-1 h-full relative"
         onDragOver={handleCanvasDragOver}
-        onDrop={handleCanvasDrop}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         onDoubleClick={handleDoubleClick}
       >
         <Toolbar
@@ -432,6 +468,19 @@ export function LynkCanvas() {
             pannable
           />
         </ReactFlow>
+        {isDragOver && (
+          <div className="absolute inset-0 z-50 bg-indigo-500/10 border-2 border-dashed border-indigo-400 flex items-center justify-center pointer-events-none">
+            <div className="bg-white/90 rounded-lg px-6 py-4 shadow-lg text-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto mb-2 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              <p className="text-sm font-medium text-indigo-700">Drop files or folders here</p>
+              <p className="text-xs text-gray-500 mt-1">PDF and image files will be processed</p>
+            </div>
+          </div>
+        )}
         <FileRegistryPanel />
         {contextMenu && (
           <NodeContextMenu

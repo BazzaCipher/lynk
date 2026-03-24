@@ -18,6 +18,7 @@ export interface FileMetadata {
   contentHash: string;
   registeredAt: number;
   nodeIds: Set<string>;
+  folderPath?: string;
 }
 
 async function computeHash(blob: Blob): Promise<string> {
@@ -81,7 +82,8 @@ export const BlobRegistry = {
 
   async registerWithMetadata(
     file: File,
-    nodeId?: string
+    nodeId?: string,
+    folderPath?: string
   ): Promise<RegisterWithMetadataResult> {
     const contentHash = await computeHash(file);
 
@@ -114,6 +116,7 @@ export const BlobRegistry = {
       contentHash,
       registeredAt: Date.now(),
       nodeIds: new Set(nodeId ? [nodeId] : []),
+      folderPath,
     };
 
     this.metadata.set(fileId, meta);

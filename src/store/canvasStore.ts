@@ -116,12 +116,15 @@ interface CanvasStore {
   fileRegistrySort: { field: 'name' | 'type' | 'size' | 'date'; direction: 'asc' | 'desc' };
   fileRegistrySearch: string;
   _fileRegistryVersion: number;
+  fileRegistryViewMode: 'flat' | 'hierarchy';
   toggleFileRegistry: () => void;
   setFileRegistrySort: (field: 'name' | 'type' | 'size' | 'date', direction: 'asc' | 'desc') => void;
   setFileRegistrySearch: (search: string) => void;
+  setFileRegistryViewMode: (mode: 'flat' | 'hierarchy') => void;
   getRegisteredFiles: () => FileMetadata[];
   getSortedFilteredFiles: () => FileMetadata[];
   getDuplicateGroups: () => Map<string, FileMetadata[]>;
+  getFilesByFolder: () => Map<string, FileMetadata[]>;
   refreshFileRegistry: () => void;
 }
 

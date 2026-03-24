@@ -38,5 +38,6 @@ export interface CanvasStoreState {
   fileRegistryOpen: boolean;
   fileRegistrySort: { field: 'name' | 'type' | 'size' | 'date'; direction: 'asc' | 'desc' };
   fileRegistrySearch: string;
+  fileRegistryViewMode: 'flat' | 'hierarchy';
   _fileRegistryVersion: number;
 }

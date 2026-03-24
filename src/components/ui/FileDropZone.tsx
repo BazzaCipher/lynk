@@ -1,3 +1,5 @@
+import { useState, useRef } from 'react';
+
 interface FileDropZoneProps {
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onDrop: (e: React.DragEvent<HTMLDivElement>) => void;
@@ -5,6 +7,7 @@ interface FileDropZoneProps {
   accept?: string;
   compact?: boolean;
   onPickFromRegistry?: () => void;
+  allowFolders?: boolean;
 }
 
 export function FileDropZone({
@@ -14,13 +17,45 @@ export function FileDropZone({
   accept = 'image/*,application/pdf',
   compact = false,
   onPickFromRegistry,
+  allowFolders = false,
 }: FileDropZoneProps) {
+  const [isDragActive, setIsDragActive] = useState(false);
+  const dragCounter = useRef(0);
+  const folderInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current++;
+    if (dragCounter.current === 1) setIsDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragCounter.current--;
+    if (dragCounter.current === 0) setIsDragActive(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    dragCounter.current = 0;
+    setIsDragActive(false);
+    onDrop(e);
+  };
+
   return (
-    <div onDrop={onDrop} onDragOver={onDragOver}>
+    <div
+      onDrop={handleDrop}
+      onDragOver={onDragOver}
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+    >
       <label
         className={`
           flex flex-col items-center justify-center cursor-pointer
-          hover:bg-gray-50 transition-colors rounded border-2 border-dashed border-gray-300
+          transition-colors rounded border-2 border-dashed
+          ${isDragActive
+            ? 'border-indigo-400 bg-indigo-50'
+            : 'border-gray-300 hover:bg-gray-50'
+          }
           ${compact ? 'h-28 p-2' : 'h-32 p-4'}
         `}
       >
@@ -33,7 +68,7 @@ export function FileDropZone({
         {/* Combined document/image icon */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className={`text-gray-300 mb-2 ${compact ? 'h-8 w-8' : 'h-10 w-10'}`}
+          className={`${isDragActive ? 'text-indigo-400' : 'text-gray-300'} mb-2 ${compact ? 'h-8 w-8' : 'h-10 w-10'}`}
           viewBox="0 0 24 24"
           fill="currentColor"
         >
@@ -49,25 +84,54 @@ export function FileDropZone({
             d="M8 12l2 3 2-2 3 4H7l1-5z"
           />
         </svg>
-        <div className={`text-gray-400 text-center ${compact ? 'text-xs' : 'text-sm'}`}>
-          <p>Drop a file or click to browse</p>
-          {!compact && (
-            <p className="text-xs mt-1 text-gray-300">PDF or image</p>
+        <div className={`${isDragActive ? 'text-indigo-500' : 'text-gray-400'} text-center ${compact ? 'text-xs' : 'text-sm'}`}>
+          {isDragActive ? (
+            <p>Release to upload</p>
+          ) : (
+            <>
+              <p>Drop a file{allowFolders ? ' or folder' : ''} or click to browse</p>
+              {!compact && (
+                <p className="text-xs mt-1 text-gray-300">PDF or image</p>
+              )}
+            </>
           )}
         </div>
       </label>
-      {onPickFromRegistry && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onPickFromRegistry();
-          }}
-          className="w-full mt-1 text-[10px] text-indigo-500 hover:text-indigo-700 text-center py-0.5"
-        >
-          or choose from loaded files
-        </button>
-      )}
+      <div className="flex items-center justify-center gap-2 mt-1">
+        {allowFolders && (
+          <>
+            <input
+              ref={folderInputRef}
+              type="file"
+              onChange={onFileSelect}
+              className="hidden"
+              {...({ webkitdirectory: '', directory: '' } as any)}
+            />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                folderInputRef.current?.click();
+              }}
+              className="text-[10px] text-indigo-500 hover:text-indigo-700 py-0.5"
+            >
+              upload folder
+            </button>
+          </>
+        )}
+        {onPickFromRegistry && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPickFromRegistry();
+            }}
+            className="text-[10px] text-indigo-500 hover:text-indigo-700 py-0.5"
+          >
+            or choose from loaded files
+          </button>
+        )}
+      </div>
     </div>
   );
 }
