@@ -172,7 +172,7 @@ function FileEntryRow({
 
   return (
     <div
-      className="p-2 border-b border-gray-100 hover:bg-gray-50"
+      className="p-2 border-b border-gray-100 hover:bg-blue-50"
       draggable
       onDragStart={(e) => startFileDrag(e, meta.fileId)}
       onDoubleClick={(e) => {
@@ -297,7 +297,7 @@ function CompactFileRow({
 
   return (
     <div
-      className="flex items-center gap-1.5 py-1 px-2 hover:bg-gray-50 group"
+      className="flex items-center gap-1.5 py-1 px-2 hover:bg-blue-50 group"
       style={{ paddingLeft: `${12 + depth * 16}px` }}
       draggable
       onDragStart={(e) => startFileDrag(e, meta.fileId)}
@@ -435,7 +435,7 @@ function VirtualFolderNode({
   return (
     <div>
       <div
-        className={`flex items-center gap-1 py-1 px-2 hover:bg-gray-50 group cursor-pointer transition-colors ${
+        className={`flex items-center gap-1 py-1 px-2 hover:bg-blue-50 group cursor-pointer transition-colors ${
           isDragTarget ? 'bg-indigo-50 outline outline-1 outline-indigo-300' : ''
         }`}
         style={{ paddingLeft: `${4 + depth * 16}px` }}
@@ -456,14 +456,16 @@ function VirtualFolderNode({
         </svg>
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className={`h-3.5 w-3.5 shrink-0 ${isDragTarget ? 'text-indigo-500' : 'text-amber-500'}`}
-          viewBox="0 0 20 20"
-          fill="currentColor"
+          className={`h-3.5 w-3.5 shrink-0 transition-colors ${isDragTarget ? 'text-indigo-500' : expanded ? 'text-amber-400' : 'text-amber-500'}`}
+          viewBox="0 0 24 24"
+          fill={expanded ? 'none' : 'currentColor'}
+          stroke={expanded ? 'currentColor' : 'none'}
+          strokeWidth={expanded ? 1.5 : 0}
         >
           {expanded ? (
-            <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v1H4a1 1 0 00-1 1l-1 6V6z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" />
           ) : (
-            <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+            <path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.146V6a3 3 0 013-3h5.379a2.25 2.25 0 011.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 013 3v1.146A4.483 4.483 0 0019.5 9h-15a4.483 4.483 0 00-3 1.146z" />
           )}
         </svg>
         <EditableLabel
@@ -765,17 +767,19 @@ export function FileRegistryPanel() {
     [createVirtualFolder]
   );
 
-  if (!fileRegistryOpen) return null;
-
   return (
     <div
-      className="absolute top-0 right-0 h-full w-72 bg-white shadow-lg border-l border-gray-200 z-20 flex flex-col"
+      className={`absolute top-0 right-0 h-full bg-white shadow-lg border-l border-gray-200 z-20 flex flex-col transition-all duration-300 ease-in-out ${
+        fileRegistryOpen ? 'w-72 opacity-100 translate-x-0' : 'w-0 opacity-0 translate-x-full'
+      }`}
       onDoubleClick={(e) => e.stopPropagation()}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); }}
+      style={{ pointerEvents: fileRegistryOpen ? 'auto' : 'none' }}
     >
+      <div className="min-w-[18rem] flex flex-col h-full">
       {/* Header */}
       <div className="p-3 border-b border-gray-200 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -894,6 +898,7 @@ export function FileRegistryPanel() {
             />
           ))
         )}
+      </div>
       </div>
     </div>
   );

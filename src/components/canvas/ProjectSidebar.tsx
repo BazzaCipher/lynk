@@ -40,10 +40,15 @@ export function ProjectSidebar({
   const { showToast } = useToast();
   const canvasName = useCanvasStore((state) => state.canvasName);
 
-  if (!open) return null;
-
   return (
-    <div className="h-full w-64 bg-white border-r border-gray-200 flex flex-col shrink-0">
+    <div
+      className="h-full shrink-0 overflow-hidden transition-[max-width] duration-300 ease-in-out"
+      style={{
+        maxWidth: open ? '16rem' : '0',
+        pointerEvents: open ? 'auto' : 'none',
+      }}
+    >
+      <div className="w-64 h-full bg-white border-r border-gray-200 flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
         <h2 className="text-sm font-semibold text-gray-700">Projects</h2>
@@ -85,7 +90,7 @@ export function ProjectSidebar({
               className={`mx-2 mb-1 rounded-lg transition-colors ${
                 isActive
                   ? 'bg-indigo-50 border border-indigo-200'
-                  : 'hover:bg-gray-50 border border-transparent'
+                  : 'hover:bg-blue-50 border border-transparent'
               }`}
             >
               <button
@@ -145,6 +150,7 @@ export function ProjectSidebar({
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );

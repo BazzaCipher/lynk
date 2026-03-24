@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- Background -->
+  <rect width="400" height="300" fill="white"/>
+
+  <!-- Technical grid lines - subtle -->
+  <g stroke="#FDEBD0" stroke-width="0.5" opacity="0.4">
+    <line x1="0" y1="60" x2="400" y2="60"/>
+    <line x1="0" y1="120" x2="400" y2="120"/>
+    <line x1="0" y1="180" x2="400" y2="180"/>
+    <line x1="0" y1="240" x2="400" y2="240"/>
+    <line x1="80" y1="0" x2="80" y2="300"/>
+    <line x1="160" y1="0" x2="160" y2="300"/>
+    <line x1="240" y1="0" x2="240" y2="300"/>
+    <line x1="320" y1="0" x2="320" y2="300"/>
+  </g>
+
+  <!-- Connection edges (graph lines) behind the lynx -->
+  <g stroke="#E8752A" stroke-width="1.5" opacity="0.25">
+    <line x1="52" y1="188" x2="95" y2="145"/>
+    <line x1="95" y1="145" x2="140" y2="120"/>
+    <line x1="140" y1="120" x2="185" y2="105"/>
+    <line x1="185" y1="105" x2="230" y2="95"/>
+    <line x1="230" y1="95" x2="275" y2="108"/>
+    <line x1="275" y1="108" x2="310" y2="130"/>
+    <line x1="310" y1="130" x2="348" y2="168"/>
+    <line x1="95" y1="145" x2="120" y2="190"/>
+    <line x1="230" y1="95" x2="260" y2="60"/>
+    <line x1="275" y1="108" x2="340" y2="90"/>
+    <line x1="140" y1="120" x2="110" y2="80"/>
+    <line x1="185" y1="105" x2="185" y2="60"/>
+    <line x1="310" y1="130" x2="360" y2="120"/>
+  </g>
+
+  <!-- Lynx body - leaping side profile, built from geometric paths -->
+  <g fill="none" stroke="#D35400" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+
+    <!-- Main body outline -->
+    <path d="
+      M 100,155
+      L 120,138
+      L 140,125
+      L 160,118
+      L 185,112
+      L 210,110
+      L 235,112
+      L 258,118
+      L 278,128
+      L 295,140
+      L 305,152
+      L 310,165
+      L 305,178
+      L 295,188
+      L 278,195
+      L 258,198
+      L 235,198
+      L 210,196
+      L 185,192
+      L 160,186
+      L 140,178
+      L 120,168
+      L 100,155
+      Z
+    " fill="#E8752A" fill-opacity="0.08"/>
+
+    <!-- Head -->
+    <path d="
+      M 295,140
+      L 310,130
+      L 325,118
+      L 338,112
+      L 348,115
+      L 352,125
+      L 350,138
+      L 342,148
+      L 330,155
+      L 318,158
+      L 305,152
+    " fill="#E8752A" fill-opacity="0.12"/>
+
+    <!-- Ear tufts (lynx characteristic) -->
+    <path d="M 325,118 L 320,98 L 330,108" fill="#D35400" fill-opacity="0.15"/>
+    <path d="M 338,112 L 340,92 L 345,105" fill="#D35400" fill-opacity="0.15"/>
+    <!-- Ear tuft tips -->
+    <line x1="320" y1="98" x2="317" y2="88" stroke="#D35400" stroke-width="2"/>
+    <line x1="340" y1="92" x2="342" y2="82" stroke="#D35400" stroke-width="2"/>
+
+    <!-- Eye -->
+    <circle cx="340" cy="132" r="4" fill="#D35400" stroke="none"/>
+    <circle cx="341" cy="131" r="1.5" fill="white" stroke="none"/>
+
+    <!-- Nose -->
+    <circle cx="352" cy="138" r="2" fill="#C0392B" stroke="none"/>
+
+    <!-- Whisker lines -->
+    <g stroke="#D35400" stroke-width="1" opacity="0.5">
+      <line x1="350" y1="136" x2="372" y2="130"/>
+      <line x1="350" y1="139" x2="374" y2="138"/>
+      <line x1="350" y1="142" x2="370" y2="148"/>
+    </g>
+
+    <!-- Front legs (leaping) -->
+    <path d="M 290,188 L 298,208 L 305,228 L 312,245" stroke-width="2.5"/>
+    <path d="M 270,195 L 275,215 L 282,238 L 290,252" stroke-width="2.5"/>
+
+    <!-- Back legs (leaping / pushed back) -->
+    <path d="M 140,178 L 125,195 L 112,215 L 105,235" stroke-width="2.5"/>
+    <path d="M 120,168 L 100,188 L 85,210 L 75,228" stroke-width="2.5"/>
+
+    <!-- Paws -->
+    <path d="M 312,245 L 320,248" stroke-width="2.5"/>
+    <path d="M 290,252 L 298,254" stroke-width="2.5"/>
+    <path d="M 105,235 L 97,238" stroke-width="2.5"/>
+    <path d="M 75,228 L 67,230" stroke-width="2.5"/>
+
+    <!-- Tail (short bobbed - lynx style) -->
+    <path d="M 100,155 L 82,148 L 68,145 L 60,148" stroke-width="3" fill="none"/>
+  </g>
+
+  <!-- Graph nodes overlaid on the lynx structure -->
+  <g fill="white" stroke="#D35400" stroke-width="2">
+    <circle cx="100" cy="155" r="4"/>
+    <circle cx="140" cy="125" r="3.5"/>
+    <circle cx="185" cy="112" r="4"/>
+    <circle cx="230" cy="112" r="3.5"/>
+    <circle cx="275" cy="128" r="4"/>
+    <circle cx="305" cy="152" r="3.5"/>
+    <circle cx="348" cy="115" r="3"/>
+    <circle cx="258" cy="198" r="3"/>
+    <circle cx="160" cy="186" r="3"/>
+  </g>
+
+  <!-- Floating graph nodes (ambient) -->
+  <g fill="#E8752A" fill-opacity="0.2" stroke="#D35400" stroke-width="1.5">
+    <circle cx="52" cy="188" r="3"/>
+    <circle cx="110" cy="80" r="2.5"/>
+    <circle cx="185" cy="60" r="2.5"/>
+    <circle cx="260" cy="60" r="2.5"/>
+    <circle cx="340" cy="90" r="2.5"/>
+    <circle cx="360" cy="120" r="2.5"/>
+    <circle cx="120" cy="190" r="2.5"/>
+  </g>
+
+  <!-- "LYNK" text -->
+  <text x="200" y="282" text-anchor="middle" font-family="'Inter', 'Helvetica Neue', Arial, sans-serif" font-size="32" font-weight="700" letter-spacing="8" fill="#D35400">LYNK</text>
+</svg>
