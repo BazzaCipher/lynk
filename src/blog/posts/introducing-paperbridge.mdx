@@ -1,0 +1,43 @@
+---
+title: "Introducing Paperbridge: Visual Document Data Extraction"
+description: "Meet Paperbridge — a node-based canvas that turns static PDFs and images into structured, calculated data. No code required."
+date: "2026-03-25"
+slug: "introducing-paperbridge"
+---
+
+# Introducing Paperbridge
+
+Extracting data from documents shouldn't require writing scripts or configuring complex pipelines. **Paperbridge** is a visual canvas where you drop documents, draw regions to extract data, and wire everything together with calculations — all without writing a single line of code.
+
+## The Problem
+
+Every organization deals with documents: invoices, receipts, contracts, reports. Getting structured data out of these documents typically means:
+
+- Manual data entry (slow, error-prone)
+- Custom scripts for each document type (brittle, hard to maintain)
+- Expensive enterprise OCR platforms (overkill for many use cases)
+
+## How Paperbridge Works
+
+Paperbridge takes a fundamentally different approach. Instead of writing extraction rules in code, you work on a **visual canvas**:
+
+1. **Drop a document** — Upload a PDF or image directly onto the canvas
+2. **Draw extraction regions** — Select the areas containing the data you need. OCR runs automatically and detects value types (strings, numbers, currencies, dates)
+3. **Connect and calculate** — Wire extracted values to calculation nodes (SUM, AVERAGE, MIN, MAX) and organize results into sheets
+
+The entire workflow is visible on a single canvas. You can see exactly where your data comes from, how it's transformed, and where it ends up.
+
+## Key Features
+
+### OCR with Type Detection
+Paperbridge doesn't just extract text — it understands what it's extracting. A value like `$4,200.00` is automatically recognized as a currency, while `2026-01-15` is detected as a date. This means calculations just work without manual type conversion.
+
+### Node-Based Calculations
+Connect any extracted value to calculation nodes. Need to sum all invoice line items? Wire them to a SUM node. Want to find the maximum across multiple documents? Use a MAX node. Results update in real time as you adjust connections.
+
+### Reusable Workflows
+Save your canvas as a `.pb` file and reuse it as a template. When a new batch of similar documents arrives, load the template, swap the documents, and your entire extraction pipeline is ready.
+
+## Get Started
+
+Paperbridge runs entirely in your browser — no installation, no accounts. Head to the [canvas](/canvas) and try it with your own documents.

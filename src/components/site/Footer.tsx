@@ -7,8 +7,8 @@ export function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           {/* Brand */}
           <Link to="/" className="flex items-center gap-2">
-            <img src="/logo-lynk.jpg" alt="Lynk" className="w-6 h-6 rounded-md object-cover" />
-            <span className="text-sm font-semibold text-gray-700">Lynk</span>
+            <img src="/logo-lynk.jpg" alt="Paperbridge" className="h-6 rounded-md object-contain" />
+            <span className="text-sm font-semibold text-gray-700">Paperbridge</span>
           </Link>
 
           {/* Links */}
@@ -16,9 +16,6 @@ export function Footer() {
             <Link to="/canvas" className="hover:text-gray-600 transition-colors">
               Canvas
             </Link>
-            <a href="#features" className="hover:text-gray-600 transition-colors">
-              Features
-            </a>
             <Link to="/blog" className="hover:text-gray-600 transition-colors">
               Blog
             </Link>

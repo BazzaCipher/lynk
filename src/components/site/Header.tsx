@@ -9,18 +9,12 @@ export function Header() {
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <img src="/logo-lynk.jpg" alt="Lynk" className="w-8 h-8 rounded-lg object-cover" />
-          <span className="text-xl font-bold text-gray-900 tracking-tight">Lynk</span>
+          <img src="/logo-lynk.jpg" alt="Paperbridge" className="h-8 rounded-lg object-contain" />
+          <span className="text-xl font-bold text-gray-900 tracking-tight">Paperbridge</span>
         </Link>
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-8">
-          <a href="#features" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-            Features
-          </a>
-          <a href="#how-it-works" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-            How it Works
-          </a>
           <Link to="/blog" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
             Blog
           </Link>
@@ -51,20 +45,6 @@ export function Header() {
       {/* Mobile menu */}
       {mobileOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white px-6 py-4 space-y-3">
-          <a
-            href="#features"
-            onClick={() => setMobileOpen(false)}
-            className="block text-sm text-gray-600 hover:text-gray-900"
-          >
-            Features
-          </a>
-          <a
-            href="#how-it-works"
-            onClick={() => setMobileOpen(false)}
-            className="block text-sm text-gray-600 hover:text-gray-900"
-          >
-            How it Works
-          </a>
           <Link
             to="/blog"
             onClick={() => setMobileOpen(false)}

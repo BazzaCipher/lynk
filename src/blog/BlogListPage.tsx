@@ -7,13 +7,13 @@ export function BlogListPage() {
     <>
       <SEO
         title="Blog"
-        description="Articles about document data extraction, OCR, and visual workflows from the Lynk team."
+        description="Articles about document data extraction, OCR, and visual workflows from the Paperbridge team."
       />
 
       <section className="max-w-3xl mx-auto px-6 py-16 md:py-24">
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">Blog</h1>
         <p className="mt-3 text-lg text-gray-500">
-          Guides, tips, and updates from the Lynk team.
+          Guides, tips, and updates from the Paperbridge team.
         </p>
 
         <div className="mt-12 space-y-10">

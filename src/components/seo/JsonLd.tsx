@@ -4,7 +4,7 @@ export function SoftwareAppJsonLd() {
   const data = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: 'Lynk',
+    name: 'Paperbridge',
     description:
       'A visual canvas for extracting data from PDFs and images, connecting it through calculations, and building reusable document processing workflows.',
     applicationCategory: 'BusinessApplication',
@@ -40,7 +40,7 @@ export function BlogPostJsonLd({ title, description, date, url }: BlogPostJsonLd
     ...(url && { url }),
     publisher: {
       '@type': 'Organization',
-      name: 'Lynk',
+      name: 'Paperbridge',
     },
   };
 

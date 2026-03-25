@@ -9,9 +9,9 @@ interface SEOProps {
   publishedTime?: string;
 }
 
-const SITE_NAME = 'Lynk';
+const SITE_NAME = 'Paperbridge';
 const DEFAULT_DESCRIPTION =
-  'Lynk is a visual canvas for extracting data from PDFs and images, connecting it through calculations, and building reusable document processing workflows.';
+  'Paperbridge is a visual canvas for extracting data from PDFs and images, connecting it through calculations, and building reusable document processing workflows.';
 
 export function SEO({
   title,

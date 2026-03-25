@@ -3,4 +3,4 @@ Allow: /
 Allow: /blog
 Disallow: /canvas
 
-Sitemap: https://example.com/sitemap.xml
+Sitemap: https://paperbridge.com.au/sitemap.xml

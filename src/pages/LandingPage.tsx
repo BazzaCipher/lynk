@@ -38,7 +38,7 @@ function HeroCanvas() {
           </div>
           <div className="flex-1 mx-8">
             <div className="h-6 bg-gray-50 rounded-md border border-gray-100 max-w-xs mx-auto flex items-center justify-center">
-              <span className="text-[10px] text-gray-400 font-medium">lynk / canvas</span>
+              <span className="text-[10px] text-gray-400 font-medium">paperbridge / canvas</span>
             </div>
           </div>
         </div>
@@ -227,13 +227,44 @@ const features = [
       </svg>
     ),
   },
+  {
+    title: 'Smart Type Detection',
+    description:
+      'Extracted values are automatically classified as strings, numbers, currencies, or dates. No manual mapping required.',
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Sheets & Groups',
+    description:
+      'Organize extracted data into spreadsheet-like sheets. Group related nodes together to keep complex canvases clean.',
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M10.875 12c-.621 0-1.125.504-1.125 1.125M12 12c.621 0 1.125.504 1.125 1.125m0 0v1.5c0 .621-.504 1.125-1.125 1.125m-1.125-2.625c0 .621-.504 1.125-1.125 1.125" />
+      </svg>
+    ),
+  },
+  {
+    title: 'Export Anywhere',
+    description:
+      'Save your entire canvas as a portable .pb file. Share workflows with teammates or archive them for later.',
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+      </svg>
+    ),
+  },
 ];
 
 const steps = [
   {
     num: '01',
     title: 'Drop a document',
-    description: 'Upload a PDF or image directly onto the canvas. Lynk handles the rendering and page navigation.',
+    description: 'Upload a PDF or image directly onto the canvas. Paperbridge handles the rendering and page navigation.',
   },
   {
     num: '02',
@@ -259,6 +290,10 @@ export function LandingPage() {
       <section className="relative overflow-hidden">
         <div className="max-w-6xl mx-auto px-6 pt-20 pb-24 md:pt-28 md:pb-32">
           <div className="max-w-3xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-xs font-medium mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+              Free &amp; open — runs entirely in your browser
+            </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 leading-[1.1]">
               Extract and process
               <br />
@@ -268,23 +303,23 @@ export function LandingPage() {
               </span>
             </h1>
             <p className="mt-6 text-lg md:text-xl text-gray-500 leading-relaxed max-w-2xl mx-auto">
-              Lynk is a visual canvas for extracting data from PDFs and images,
-              connecting it through calculations, and building reusable document
-              processing workflows.
+              Drop PDFs and images onto a node-based canvas. Draw regions, extract data with OCR,
+              wire it through calculations, and build reusable document workflows — no code, no server.
             </p>
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link
                 to="/canvas"
-                className="px-8 py-3.5 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
+                className="group px-8 py-3.5 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 hover:-translate-y-0.5"
               >
                 Open Canvas
+                <span className="inline-block ml-2 transition-transform group-hover:translate-x-0.5">&rarr;</span>
               </Link>
-              <a
-                href="#how-it-works"
+              <Link
+                to="/blog"
                 className="px-8 py-3.5 text-sm font-semibold text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
               >
-                See how it works
-              </a>
+                Read the blog
+              </Link>
             </div>
           </div>
 
@@ -298,10 +333,28 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* Stats strip */}
+      <section className="border-y border-gray-100 bg-white">
+        <div className="max-w-5xl mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          {[
+            { value: '100%', label: 'Client-side' },
+            { value: '0', label: 'Dependencies on servers' },
+            { value: '6+', label: 'Node types' },
+            { value: '.pb', label: 'Portable file format' },
+          ].map((s) => (
+            <div key={s.label}>
+              <div className="text-2xl md:text-3xl font-bold text-gray-900">{s.value}</div>
+              <div className="mt-1 text-sm text-gray-500">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Features */}
-      <section id="features" className="py-20 md:py-28 bg-gray-50/50">
+      <section className="py-20 md:py-28 bg-gray-50/50">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-14">
+            <p className="text-sm font-semibold text-blue-600 uppercase tracking-wider mb-3">Capabilities</p>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">
               Everything you need to extract document data
             </h2>
@@ -310,13 +363,13 @@ export function LandingPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((f) => (
               <div
                 key={f.title}
-                className="bg-white rounded-xl border border-gray-100 p-6 hover:shadow-md hover:border-gray-200 transition-all"
+                className="group bg-white rounded-xl border border-gray-100 p-6 hover:shadow-lg hover:border-gray-200 hover:-translate-y-0.5 transition-all duration-200"
               >
-                <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
+                <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mb-4 group-hover:bg-blue-100 transition-colors">
                   {f.icon}
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">{f.title}</h3>
@@ -328,43 +381,87 @@ export function LandingPage() {
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-20 md:py-28">
+      <section className="py-20 md:py-28">
         <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-14">
+          <div className="text-center mb-16">
+            <p className="text-sm font-semibold text-blue-600 uppercase tracking-wider mb-3">How it works</p>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">
               Three steps to structured data
             </h2>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 md:gap-12">
-            {steps.map((s) => (
-              <div key={s.num} className="text-center md:text-left">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-600 text-white text-sm font-bold mb-4">
-                  {s.num}
+          {/* Steps with connecting edges */}
+          <div className="relative max-w-4xl mx-auto">
+            {/* Connecting lines (desktop only) */}
+            <div className="hidden md:block absolute top-6 left-0 right-0 z-0">
+              <svg className="w-full" height="12" preserveAspectRatio="none" viewBox="0 0 100 12">
+                <defs>
+                  <linearGradient id="edge-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.2" />
+                    <stop offset="50%" stopColor="#3b82f6" stopOpacity="0.5" />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.2" />
+                  </linearGradient>
+                </defs>
+                {/* Line from step 1 to step 2 */}
+                <line x1="20" y1="6" x2="50" y2="6" stroke="url(#edge-grad)" strokeWidth="2" strokeDasharray="4 3" />
+                {/* Line from step 2 to step 3 */}
+                <line x1="50" y1="6" x2="80" y2="6" stroke="url(#edge-grad)" strokeWidth="2" strokeDasharray="4 3" />
+                {/* Arrow dots */}
+                <circle cx="35" cy="6" r="2" fill="#3b82f6" opacity="0.4" />
+                <circle cx="65" cy="6" r="2" fill="#3b82f6" opacity="0.4" />
+              </svg>
+            </div>
+
+            {/* Mobile connecting lines */}
+            <div className="md:hidden absolute left-6 top-12 bottom-12 w-px z-0">
+              <div className="w-full h-full border-l-2 border-dashed border-blue-200" />
+            </div>
+
+            <div className="relative z-10 grid md:grid-cols-3 gap-10 md:gap-8">
+              {steps.map((s) => (
+                <div key={s.num} className="flex md:flex-col items-start md:items-center md:text-center gap-4 md:gap-0">
+                  <div className="shrink-0 flex items-center justify-center w-12 h-12 rounded-full bg-blue-600 text-white text-sm font-bold shadow-lg shadow-blue-600/20">
+                    {s.num}
+                  </div>
+                  <div className="md:mt-5">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{s.title}</h3>
+                    <p className="text-sm text-gray-500 leading-relaxed">{s.description}</p>
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{s.title}</h3>
-                <p className="text-sm text-gray-500 leading-relaxed">{s.description}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-20 md:py-24 bg-gradient-to-br from-blue-600 to-indigo-700">
-        <div className="max-w-3xl mx-auto px-6 text-center">
+      <section className="relative py-20 md:py-24 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 overflow-hidden">
+        {/* Decorative glow */}
+        <div className="absolute inset-0 -z-0">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-white/5 rounded-full blur-3xl" />
+        </div>
+        <div className="relative max-w-3xl mx-auto px-6 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
             Ready to extract?
           </h2>
-          <p className="mt-4 text-lg text-blue-100">
-            Start with a blank canvas or pick a template to get going in seconds.
+          <p className="mt-4 text-lg text-blue-100 max-w-xl mx-auto">
+            No sign-up, no server. Open the canvas and start building document workflows in seconds.
           </p>
-          <Link
-            to="/canvas"
-            className="inline-block mt-8 px-8 py-3.5 text-sm font-semibold bg-white text-blue-700 rounded-xl hover:bg-blue-50 transition-colors shadow-lg"
-          >
-            Open Canvas
-          </Link>
+          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              to="/canvas"
+              className="group px-8 py-3.5 text-sm font-semibold bg-white text-blue-700 rounded-xl hover:bg-blue-50 transition-all shadow-lg hover:-translate-y-0.5"
+            >
+              Open Canvas
+              <span className="inline-block ml-2 transition-transform group-hover:translate-x-0.5">&rarr;</span>
+            </Link>
+            <Link
+              to="/blog"
+              className="px-8 py-3.5 text-sm font-semibold text-white/90 border border-white/20 rounded-xl hover:bg-white/10 transition-colors"
+            >
+              Learn more
+            </Link>
+          </div>
         </div>
       </section>
     </>
