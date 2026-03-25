@@ -24,6 +24,8 @@ interface FileNodePreviewProps {
   pdfError?: string | null;
   mimeType?: string;
   fileSize?: number;
+  compressed?: boolean;
+  onCompressToggle?: () => void;
 }
 
 function ConvertIcon({ type }: { type: 'document' | 'image' }) {
@@ -60,14 +62,16 @@ export function FileNodePreview({
   pdfError,
   mimeType,
   fileSize,
+  compressed = false,
+  onCompressToggle,
 }: FileNodePreviewProps) {
   const resolvedMimeType = mimeType || (fileType === 'pdf' ? 'application/pdf' : 'image/png');
   const typeColor = getFileTypeColor(resolvedMimeType);
 
   return (
     <div className="border-b border-paper-100" style={{ borderLeft: `3px solid ${typeColor.border}` }}>
-      {/* Optional thumbnail */}
-      {showThumbnail && (
+      {/* Optional thumbnail - hidden when compressed */}
+      {showThumbnail && !compressed && (
         <div
           className="relative cursor-pointer hover:opacity-90 transition-opacity"
           onClick={onOpenClick}
@@ -167,6 +171,22 @@ export function FileNodePreview({
           >
             <ConvertIcon type={convertIcon} />
           </button>
+          {onCompressToggle && (
+            <button
+              onClick={onCompressToggle}
+              className="px-2 py-1.5 text-xs bg-paper-100 text-bridge-700 rounded hover:bg-paper-200 transition-colors flex items-center justify-center gap-1"
+              title={compressed ? 'Expand node' : 'Compress node'}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                {compressed ? (
+                  <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                ) : (
+                  <path fillRule="evenodd" d="M3 7a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 6a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                )}
+              </svg>
+            </button>
+          )}
+
         </div>
       </div>
     </div>

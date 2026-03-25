@@ -297,7 +297,7 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
             />
             {/* Result value */}
             {result ? (
-              <span className="font-mono font-medium text-sm">
+              <span className="font-mono font-medium text-sm bg-paper-100 px-1.5 py-0.5 rounded">
                 {displayValue(result.value, result.dataType)}
               </span>
             ) : (

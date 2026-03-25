@@ -73,11 +73,12 @@ export function LynkCanvas() {
   const storeOnEdgesChange = useCanvasStore((state) => state.onEdgesChange);
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
   const storeAddEdge = useCanvasStore((state) => state.addEdge);
+  const removeEdge = useCanvasStore((state) => state.removeEdge);
   const setViewport = useCanvasStore((state) => state.setViewport);
   const canvasId = useCanvasStore((state) => state.canvasId);
   const canvasName = useCanvasStore((state) => state.canvasName);
   const { showToast } = useToast();
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView, getNodes } = useReactFlow();
 
   // Keyboard shortcuts (Delete, Ctrl+S, Ctrl+Z, Ctrl+G, etc.)
   useKeyboardShortcuts();
@@ -137,6 +138,57 @@ export function LynkCanvas() {
       });
     },
     [screenToFlowPosition]
+  );
+
+  // Double-click on edge: navigate to the closer node (source or target)
+  const handleEdgeDoubleClick = useCallback(
+    (event: React.MouseEvent, edge: Edge) => {
+      const sourceNode = getNodes().find((n) => n.id === edge.source);
+      const targetNode = getNodes().find((n) => n.id === edge.target);
+      if (!sourceNode || !targetNode) return;
+
+      const clickPos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+
+      // Calculate center of each node
+      const sourceCenter = {
+        x: sourceNode.position.x + (sourceNode.measured?.width ?? 200) / 2,
+        y: sourceNode.position.y + (sourceNode.measured?.height ?? 100) / 2,
+      };
+      const targetCenter = {
+        x: targetNode.position.x + (targetNode.measured?.width ?? 200) / 2,
+        y: targetNode.position.y + (targetNode.measured?.height ?? 100) / 2,
+      };
+
+      const distToSource = Math.hypot(clickPos.x - sourceCenter.x, clickPos.y - sourceCenter.y);
+      const distToTarget = Math.hypot(clickPos.x - targetCenter.x, clickPos.y - targetCenter.y);
+
+      const closerNodeId = distToSource <= distToTarget ? edge.source : edge.target;
+      fitView({ nodes: [{ id: closerNodeId }], duration: 300, padding: 0.5 });
+    },
+    [screenToFlowPosition, fitView, getNodes]
+  );
+
+  // Right-click on a selected edge: flash red then delete
+  const handleEdgeContextMenu = useCallback(
+    (event: React.MouseEvent, edge: Edge) => {
+      if (!edge.selected) return;
+      event.preventDefault();
+
+      // Flash edge red before deleting
+      const edgeEl = document.querySelector(`[data-testid="rf__edge-${edge.id}"]`)
+        ?? document.querySelector(`.react-flow__edge[data-id="${edge.id}"]`);
+      if (edgeEl) {
+        const path = edgeEl.querySelector('path');
+        if (path) {
+          path.style.stroke = '#ef4444';
+          path.style.strokeWidth = '3';
+          path.style.filter = 'drop-shadow(0 0 4px rgba(239, 68, 68, 0.5))';
+        }
+      }
+
+      setTimeout(() => removeEdge(edge.id), 150);
+    },
+    [removeEdge]
   );
 
   // Wrap onEdgesChange to clean up viewport regions when edges are deleted
@@ -443,6 +495,8 @@ export function LynkCanvas() {
           onNodeDragStop={onNodeDragStop}
           onNodeContextMenu={handleNodeContextMenu}
           onPaneContextMenu={handlePaneContextMenu}
+          onEdgeDoubleClick={handleEdgeDoubleClick}
+          onEdgeContextMenu={handleEdgeContextMenu}
           nodeTypes={nodeTypes}
           isValidConnection={isValidConnection}
           connectionLineComponent={ConnectionLine}

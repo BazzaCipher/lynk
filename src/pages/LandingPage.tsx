@@ -313,12 +313,6 @@ export function LandingPage() {
                 Open Canvas
                 <span className="inline-block ml-2 transition-transform group-hover:translate-x-0.5">&rarr;</span>
               </Link>
-              <Link
-                to="/blog"
-                className="px-8 py-3.5 text-sm font-semibold text-bridge-700 bg-paper-100 rounded-xl hover:bg-paper-200 transition-colors"
-              >
-                Read the blog
-              </Link>
             </div>
           </div>
 

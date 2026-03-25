@@ -558,7 +558,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
 
   return (
     <>
-      <BaseNode label={data.label} selected={selected} className="w-[280px]">
+      <BaseNode label={data.label} selected={selected} className="w-[280px]" hideHeader={!!data.compressed}>
         {/* File info and open button */}
         <div
           onDrop={handleFileDrop}
@@ -584,6 +584,8 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
               pdfError={pdfError}
               mimeType={data.fileId ? BlobRegistry.getMetadata(data.fileId)?.mimeType : undefined}
               fileSize={data.fileId ? BlobRegistry.getMetadata(data.fileId)?.size : undefined}
+              compressed={!!data.compressed}
+              onCompressToggle={() => updateNodeData(id, { compressed: !data.compressed })}
             />
           ) : (
             <div className="p-2">

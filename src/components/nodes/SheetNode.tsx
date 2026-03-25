@@ -103,10 +103,10 @@ function EntryRow({
   }, [inputs, isHighlighted, onInputClick]);
 
   return (
-    <div className={`relative border-b border-paper-100 last:border-b-0 ${
+    <div className={`relative group/entry ${
       isOutputHighlighted ? 'bg-copper-400/20 ring-1 ring-copper-400 animate-pulse' : ''
     }`}>
-      {/* Handle overlays - absolutely positioned to span full row width for edge alignment */}
+      {/* Handle overlays */}
       <NodeEntry
         id={inputHandleId}
         handleType="target"
@@ -127,12 +127,16 @@ function EntryRow({
         <span className="sr-only">Output</span>
       </NodeEntry>
 
-      {/* Content row - padded to avoid overlapping handle hit areas */}
-      <div className="flex items-center gap-1 py-1 px-3 cursor-pointer" onClick={handleEntryClick}>
-        {/* Expand/collapse toggle */}
+      {/* Entry grid row — indented with left accent */}
+      <div
+        className="grid items-center py-1.5 pl-7 pr-4 ml-3 cursor-pointer hover:bg-paper-50/80 transition-colors border-b border-paper-100/60 border-l-2 border-l-paper-200 last:border-b-0"
+        style={{ gridTemplateColumns: '20px 1fr 60px 32px 70px 24px' }}
+        onClick={handleEntryClick}
+      >
+        {/* Expand toggle */}
         <button
           onClick={(e) => { e.stopPropagation(); onUpdateEntry(entry.id, { expanded: !entry.expanded }); }}
-          className="p-0.5 hover:bg-paper-100 rounded text-bridge-400"
+          className="p-0.5 hover:bg-paper-200 rounded text-bridge-400 hover:text-bridge-600 transition-colors"
           title={entry.expanded ? 'Collapse' : 'Expand'}
         >
           <svg
@@ -145,13 +149,14 @@ function EntryRow({
           </svg>
         </button>
 
-        {/* Editable label */}
+        {/* Label */}
         <EditableLabel
           value={entry.label}
           onSave={(newLabel) => onUpdateEntry(entry.id, { label: newLabel })}
+          className="text-xs text-bridge-700"
         />
 
-        {/* Operation selector */}
+        {/* Operation */}
         <OperationSelect
           value={entry.operation}
           onChange={(op) => onUpdateEntry(entry.id, { operation: op })}
@@ -159,18 +164,20 @@ function EntryRow({
           className="w-14"
         />
 
-        {/* Input count badge */}
-        <span className="text-xs text-bridge-400 w-5 text-center">{inputs.length}</span>
+        {/* Input count */}
+        <span className="text-[10px] text-bridge-400 text-center tabular-nums">
+          {inputs.length > 0 ? inputs.length : '—'}
+        </span>
 
         {/* Result */}
-        <span className="font-mono text-xs text-bridge-800 min-w-[50px] text-right">
+        <span className="font-mono text-xs text-bridge-800 text-right tabular-nums bg-paper-50 px-1.5 py-0.5 rounded">
           {resultDisplay}
         </span>
 
-        {/* Delete button */}
+        {/* Delete */}
         <button
           onClick={(e) => { e.stopPropagation(); onDeleteEntry(entry.id); }}
-          className="p-0.5 hover:bg-red-100 rounded text-bridge-400 hover:text-red-500"
+          className="p-0.5 rounded text-bridge-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover/entry:opacity-100 transition-all"
           title="Delete entry"
         >
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -181,7 +188,7 @@ function EntryRow({
 
       {/* Expanded input list */}
       {entry.expanded && inputs.length > 0 && (
-        <div className="bg-paper-50 border-t border-paper-100">
+        <div className="ml-3 border-l-2 border-l-paper-200 bg-paper-50/50 border-t border-paper-100/60">
           {inputs.map((input) => (
             <InputRow
               key={input.edgeId}
@@ -198,7 +205,7 @@ function EntryRow({
 
       {/* Empty state when expanded but no inputs */}
       {entry.expanded && inputs.length === 0 && (
-        <div className="bg-paper-50 border-t border-paper-100 px-6 py-2 text-xs text-bridge-400 italic">
+        <div className="ml-3 border-l-2 border-l-paper-200 bg-paper-50/50 border-t border-paper-100/60 px-6 py-2.5 text-xs text-bridge-400 italic">
           No inputs connected
         </div>
       )}
@@ -254,10 +261,10 @@ function SubheaderRow({
   const isSubheaderHighlighted = outputHighlights[`subheader-${subheader.id}`] ?? false;
 
   return (
-    <div className="border-b border-paper-200 last:border-b-0">
-      {/* Subheader header row with output handle */}
+    <div className="group/subheader">
+      {/* Subheader header row */}
       <div className={`relative ${isSubheaderHighlighted ? 'bg-copper-400/20 ring-1 ring-copper-400 animate-pulse' : ''}`}>
-        {/* Output handle overlay - absolutely positioned for edge alignment */}
+        {/* Output handle overlay */}
         <NodeEntry
           id={`subheader-${subheader.id}`}
           handleType="source"
@@ -268,63 +275,68 @@ function SubheaderRow({
           <span className="sr-only">Subheader Output</span>
         </NodeEntry>
 
-        {/* Subheader content row */}
-        <div className={`flex items-center gap-1 py-1.5 px-3 ${isSubheaderHighlighted ? '' : 'bg-paper-50'}`}>
-        {/* Collapse toggle */}
-        <button
-          onClick={() => onUpdateSubheader({ collapsed: !subheader.collapsed })}
-          className="p-0.5 hover:bg-paper-200 rounded text-bridge-500"
-          title={subheader.collapsed ? 'Expand' : 'Collapse'}
+        {/* Subheader content */}
+        <div
+          className={`grid items-center py-2 px-4 border-b border-paper-200 ${
+            isSubheaderHighlighted ? '' : 'bg-paper-100/60'
+          }`}
+          style={{ gridTemplateColumns: '20px 1fr 64px 32px 70px 24px' }}
         >
-          <svg
-            className={`w-4 h-4 transition-transform ${subheader.collapsed ? '' : 'rotate-90'}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+          {/* Collapse toggle */}
+          <button
+            onClick={() => onUpdateSubheader({ collapsed: !subheader.collapsed })}
+            className="p-0.5 hover:bg-paper-200 rounded text-bridge-500 transition-colors"
+            title={subheader.collapsed ? 'Expand' : 'Collapse'}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+            <svg
+              className={`w-3.5 h-3.5 transition-transform ${subheader.collapsed ? '' : 'rotate-90'}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
 
-        {/* Editable label */}
-        <EditableLabel
-          value={subheader.label}
-          onSave={(newLabel) => onUpdateSubheader({ label: newLabel })}
-          className="text-sm font-medium text-bridge-800"
-        />
+          {/* Label */}
+          <EditableLabel
+            value={subheader.label}
+            onSave={(newLabel) => onUpdateSubheader({ label: newLabel })}
+            className="text-sm font-semibold text-bridge-800"
+          />
 
-        {/* Operation selector */}
-        <OperationSelect
-          value={subheader.operation}
-          onChange={(op) => onUpdateSubheader({ operation: op })}
-          variant="compact"
-          className="w-16"
-        />
+          {/* Operation */}
+          <OperationSelect
+            value={subheader.operation}
+            onChange={(op) => onUpdateSubheader({ operation: op })}
+            variant="compact"
+            className="w-16"
+          />
 
-        {/* Entry count */}
-        <span className="text-xs text-bridge-400">
-          ({subheader.entries.length})
-        </span>
+          {/* Entry count */}
+          <span className="text-[10px] text-bridge-400 text-center">
+            {subheader.entries.length}
+          </span>
 
-        {/* Result */}
-        <span className="font-mono text-sm font-medium text-bridge-800 min-w-[60px] text-right">
-          {resultDisplay}
-        </span>
+          {/* Result */}
+          <span className="font-mono text-sm font-semibold text-bridge-900 text-right tabular-nums bg-paper-50 px-1.5 py-0.5 rounded">
+            {resultDisplay}
+          </span>
 
-        {/* Delete button */}
-        <button
-          onClick={onDeleteSubheader}
-          className="p-0.5 hover:bg-red-100 rounded text-bridge-400 hover:text-red-500"
-          title="Delete group"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+          {/* Delete */}
+          <button
+            onClick={onDeleteSubheader}
+            className="p-0.5 rounded text-bridge-300 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover/subheader:opacity-100 transition-all"
+            title="Delete group"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       </div>
 
-      {/* Entries (hidden when collapsed) */}
+      {/* Entries */}
       {!subheader.collapsed && (
         <div>
           {subheader.entries.map((entry) => (
@@ -344,11 +356,11 @@ function SubheaderRow({
             />
           ))}
 
-          {/* Add entry button */}
+          {/* Add entry */}
           <button
             onClick={onAddEntry}
-            className="w-full py-1.5 text-xs text-bridge-500 hover:text-copper-500 hover:bg-paper-50
-                       transition-colors flex items-center justify-center gap-1"
+            className="w-full py-1.5 text-xs text-bridge-400 hover:text-copper-500 hover:bg-copper-400/5
+                       transition-colors flex items-center justify-center gap-1 border-b border-paper-100/60"
           >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -612,13 +624,25 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
-    <BaseNode label={data.label} selected={selected} className="min-w-[280px]">
+    <BaseNode label={data.label} selected={selected} className="min-w-[360px]">
+      {/* Column headers */}
+      <div
+        className="grid items-center px-4 py-1 text-[10px] font-medium text-bridge-400 uppercase tracking-wider border-b border-paper-200 bg-paper-50/50"
+        style={{ gridTemplateColumns: '20px 1fr 60px 32px 70px 24px' }}
+      >
+        <span />
+        <span>Name</span>
+        <span className="text-center">Op</span>
+        <span className="text-center">#</span>
+        <span className="text-right">Value</span>
+        <span />
+      </div>
+
       <div>
         {data.subheaders.length === 0 ? (
-          <div className="px-4 py-6 text-center text-bridge-400 text-sm">
-            No groups yet.
-            <br />
-            <span className="text-xs">Click "Add Group" to create one.</span>
+          <div className="px-6 py-6 text-center text-bridge-400">
+            <p className="text-sm">No groups yet</p>
+            <p className="text-xs mt-0.5">Add a group to start building your sheet</p>
           </div>
         ) : (
           data.subheaders.map((subheader) => (
@@ -646,10 +670,10 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
       {/* Add Group button */}
       <button
         onClick={handleAddSubheader}
-        className="w-full py-2 text-sm text-bridge-600 hover:text-copper-500 hover:bg-copper-400/10
+        className="w-full py-2.5 text-xs text-bridge-500 hover:text-copper-500 hover:bg-copper-400/5
                    transition-colors flex items-center justify-center gap-1.5 border-t border-paper-200"
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
         Add Group
@@ -657,4 +681,3 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
     </BaseNode>
   );
 }
-

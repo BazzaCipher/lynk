@@ -456,7 +456,7 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
   return (
     <>
       {/* Main node with preview + viewport list */}
-      <BaseNode label={data.label} selected={selected} className="w-[280px]">
+      <BaseNode label={data.label} selected={selected} className="w-[280px]" hideHeader={!!data.compressed}>
         {/* Document preview using shared component */}
         <FileNodePreview
           fileUrl={data.fileUrl}
@@ -477,6 +477,8 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
           pdfError={pdfError}
           mimeType={data.fileId ? BlobRegistry.getMetadata(data.fileId)?.mimeType : undefined}
           fileSize={data.fileId ? BlobRegistry.getMetadata(data.fileId)?.size : undefined}
+          compressed={!!data.compressed}
+          onCompressToggle={() => updateNodeData(id, { compressed: !data.compressed })}
         />
 
         {/* Compact viewport list with source handles */}

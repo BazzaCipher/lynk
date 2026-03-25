@@ -7,6 +7,8 @@ interface BaseNodeProps {
   className?: string;
   /** Custom header content - if provided, replaces the default label h3 */
   renderHeader?: ReactNode;
+  /** Hide the header entirely (for compressed mode) */
+  hideHeader?: boolean;
 }
 
 export function BaseNode({
@@ -15,6 +17,7 @@ export function BaseNode({
   children,
   className = '',
   renderHeader,
+  hideHeader = false,
 }: BaseNodeProps) {
   return (
     <div
@@ -25,13 +28,15 @@ export function BaseNode({
       `}
     >
       {/* Header */}
-      <div className="px-2 py-1.5 bg-paper-50 rounded-t-lg border-b border-paper-200">
-        {renderHeader ?? (
-          <h3 className="text-sm font-medium text-bridge-700 truncate">
-            {label}
-          </h3>
-        )}
-      </div>
+      {!hideHeader && (
+        <div className="px-2 py-1.5 bg-paper-50 rounded-t-lg border-b border-paper-200">
+          {renderHeader ?? (
+            <h3 className="text-sm font-medium text-bridge-700 truncate">
+              {label}
+            </h3>
+          )}
+        </div>
+      )}
 
       {/* Content - handles are managed by children via NodeEntry */}
       <div className="py-1">{children}</div>
