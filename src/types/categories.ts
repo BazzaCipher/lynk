@@ -2,7 +2,7 @@
  * Node Capabilities & Categories
  *
  * Nodes have orthogonal capabilities that compose freely:
- * - Exportable: Can produce data (has source/output handles) — stores outputs map
+ * - Exportable: Can produce data (has source/output handles) - stores outputs map
  * - Importable: Can receive data (has target/input handles)
  * - FileNodeData: Loads external files (display, extractor)
  *
@@ -38,7 +38,7 @@ export interface NodeOutput {
  * Data contract for nodes that can export data (have source/output handles).
  *
  * Each node component is responsible for populating `outputs` with current
- * computed values. The data flow resolver reads this map generically —
+ * computed values. The data flow resolver reads this map generically -
  * no per-node-type switch logic needed.
  */
 export interface Exportable {

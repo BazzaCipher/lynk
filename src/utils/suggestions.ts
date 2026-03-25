@@ -36,7 +36,7 @@ export function getSuggestions(nodes: LynkNode[], edges: Edge[]): Suggestion[] {
   if (extractorsWithRegions.length > 0 && !hasType('calculation') && !hasType('sheet')) {
     suggestions.push({
       id: 'add-calculation',
-      message: 'You have extracted data — try adding a Calculation node to sum or average values.',
+      message: 'You have extracted data - try adding a Calculation node to sum or average values.',
       action: { label: '+ Calculation', nodeType: 'calculation' },
     });
   }

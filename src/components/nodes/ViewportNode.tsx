@@ -144,11 +144,11 @@ export function ViewportNode({ id, data, selected }: NodeProps<ViewportNodeType>
       <div
         className={`
           bg-white rounded-lg shadow-md border-2 flex items-center justify-center
-          ${selected ? 'border-blue-500' : 'border-gray-200'}
+          ${selected ? 'border-copper-500' : 'border-paper-200'}
         `}
         style={{ width: data.nodeSize.width, height: data.nodeSize.height }}
       >
-        <div className="text-xs text-gray-400 text-center px-2">
+        <div className="text-xs text-bridge-400 text-center px-2">
           <p>Viewport</p>
           <p className="text-[10px] mt-1">No data</p>
         </div>
@@ -177,7 +177,7 @@ export function ViewportNode({ id, data, selected }: NodeProps<ViewportNodeType>
     <div
       className={`
         relative bg-white rounded-lg shadow-md border-2
-        ${selected ? 'border-blue-500' : 'border-gray-200'}
+        ${selected ? 'border-copper-500' : 'border-paper-200'}
       `}
       style={{ width: data.nodeSize.width, height: data.nodeSize.height, overflow: 'visible' }}
       onDoubleClick={handleDoubleClick}
@@ -215,7 +215,7 @@ export function ViewportNode({ id, data, selected }: NodeProps<ViewportNodeType>
                 }}
               />
             ) : (
-              <div className="flex items-center justify-center h-full text-xs text-gray-400">
+              <div className="flex items-center justify-center h-full text-xs text-bridge-400">
                 PDF viewport
               </div>
             )}
@@ -234,8 +234,8 @@ export function ViewportNode({ id, data, selected }: NodeProps<ViewportNodeType>
           onClick={toggleAspectLock}
           className={`
             absolute top-1 right-1 p-1 rounded text-xs z-10
-            ${data.aspectLocked ? 'bg-blue-500 text-white' : 'bg-white/80 text-gray-600'}
-            hover:bg-blue-600 hover:text-white transition-colors
+            ${data.aspectLocked ? 'bg-copper-500 text-white' : 'bg-white/80 text-bridge-600'}
+            hover:bg-copper-500 hover:text-white transition-colors
           `}
           title={data.aspectLocked ? 'Unlock aspect ratio' : 'Lock aspect ratio'}
         >

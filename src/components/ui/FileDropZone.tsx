@@ -53,8 +53,8 @@ export function FileDropZone({
           flex flex-col items-center justify-center cursor-pointer
           transition-colors rounded border-2 border-dashed
           ${isDragActive
-            ? 'border-indigo-400 bg-indigo-50'
-            : 'border-gray-300 hover:bg-gray-50'
+            ? 'border-copper-400 bg-copper-400/10'
+            : 'border-paper-300 hover:bg-paper-50'
           }
           ${compact ? 'h-28 p-2' : 'h-32 p-4'}
         `}
@@ -68,7 +68,7 @@ export function FileDropZone({
         {/* Combined document/image icon */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className={`${isDragActive ? 'text-indigo-400' : 'text-gray-300'} mb-2 ${compact ? 'h-8 w-8' : 'h-10 w-10'}`}
+          className={`${isDragActive ? 'text-copper-400' : 'text-bridge-400'} mb-2 ${compact ? 'h-8 w-8' : 'h-10 w-10'}`}
           viewBox="0 0 24 24"
           fill="currentColor"
         >
@@ -84,14 +84,14 @@ export function FileDropZone({
             d="M8 12l2 3 2-2 3 4H7l1-5z"
           />
         </svg>
-        <div className={`${isDragActive ? 'text-indigo-500' : 'text-gray-400'} text-center ${compact ? 'text-xs' : 'text-sm'}`}>
+        <div className={`${isDragActive ? 'text-copper-500' : 'text-bridge-400'} text-center ${compact ? 'text-xs' : 'text-sm'}`}>
           {isDragActive ? (
             <p>Release to upload</p>
           ) : (
             <>
               <p>Drop a file{allowFolders ? ' or folder' : ''} or click to browse</p>
               {!compact && (
-                <p className="text-xs mt-1 text-gray-300">PDF or image</p>
+                <p className="text-xs mt-1 text-bridge-400">PDF or image</p>
               )}
             </>
           )}
@@ -113,7 +113,7 @@ export function FileDropZone({
                 e.stopPropagation();
                 folderInputRef.current?.click();
               }}
-              className="text-[10px] text-indigo-500 hover:text-indigo-700 py-0.5"
+              className="text-[10px] text-copper-500 hover:text-copper-600 py-0.5"
             >
               upload folder
             </button>
@@ -126,7 +126,7 @@ export function FileDropZone({
               e.stopPropagation();
               onPickFromRegistry();
             }}
-            className="text-[10px] text-indigo-500 hover:text-indigo-700 py-0.5"
+            className="text-[10px] text-copper-500 hover:text-copper-600 py-0.5"
           >
             or choose from loaded files
           </button>

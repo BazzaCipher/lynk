@@ -12,7 +12,7 @@ interface NodeEntryProps {
   /**
    * Handle color - use to indicate data type.
    * Pass the color directly (e.g., region.color from getColorForType()).
-   * Defaults to gray (#6b7280) if not provided.
+   * Defaults to gray (#9c8468) if not provided.
    */
   handleColor?: string;
 }
@@ -40,12 +40,12 @@ export function NodeEntry({
           ...(handlePosition === Position.Left && { left: -8 }),
           ...(handlePosition === Position.Right && { right: -8 }),
           // Apply handle color based on data type (supports gradients)
-          background: handleColor || '#6b7280',
+          background: handleColor || '#9c8468',
           width: '15px',
           height: '15px',
         }}
         className={`border-2 border-white ${
-          allowMultiple ? 'ring-2 ring-offset-1 ring-blue-300' : ''
+          allowMultiple ? 'ring-2 ring-offset-1 ring-copper-300' : ''
         }`}
       />
     </div>

@@ -215,20 +215,20 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
               onChange={(e) => setEditValue(e.target.value)}
               onKeyDown={handleKeyDown}
               onBlur={handleSave}
-              className={`${fontSizeClass} ${alignmentClass} font-mono w-full px-1 py-0.5 border border-blue-400 rounded outline-none bg-blue-50`}
+              className={`${fontSizeClass} ${alignmentClass} font-mono w-full px-1 py-0.5 border border-copper-400 rounded outline-none bg-copper-400/10`}
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
             <div
               className={`${fontSizeClass} ${alignmentClass} font-mono min-h-[1.5em] flex-1 px-1 py-0.5 rounded transition-colors cursor-text ${
                 hasInputs && input?.source && !data.isManualMode
-                  ? 'hover:bg-gray-100'
-                  : 'hover:bg-blue-50'
-              } ${isOutputHighlighted ? 'bg-blue-100 ring-1 ring-blue-400 animate-pulse' : ''}`}
+                  ? 'hover:bg-paper-100'
+                  : 'hover:bg-copper-400/10'
+              } ${isOutputHighlighted ? 'bg-copper-400/20 ring-1 ring-copper-400 animate-pulse' : ''}`}
               onDoubleClick={handleDoubleClick}
             >
               {displayValue ?? (
-                <span className="text-gray-400 text-xs">Double-click...</span>
+                <span className="text-bridge-400 text-xs">Double-click...</span>
               )}
             </div>
           )}
@@ -246,10 +246,10 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
       </div>
 
       {/* Compact footer - format + source indicator */}
-      <div className="px-1.5 py-0.5 border-t border-gray-100 flex items-center justify-between text-[10px] text-gray-400">
+      <div className="px-1.5 py-0.5 border-t border-paper-100 flex items-center justify-between text-[10px] text-bridge-400">
         <span className="capitalize">{data.format}</span>
         {isManualMode ? (
-          <span className="text-blue-500">manual</span>
+          <span className="text-copper-500">manual</span>
         ) : input?.label ? (
           <span className="truncate max-w-[80px]" title={input.label}>
             ← {input.label}

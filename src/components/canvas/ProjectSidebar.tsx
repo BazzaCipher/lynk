@@ -48,13 +48,13 @@ export function ProjectSidebar({
         pointerEvents: open ? 'auto' : 'none',
       }}
     >
-      <div className="w-64 h-full bg-white border-r border-gray-200 flex flex-col">
+      <div className="w-64 h-full bg-white border-r border-paper-200 flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-        <h2 className="text-sm font-semibold text-gray-700">Projects</h2>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-paper-100">
+        <h2 className="text-sm font-semibold text-bridge-700">Projects</h2>
         <button
           onClick={onClose}
-          className="p-1 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 transition-colors"
+          className="p-1 text-bridge-400 hover:text-bridge-600 rounded hover:bg-paper-100 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -66,7 +66,7 @@ export function ProjectSidebar({
       <div className="px-3 pt-3 pb-1">
         <button
           onClick={onCreateProject}
-          className="flex items-center justify-center gap-1.5 w-full px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer"
+          className="flex items-center justify-center gap-1.5 w-full px-3 py-2 text-sm font-medium text-copper-500 bg-copper-400/10 hover:bg-copper-400/20 rounded-lg transition-colors cursor-pointer"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -78,7 +78,7 @@ export function ProjectSidebar({
       {/* Project list */}
       <div className="flex-1 overflow-y-auto py-2">
         {projects.length === 0 && (
-          <div className="px-4 py-8 text-center text-sm text-gray-400">
+          <div className="px-4 py-8 text-center text-sm text-bridge-400">
             No projects open
           </div>
         )}
@@ -89,8 +89,8 @@ export function ProjectSidebar({
               key={project.id}
               className={`mx-2 mb-1 rounded-lg transition-colors ${
                 isActive
-                  ? 'bg-indigo-50 border border-indigo-200'
-                  : 'hover:bg-blue-50 border border-transparent'
+                  ? 'bg-copper-400/10 border border-copper-400'
+                  : 'hover:bg-copper-400/10 border border-transparent'
               }`}
             >
               <button
@@ -98,16 +98,16 @@ export function ProjectSidebar({
                 onClick={() => !isActive && onSwitchProject(project.id)}
               >
                 <div className="flex items-center justify-between">
-                  <span className={`text-sm font-medium truncate ${isActive ? 'text-indigo-700' : 'text-gray-700'}`}>
+                  <span className={`text-sm font-medium truncate ${isActive ? 'text-copper-600' : 'text-bridge-700'}`}>
                     {isActive ? canvasName : project.name}
                   </span>
                   {isActive && (
-                    <span className="text-[10px] font-medium text-indigo-500 bg-indigo-100 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] font-medium text-copper-500 bg-copper-400/20 px-1.5 py-0.5 rounded">
                       active
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
+                <div className="flex items-center gap-2 mt-1 text-xs text-bridge-400">
                   <span>{project.nodeCount} nodes</span>
                   <span>{formatTime(project.lastModified)}</span>
                 </div>
@@ -121,7 +121,7 @@ export function ProjectSidebar({
                     onCloneProject(project.id);
                     showToast('Project cloned', 'success');
                   }}
-                  className="p-1 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100 transition-colors"
+                  className="p-1 text-bridge-400 hover:text-bridge-600 rounded hover:bg-paper-100 transition-colors"
                   title="Clone project"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -139,7 +139,7 @@ export function ProjectSidebar({
                     onDeleteProject(project.id);
                     showToast('Project removed', 'info');
                   }}
-                  className="p-1 text-gray-400 hover:text-red-500 rounded hover:bg-red-50 transition-colors"
+                  className="p-1 text-bridge-400 hover:text-red-500 rounded hover:bg-red-50 transition-colors"
                   title="Remove project"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth="1.5">

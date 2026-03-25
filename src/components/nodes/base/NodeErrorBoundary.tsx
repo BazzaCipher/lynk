@@ -56,7 +56,7 @@ export class NodeErrorBoundary extends Component<Props, State> {
             </svg>
             <span className="text-sm font-medium text-red-700">Node Error</span>
           </div>
-          <p className="text-xs text-gray-600 mb-3">
+          <p className="text-xs text-bridge-600 mb-3">
             This {this.props.nodeType} node encountered an error.
           </p>
           {this.state.error && (

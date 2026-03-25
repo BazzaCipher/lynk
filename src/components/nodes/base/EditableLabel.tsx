@@ -40,12 +40,12 @@ export function EditableLabel({
 
   // Variant-specific styles
   const inputStyles = variant === 'header'
-    ? 'text-xs font-medium w-full px-1 py-0.5 border border-blue-300 rounded min-w-0 outline-none'
-    : 'flex-1 text-xs px-1 py-0.5 border border-blue-300 rounded min-w-0 outline-none';
+    ? 'text-xs font-medium w-full px-1 py-0.5 border border-copper-400 rounded min-w-0 outline-none'
+    : 'flex-1 text-xs px-1 py-0.5 border border-copper-400 rounded min-w-0 outline-none';
 
   const displayStyles = variant === 'header'
-    ? 'text-xs font-medium text-gray-700 truncate cursor-pointer hover:text-blue-600'
-    : 'flex-1 text-xs text-gray-700 truncate cursor-pointer hover:text-blue-600';
+    ? 'text-xs font-medium text-bridge-700 truncate cursor-pointer hover:text-copper-500'
+    : 'flex-1 text-xs text-bridge-700 truncate cursor-pointer hover:text-copper-500';
 
   if (isEditing) {
     return (

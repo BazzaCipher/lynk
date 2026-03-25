@@ -56,7 +56,7 @@ interface CanvasMenuState {
   flowPosition: XYPosition;
 }
 
-// Session project store — in-memory snapshots for switching between projects
+// Session project store - in-memory snapshots for switching between projects
 interface ProjectSnapshot {
   nodes: LynkNode[];
   edges: Edge[];
@@ -231,7 +231,7 @@ export function LynkCanvas() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [focusNameInput, setFocusNameInput] = useState(false);
 
-  // Session projects — in-memory only
+  // Session projects - in-memory only
   const [projects, setProjects] = useState<SessionProject[]>(() => [{
     id: canvasId,
     name: canvasName,
@@ -243,7 +243,7 @@ export function LynkCanvas() {
   // Keep current project metadata in sync
   const activeProject = projects.find((p) => p.id === canvasId);
   if (activeProject && (activeProject.name !== canvasName || activeProject.nodeCount !== nodes.length)) {
-    // Update without re-render loop — direct mutation + lazy sync
+    // Update without re-render loop - direct mutation + lazy sync
     activeProject.name = canvasName;
     activeProject.nodeCount = nodes.length;
     activeProject.lastModified = Date.now();
@@ -262,7 +262,7 @@ export function LynkCanvas() {
       lastSaved: state.lastSaved,
     });
 
-    // Load target snapshot — direct state set, no validation needed for in-memory data
+    // Load target snapshot - direct state set, no validation needed for in-memory data
     const snapshot = snapshotsRef.current.get(targetId);
     if (snapshot) {
       useCanvasStore.setState({
@@ -281,7 +281,7 @@ export function LynkCanvas() {
     const state = useCanvasStore.getState();
 
     if (targetId === state.canvasId) {
-      // Switching away from active — find another project
+      // Switching away from active - find another project
       setProjects((prev) => {
         const remaining = prev.filter((p) => p.id !== targetId);
         if (remaining.length > 0) {
@@ -426,9 +426,9 @@ export function LynkCanvas() {
         {nodes.length > 0 && <SuggestionBar />}
         {magneticMode && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none
-                          bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-full shadow-lg
+                          bg-copper-500 text-white text-xs px-3 py-1.5 rounded-full shadow-lg
                           flex items-center gap-2 select-none">
-            Magnetic connect {snapTarget ? '— snap ready' : '— drag near a handle'} · press M to disable
+            Magnetic connect {snapTarget ? '- snap ready' : '- drag near a handle'} · press M to disable
           </div>
         )}
         <ReactFlow
@@ -469,15 +469,15 @@ export function LynkCanvas() {
           />
         </ReactFlow>
         {isDragOver && (
-          <div className="absolute inset-0 z-50 bg-indigo-500/10 border-2 border-dashed border-indigo-400 flex items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 z-50 bg-copper-500/10 border-2 border-dashed border-copper-400 flex items-center justify-center pointer-events-none">
             <div className="bg-white/90 rounded-lg px-6 py-4 shadow-lg text-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto mb-2 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mx-auto mb-2 text-copper-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
                 <polyline points="17 8 12 3 7 8" />
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
-              <p className="text-sm font-medium text-indigo-700">Drop files or folders here</p>
-              <p className="text-xs text-gray-500 mt-1">PDF and image files will be processed</p>
+              <p className="text-sm font-medium text-copper-600">Drop files or folders here</p>
+              <p className="text-xs text-bridge-500 mt-1">PDF and image files will be processed</p>
             </div>
           </div>
         )}

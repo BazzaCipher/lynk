@@ -1,46 +1,46 @@
 import type { SimpleDataType } from '../types';
 
-// Color scheme based on data type
+// Paperbridge color scheme - warmed data type colors
 export const DATA_TYPE_COLORS: Record<SimpleDataType, { bg: string; border: string; text: string }> = {
   string: {
-    bg: 'rgba(59, 130, 246, 0.15)', // blue
-    border: '#3b82f6',
-    text: '#1d4ed8',
+    bg: 'rgba(56, 132, 212, 0.15)', // bold blue
+    border: '#3884d4',
+    text: '#2560a0',
   },
   number: {
-    bg: 'rgba(34, 197, 94, 0.15)', // green
-    border: '#22c55e',
-    text: '#15803d',
+    bg: 'rgba(72, 180, 72, 0.15)', // vivid green
+    border: '#48b448',
+    text: '#2d8a2d',
   },
   currency: {
-    bg: 'rgba(234, 179, 8, 0.15)', // yellow
-    border: '#eab308',
-    text: '#a16207',
+    bg: 'rgba(228, 160, 28, 0.15)', // rich amber
+    border: '#e4a01c',
+    text: '#b07a10',
   },
   date: {
-    bg: 'rgba(168, 85, 247, 0.15)', // purple
-    border: '#a855f7',
-    text: '#7e22ce',
+    bg: 'rgba(148, 90, 210, 0.15)', // vivid purple
+    border: '#945ad2',
+    text: '#6e3aaa',
   },
   boolean: {
-    bg: 'rgba(236, 72, 153, 0.15)', // pink
-    border: '#ec4899',
-    text: '#be185d',
+    bg: 'rgba(220, 76, 120, 0.15)', // bold rose
+    border: '#dc4c78',
+    text: '#b03060',
   },
 };
 
-// File type color mapping
+// File type color mapping - warmed to match Paperbridge palette
 export const FILE_TYPE_COLORS: Record<string, { bg: string; border: string; text: string; label: string }> = {
-  'application/pdf':  { bg: 'rgba(239,68,68,0.1)',  border: '#ef4444', text: '#dc2626', label: 'PDF' },
-  'image/png':        { bg: 'rgba(59,130,246,0.1)',  border: '#3b82f6', text: '#2563eb', label: 'PNG' },
-  'image/jpeg':       { bg: 'rgba(234,179,8,0.1)',   border: '#eab308', text: '#ca8a04', label: 'JPEG' },
-  'image/webp':       { bg: 'rgba(34,197,94,0.1)',   border: '#22c55e', text: '#16a34a', label: 'WebP' },
-  'image/gif':        { bg: 'rgba(168,85,247,0.1)',  border: '#a855f7', text: '#9333ea', label: 'GIF' },
-  'image/svg+xml':    { bg: 'rgba(236,72,153,0.1)',  border: '#ec4899', text: '#db2777', label: 'SVG' },
+  'application/pdf':  { bg: 'rgba(210, 60, 50, 0.1)',   border: '#d23c32', text: '#a82820', label: 'PDF' },
+  'image/png':        { bg: 'rgba(56, 132, 212, 0.1)',   border: '#3884d4', text: '#2560a0', label: 'PNG' },
+  'image/jpeg':       { bg: 'rgba(228, 160, 28, 0.1)',   border: '#e4a01c', text: '#b07a10', label: 'JPEG' },
+  'image/webp':       { bg: 'rgba(72, 180, 72, 0.1)',    border: '#48b448', text: '#2d8a2d', label: 'WebP' },
+  'image/gif':        { bg: 'rgba(148, 90, 210, 0.1)',   border: '#945ad2', text: '#6e3aaa', label: 'GIF' },
+  'image/svg+xml':    { bg: 'rgba(220, 76, 120, 0.1)',   border: '#dc4c78', text: '#b03060', label: 'SVG' },
 };
 
 export function getFileTypeColor(mimeType: string) {
-  return FILE_TYPE_COLORS[mimeType] || { bg: 'rgba(107,114,128,0.1)', border: '#6b7280', text: '#4b5563', label: mimeType.split('/')[1]?.toUpperCase() || 'FILE' };
+  return FILE_TYPE_COLORS[mimeType] || { bg: 'rgba(156, 132, 104, 0.1)', border: '#b8a58e', text: '#7d6a52', label: mimeType.split('/')[1]?.toUpperCase() || 'FILE' };
 }
 
 export function getColorForType(dataType: SimpleDataType) {
@@ -76,10 +76,10 @@ export function getTypeBadgeClass(dataType: SimpleDataType): string {
  * Sharp edges (no blending) between colors.
  */
 export function createGradientFromTypes(types: SimpleDataType[]): string {
-  if (types.length === 0) return '#6b7280';
-  if (types.length === 1) return DATA_TYPE_COLORS[types[0]]?.border || '#6b7280';
+  if (types.length === 0) return '#9c8468';
+  if (types.length === 1) return DATA_TYPE_COLORS[types[0]]?.border || '#9c8468';
 
-  const colors = types.map(t => DATA_TYPE_COLORS[t]?.border || '#6b7280');
+  const colors = types.map(t => DATA_TYPE_COLORS[t]?.border || '#9c8468');
   const segmentSize = 100 / colors.length;
   const stops = colors.map((color, i) => {
     const start = i * segmentSize;
@@ -94,7 +94,7 @@ export function createGradientFromTypes(types: SimpleDataType[]): string {
  * Get output handle color from NodeOutput.
  */
 export function getOutputHandleColor(output: { dataType: SimpleDataType; compatibleTypes?: SimpleDataType[] } | undefined): string {
-  if (!output) return '#6b7280';
+  if (!output) return '#9c8468';
   const types = output.compatibleTypes ?? [output.dataType];
   return createGradientFromTypes(types);
 }
@@ -106,7 +106,7 @@ export function getInputHandleColor(
   acceptedTypes: SimpleDataType[] | Record<string, SimpleDataType[]> | undefined,
   handleId?: string
 ): string {
-  if (!acceptedTypes) return '#6b7280';
+  if (!acceptedTypes) return '#9c8468';
   const types = Array.isArray(acceptedTypes)
     ? acceptedTypes
     : (handleId ? acceptedTypes[handleId] : undefined) ?? [];

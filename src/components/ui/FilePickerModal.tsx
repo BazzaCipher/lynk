@@ -37,12 +37,12 @@ export function FilePickerModal({ isOpen, onClose, onSelect }: FilePickerModalPr
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search files..."
-          className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400 mb-3"
+          className="w-full px-2 py-1.5 text-sm border border-paper-200 rounded focus:outline-none focus:ring-1 focus:ring-copper-400 mb-3"
         />
 
         <div className="max-h-[50vh] overflow-y-auto space-y-1">
           {filtered.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-4">
+            <p className="text-sm text-bridge-400 text-center py-4">
               {allFiles.length === 0 ? 'No files loaded yet' : 'No matching files'}
             </p>
           ) : (
@@ -54,7 +54,7 @@ export function FilePickerModal({ isOpen, onClose, onSelect }: FilePickerModalPr
                 <button
                   key={meta.fileId}
                   onClick={() => handleSelect(meta)}
-                  className="w-full flex items-center gap-3 p-2 rounded hover:bg-gray-50 transition-colors text-left"
+                  className="w-full flex items-center gap-3 p-2 rounded hover:bg-paper-50 transition-colors text-left"
                 >
                   {/* Thumbnail */}
                   {meta.fileType === 'image' && blobUrl ? (
@@ -76,7 +76,7 @@ export function FilePickerModal({ isOpen, onClose, onSelect }: FilePickerModalPr
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-gray-900 truncate">{meta.fileName}</p>
+                    <p className="text-xs font-medium text-bridge-900 truncate">{meta.fileName}</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span
                         className="px-1 py-0.5 text-[8px] font-semibold rounded"
@@ -88,12 +88,12 @@ export function FilePickerModal({ isOpen, onClose, onSelect }: FilePickerModalPr
                       >
                         {typeColor.label}
                       </span>
-                      <span className="text-[10px] text-gray-400">{formatFileSize(meta.size)}</span>
+                      <span className="text-[10px] text-bridge-400">{formatFileSize(meta.size)}</span>
                     </div>
                   </div>
 
                   {/* Select action */}
-                  <span className="text-xs text-indigo-600 font-medium">Select</span>
+                  <span className="text-xs text-copper-500 font-medium">Select</span>
                 </button>
               );
             })

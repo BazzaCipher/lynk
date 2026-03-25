@@ -66,7 +66,7 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
         pageNumber: v.pageNumber,
         extractedData: { type: 'string' as const, value: '' },
         dataType: 'string' as const,
-        color: '#6366f1',
+        color: '#c27350',
       })),
     [viewports]
   );
@@ -501,23 +501,23 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
         <div className="flex h-[75vh]">
           {/* Document viewer area */}
           <div
-            className="flex-1 overflow-auto bg-gray-50"
+            className="flex-1 overflow-auto bg-paper-50"
             ref={viewerAreaRef}
             onDoubleClick={(e) => e.stopPropagation()}
           >
             {/* Instruction bar */}
-            <div className="sticky top-0 z-10 flex items-center gap-2 py-2 px-4 bg-white border-b border-gray-200 shadow-sm">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-500" viewBox="0 0 20 20" fill="currentColor">
+            <div className="sticky top-0 z-10 flex items-center gap-2 py-2 px-4 bg-white border-b border-paper-200 shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-copper-500" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M5 3a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V5a2 2 0 00-2-2H5zm0 2h10v10H5V5z" />
               </svg>
-              <span className="text-xs text-gray-600">
+              <span className="text-xs text-bridge-600">
                 Draw a box to create a viewport region
               </span>
               <div className="flex-1" />
               <ZoomControls zoom={zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} />
             </div>
 
-            {/* Document with overlays — CSS transform zoom */}
+            {/* Document with overlays - CSS transform zoom */}
             <div className="relative p-6 flex justify-center">
               <div
                 className="relative bg-white shadow-lg"
@@ -588,11 +588,11 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-2 bg-gray-100 border-t border-gray-200 text-xs text-gray-500 flex items-center justify-between">
+        <div className="px-4 py-2 bg-paper-100 border-t border-paper-200 text-xs text-bridge-500 flex items-center justify-between">
           <span>
             Draw a box on the document to create a viewport. Each viewport spawns a connected node.
           </span>
-          <span className="text-gray-400">
+          <span className="text-bridge-400">
             {viewports.length} viewport{viewports.length !== 1 ? 's' : ''}
           </span>
         </div>

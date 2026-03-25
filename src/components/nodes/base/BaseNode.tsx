@@ -20,14 +20,14 @@ export function BaseNode({
     <div
       className={`
         bg-white rounded-lg shadow-md border-2 min-w-[200px]
-        ${selected ? 'border-blue-500' : 'border-gray-200'}
+        ${selected ? 'border-copper-500' : 'border-paper-200'}
         ${className}
       `}
     >
       {/* Header */}
-      <div className="px-2 py-1.5 bg-gray-50 rounded-t-lg border-b border-gray-200">
+      <div className="px-2 py-1.5 bg-paper-50 rounded-t-lg border-b border-paper-200">
         {renderHeader ?? (
-          <h3 className="text-sm font-medium text-gray-700 truncate">
+          <h3 className="text-sm font-medium text-bridge-700 truncate">
             {label}
           </h3>
         )}

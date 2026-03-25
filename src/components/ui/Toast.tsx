@@ -73,7 +73,7 @@ function ToastItem({ toast, onRemove }: ToastItemProps) {
   }, [toast.id, onRemove]);
 
   const bgClass = {
-    info: 'bg-blue-500',
+    info: 'bg-copper-500',
     success: 'bg-green-500',
     warning: 'bg-yellow-500',
     error: 'bg-red-500',

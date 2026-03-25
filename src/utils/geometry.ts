@@ -92,7 +92,7 @@ const AUTO_FIT_EPSILON = 0.5;
 
 /**
  * Recalculate group position/size to tightly wrap children.
- * Pure function — returns a new array only if adjustments were made.
+ * Pure function - returns a new array only if adjustments were made.
  */
 export function applyGroupAutoFit(nodes: LynkNode[]): LynkNode[] {
   // Build a map of group id → children

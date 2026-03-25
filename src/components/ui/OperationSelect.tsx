@@ -79,7 +79,7 @@ function CompactSelect({ value, onChange, disabled, className }: CompactSelectPr
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
-      className={`text-xs bg-gray-100 border border-gray-200 rounded px-1 py-0.5
+      className={`text-xs bg-paper-100 border border-paper-200 rounded px-1 py-0.5
                   disabled:opacity-50 ${className}`}
       onClick={(e) => e.stopPropagation()}
     >
@@ -140,8 +140,8 @@ function DropdownSelect({
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled}
-        className="flex items-center gap-2 px-2 py-1 text-xs font-medium bg-gray-100
-                   hover:bg-gray-200 rounded transition-colors disabled:opacity-50
+        className="flex items-center gap-2 px-2 py-1 text-xs font-medium bg-paper-100
+                   hover:bg-paper-200 rounded transition-colors disabled:opacity-50
                    min-w-[70px] justify-between"
       >
         <span>{current?.label || value}</span>
@@ -158,15 +158,15 @@ function DropdownSelect({
       {isOpen && (
         <div
           className="absolute top-full left-0 mt-1 w-44 bg-white rounded-lg shadow-lg
-                      border border-gray-200 z-50 overflow-hidden"
+                      border border-paper-200 z-50 overflow-hidden"
         >
           {showCategories ? (
             // Grouped by category
             Object.entries(operationsByCategory).map(([category, ops]) => (
               <div key={category}>
                 <div
-                  className="px-3 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50
-                              border-b border-gray-100 uppercase tracking-wide"
+                  className="px-3 py-1.5 text-xs font-semibold text-bridge-500 bg-paper-50
+                              border-b border-paper-100 uppercase tracking-wide"
                 >
                   {CATEGORY_LABELS[category as keyof typeof CATEGORY_LABELS]}
                 </div>
@@ -211,9 +211,9 @@ function OperationOption({ operation, isSelected, onSelect }: OperationOptionPro
   return (
     <button
       onClick={() => onSelect(operation.id)}
-      className={`w-full px-3 py-2 text-left text-sm hover:bg-blue-50
+      className={`w-full px-3 py-2 text-left text-sm hover:bg-copper-400/10
                   transition-colors flex items-center justify-between
-                  ${isSelected ? 'bg-blue-100 text-blue-700' : ''}`}
+                  ${isSelected ? 'bg-copper-400/20 text-copper-600' : ''}`}
       title={operation.description}
     >
       <span>{operation.label}</span>

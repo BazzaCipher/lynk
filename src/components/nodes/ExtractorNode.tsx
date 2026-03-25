@@ -621,18 +621,18 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
         <div className="flex h-[75vh]">
           {/* Document viewer area */}
           <div
-            className="flex-1 overflow-auto bg-gray-50"
+            className="flex-1 overflow-auto bg-paper-50"
             ref={viewerAreaRef}
             onDoubleClick={(e) => e.stopPropagation()}
           >
             {/* Selection mode toggle */}
-            <div className="sticky top-0 z-10 flex items-center gap-2 py-2 px-4 bg-white border-b border-gray-200 shadow-sm">
+            <div className="sticky top-0 z-10 flex items-center gap-2 py-2 px-4 bg-white border-b border-paper-200 shadow-sm">
               <button
                 onClick={() => setSelectionMode('select')}
                 className={`px-3 py-1.5 text-xs rounded-md transition-colors flex items-center gap-1.5 ${
                   selectionMode === 'select'
-                    ? 'bg-blue-500 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-copper-500 text-white shadow-sm'
+                    : 'bg-paper-100 text-bridge-600 hover:bg-paper-200'
                 }`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -644,8 +644,8 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
                 onClick={() => setSelectionMode('box')}
                 className={`px-3 py-1.5 text-xs rounded-md transition-colors flex items-center gap-1.5 ${
                   selectionMode === 'box'
-                    ? 'bg-blue-500 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-copper-500 text-white shadow-sm'
+                    : 'bg-paper-100 text-bridge-600 hover:bg-paper-200'
                 }`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -658,8 +658,8 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
                   onClick={() => setSelectionMode('text')}
                   className={`px-3 py-1.5 text-xs rounded-md transition-colors flex items-center gap-1.5 ${
                     selectionMode === 'text'
-                      ? 'bg-blue-500 text-white shadow-sm'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-copper-500 text-white shadow-sm'
+                      : 'bg-paper-100 text-bridge-600 hover:bg-paper-200'
                   }`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -670,7 +670,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
               )}
 
               {/* Divider */}
-              <div className="w-px h-6 bg-gray-300 mx-2" />
+              <div className="w-px h-6 bg-paper-300 mx-2" />
 
               {/* Auto-detect button */}
               <button
@@ -703,7 +703,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
               <ZoomControls zoom={zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} />
             </div>
 
-            {/* Document with overlays — CSS transform zoom (GPU, no re-render) */}
+            {/* Document with overlays - CSS transform zoom (GPU, no re-render) */}
             <div className="relative p-6 flex justify-center">
               <div
                 className="relative bg-white shadow-lg"
@@ -780,7 +780,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
         </div>
 
         {/* Footer instructions */}
-        <div className="px-4 py-2 bg-gray-100 border-t border-gray-200 text-xs text-gray-500 flex items-center justify-between">
+        <div className="px-4 py-2 bg-paper-100 border-t border-paper-200 text-xs text-bridge-500 flex items-center justify-between">
           <span>
             {selectionMode === 'select'
               ? 'Click on a highlight to select it.'
@@ -788,7 +788,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
               ? 'Draw a box to create a field.'
               : 'Select text directly to create a field with that value.'}
           </span>
-          <span className="text-gray-400">
+          <span className="text-bridge-400">
             {data.regions.length} field{data.regions.length !== 1 ? 's' : ''}
           </span>
         </div>

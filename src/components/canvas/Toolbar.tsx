@@ -83,8 +83,8 @@ export function Toolbar({ onToggleSidebar, sidebarOpen, focusName, onFocusNameHa
         onClick={onToggleSidebar}
         className={`p-1.5 rounded transition-colors ${
           sidebarOpen
-            ? 'bg-indigo-100 text-indigo-700'
-            : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'
+            ? 'bg-copper-400/20 text-copper-600'
+            : 'text-bridge-400 hover:text-bridge-700 hover:bg-paper-100'
         }`}
         title="Toggle projects sidebar"
       >
@@ -96,7 +96,7 @@ export function Toolbar({ onToggleSidebar, sidebarOpen, focusName, onFocusNameHa
       {/* Back to site */}
       <Link
         to="/"
-        className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors"
+        className="p-1.5 text-bridge-400 hover:text-bridge-700 hover:bg-paper-100 rounded transition-colors"
         title="Back to home"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -104,7 +104,7 @@ export function Toolbar({ onToggleSidebar, sidebarOpen, focusName, onFocusNameHa
         </svg>
       </Link>
 
-      <div className="w-px h-6 bg-gray-200" />
+      <div className="w-px h-6 bg-paper-200" />
 
       {/* Canvas name + save/load */}
       <input
@@ -112,12 +112,12 @@ export function Toolbar({ onToggleSidebar, sidebarOpen, focusName, onFocusNameHa
         type="text"
         value={canvasName}
         onChange={(e) => setCanvasName(e.target.value)}
-        className="px-2 py-1 text-sm border border-gray-200 rounded w-32 focus:outline-none focus:ring-1 focus:ring-blue-400"
+        className="px-2 py-1 text-sm border border-paper-200 rounded w-32 focus:outline-none focus:ring-1 focus:ring-copper-400"
         title="Canvas name"
       />
       <button
         onClick={handleSave}
-        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+        className="p-1.5 text-bridge-400 hover:text-copper-500 hover:bg-copper-400/10 rounded transition-colors"
         title="Save canvas"
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -128,7 +128,7 @@ export function Toolbar({ onToggleSidebar, sidebarOpen, focusName, onFocusNameHa
       </button>
       <button
         onClick={handleLoad}
-        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+        className="p-1.5 text-bridge-400 hover:text-copper-500 hover:bg-copper-400/10 rounded transition-colors"
         title="Load canvas"
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -138,12 +138,12 @@ export function Toolbar({ onToggleSidebar, sidebarOpen, focusName, onFocusNameHa
         </svg>
       </button>
 
-      <div className="w-px h-6 bg-gray-200" />
+      <div className="w-px h-6 bg-paper-200" />
 
       {/* Node creation buttons */}
       <button
         onClick={() => handleAddNode('extractor', defaultExtractorData)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm bg-paper-100 hover:bg-paper-200 rounded transition-colors"
         title="Add Extractor Node - Extract data from documents"
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
@@ -161,7 +161,7 @@ export function Toolbar({ onToggleSidebar, sidebarOpen, focusName, onFocusNameHa
       </button>
       <button
         onClick={() => handleAddNode('display', defaultDisplayData)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm bg-paper-100 hover:bg-paper-200 rounded transition-colors"
         title="Add Display Node - Visual reference for images and PDFs"
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
@@ -174,7 +174,7 @@ export function Toolbar({ onToggleSidebar, sidebarOpen, focusName, onFocusNameHa
       </button>
       <button
         onClick={() => handleAddNode('calculation', defaultCalculationData)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm bg-paper-100 hover:bg-paper-200 rounded transition-colors"
         title="Add Calculation Node"
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
@@ -191,7 +191,7 @@ export function Toolbar({ onToggleSidebar, sidebarOpen, focusName, onFocusNameHa
       </button>
       <button
         onClick={() => handleAddNode('sheet', defaultSheetData)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm bg-paper-100 hover:bg-paper-200 rounded transition-colors"
         title="Add Sheet Node"
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
@@ -205,7 +205,7 @@ export function Toolbar({ onToggleSidebar, sidebarOpen, focusName, onFocusNameHa
       </button>
       <button
         onClick={() => handleAddNode('label', defaultLabelData)}
-        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm bg-paper-100 hover:bg-paper-200 rounded transition-colors"
         title="Add Label Node"
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
@@ -215,15 +215,15 @@ export function Toolbar({ onToggleSidebar, sidebarOpen, focusName, onFocusNameHa
         Label
       </button>
 
-      <div className="w-px h-6 bg-gray-200" />
+      <div className="w-px h-6 bg-paper-200" />
 
       {/* File registry */}
       <button
         onClick={toggleFileRegistry}
         className={`px-3 py-1.5 text-sm rounded transition-colors ${
           fileRegistryOpen
-            ? 'bg-indigo-100 text-indigo-700'
-            : 'bg-gray-100 hover:bg-gray-200'
+            ? 'bg-copper-400/20 text-copper-600'
+            : 'bg-paper-100 hover:bg-paper-200'
         }`}
         title="Toggle file registry panel"
       >

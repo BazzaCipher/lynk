@@ -100,7 +100,7 @@ export function RegionList({
 
   if (regions.length === 0) {
     return (
-      <div className="px-3 py-4 text-xs text-gray-400 text-center">
+      <div className="px-3 py-4 text-xs text-bridge-400 text-center">
         {compact ? 'No fields' : 'Draw a box or select text to create fields'}
       </div>
     );
@@ -109,7 +109,7 @@ export function RegionList({
   // Compact view - just show values with type indicator
   if (compact) {
     return (
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-paper-100">
         {regions.map((region) => {
           const displayValue = getDisplayValue(region);
           const typeColor = getTypeBadgeClass(region.dataType);
@@ -122,9 +122,9 @@ export function RegionList({
               handleType="source"
               handlePosition={Position.Right}
               handleColor={region.color}
-              className={`group hover:bg-gray-50 cursor-pointer ${
-                selectedRegionId === region.id ? 'bg-blue-50' : ''
-              } ${isExternal ? 'bg-blue-100 ring-2 ring-blue-400' : ''}`}
+              className={`group hover:bg-paper-50 cursor-pointer ${
+                selectedRegionId === region.id ? 'bg-copper-400/10' : ''
+              } ${isExternal ? 'bg-copper-400/20 ring-2 ring-copper-400' : ''}`}
             >
               <div
                 className="flex items-center gap-2 flex-1 min-w-0 py-0.5"
@@ -134,13 +134,13 @@ export function RegionList({
                 <div className={`w-2 h-2 rounded-full flex-shrink-0 ${typeColor}`} />
 
                 {/* Label */}
-                <span className="text-xs text-gray-500 truncate max-w-[60px]">
+                <span className="text-xs text-bridge-500 truncate max-w-[60px]">
                   {region.label}
                 </span>
 
                 {/* Value */}
                 <span className={`text-sm font-medium truncate flex-1 ${
-                  displayValue ? 'text-gray-900' : 'text-gray-300'
+                  displayValue ? 'text-bridge-900' : 'text-bridge-400'
                 }`}>
                   {displayValue || '(empty)'}
                 </span>
@@ -154,15 +154,15 @@ export function RegionList({
 
   // Full view - editable with all controls
   return (
-    <div className="divide-y divide-gray-100">
+    <div className="divide-y divide-paper-100">
       {/* Toggle header */}
-      <div className="flex justify-between px-3 py-2 bg-gray-50 border-b">
-        <span className="text-xs text-gray-500">
+      <div className="flex justify-between px-3 py-2 bg-paper-50 border-b">
+        <span className="text-xs text-bridge-500">
           {collapsedView ? 'Compact' : 'Full'} view
         </span>
         <button
           onClick={() => setCollapsedView(!collapsedView)}
-          className="text-xs text-blue-600 hover:text-blue-800"
+          className="text-xs text-copper-500 hover:text-copper-700"
         >
           {collapsedView ? 'Expand' : 'Collapse'}
         </button>
@@ -178,17 +178,17 @@ export function RegionList({
           return (
             <div
               key={region.id}
-              className={`px-3 py-2 hover:bg-gray-50 cursor-pointer flex items-center gap-2 ${
-                selectedRegionId === region.id ? 'bg-blue-50' : ''
-              } ${isExternal ? 'bg-blue-100 ring-2 ring-blue-400' : ''}`}
+              className={`px-3 py-2 hover:bg-paper-50 cursor-pointer flex items-center gap-2 ${
+                selectedRegionId === region.id ? 'bg-copper-400/10' : ''
+              } ${isExternal ? 'bg-copper-400/20 ring-2 ring-copper-400' : ''}`}
               onClick={() => onRegionSelect(region.id)}
             >
               <div className={`w-2 h-2 rounded-full flex-shrink-0 ${typeColor}`} />
-              <span className="text-xs text-gray-500 truncate max-w-[80px]">
+              <span className="text-xs text-bridge-500 truncate max-w-[80px]">
                 {region.label}
               </span>
               <span className={`text-sm font-medium truncate flex-1 ${
-                displayValue ? 'text-gray-900' : 'text-gray-300'
+                displayValue ? 'text-bridge-900' : 'text-bridge-400'
               }`}>
                 {displayValue || '(empty)'}
               </span>
@@ -207,8 +207,8 @@ export function RegionList({
           return (
             <div
               key={region.id}
-              className={`p-3 hover:bg-gray-50 transition-colors cursor-pointer ${
-                selectedRegionId === region.id ? 'bg-blue-50 ring-2 ring-blue-200 ring-inset' : ''
+              className={`p-3 hover:bg-paper-50 transition-colors cursor-pointer ${
+                selectedRegionId === region.id ? 'bg-copper-400/10 ring-2 ring-copper-200 ring-inset' : ''
               }`}
               onClick={() => onRegionSelect(region.id)}
             >
@@ -230,7 +230,7 @@ export function RegionList({
                     e.stopPropagation();
                     onRegionDelete(region.id);
                   }}
-                  className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                  className="text-bridge-400 hover:text-red-500 transition-colors p-1"
                   title="Delete"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -251,7 +251,7 @@ export function RegionList({
                     className={`px-2 py-1 text-xs rounded transition-colors ${
                       region.dataType === opt.value
                         ? getTypeColorClass(opt.value)
-                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        : 'bg-paper-100 text-bridge-500 hover:bg-paper-200'
                     }`}
                     title={opt.label}
                   >
@@ -356,7 +356,7 @@ export function RegionList({
                     onExtract(region.id);
                   }}
                   disabled={isExtracting}
-                  className="mt-2 w-full px-3 py-1.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
+                  className="mt-2 w-full px-3 py-1.5 text-xs bg-copper-500 text-white rounded hover:bg-copper-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
                 >
                   {isExtracting ? (
                     <>
@@ -378,7 +378,7 @@ export function RegionList({
               )}
 
               {/* Selection type indicator */}
-              <div className="mt-2 flex items-center gap-1 text-xs text-gray-400">
+              <div className="mt-2 flex items-center gap-1 text-xs text-bridge-400">
                 {region.selectionType === 'text' ? (
                   <>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">

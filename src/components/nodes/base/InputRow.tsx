@@ -53,7 +53,7 @@ export function InputRow({
     return (
       <div
         className={`flex items-center gap-2 pl-6 pr-2 py-0.5 text-xs cursor-pointer transition-colors ${
-          isHighlighted ? 'bg-blue-50' : 'hover:bg-gray-50'
+          isHighlighted ? 'bg-copper-400/10' : 'hover:bg-paper-50'
         }`}
         onMouseEnter={() => onHover(input)}
         onMouseLeave={() => { if (!isHighlighted) onHover(null); }}
@@ -64,10 +64,10 @@ export function InputRow({
           className={`w-2 h-2 rounded-full flex-shrink-0 ${getTypeBadgeClass(input.dataType)}`}
           title={input.dataType}
         />
-        <span className="text-gray-500 truncate max-w-[80px]" title={input.label}>
+        <span className="text-bridge-500 truncate max-w-[80px]" title={input.label}>
           {input.label}:
         </span>
-        <span className="font-mono text-gray-700 ml-auto">{displayVal}</span>
+        <span className="font-mono text-bridge-700 ml-auto">{displayVal}</span>
       </div>
     );
   }
@@ -76,17 +76,17 @@ export function InputRow({
   return (
     <div
       className={`flex items-center gap-2 px-1.5 py-0.5 rounded text-xs cursor-pointer transition-colors ${
-        isHighlighted ? 'bg-blue-100 ring-1 ring-blue-400' : 'hover:bg-gray-100'
+        isHighlighted ? 'bg-copper-400/20 ring-1 ring-copper-400' : 'hover:bg-paper-100'
       }`}
       onMouseEnter={() => onHover(input)}
       onMouseLeave={() => { if (!isHighlighted) onHover(null); }}
       onClick={() => onClick(input)}
       onDoubleClick={handleDoubleClick}
     >
-      <span className="text-gray-500 truncate max-w-[80px]" title={input.label}>
+      <span className="text-bridge-500 truncate max-w-[80px]" title={input.label}>
         {input.label}:
       </span>
-      <span className="font-mono text-gray-700">{displayVal}</span>
+      <span className="font-mono text-bridge-700">{displayVal}</span>
     </div>
   );
 }

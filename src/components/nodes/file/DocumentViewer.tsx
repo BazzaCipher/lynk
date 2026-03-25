@@ -287,7 +287,7 @@ export function DocumentViewer({
 
   if (!fileUrl) {
     return (
-      <div className="flex items-center justify-center h-40 bg-gray-50 text-gray-400 text-sm">
+      <div className="flex items-center justify-center h-40 bg-paper-50 text-bridge-400 text-sm">
         No document loaded
       </div>
     );
@@ -304,14 +304,14 @@ export function DocumentViewer({
   return (
     <div className="relative" ref={containerRef}>
       {/* Document display */}
-      <div className="relative overflow-hidden bg-gray-100" ref={contentRef}>
+      <div className="relative overflow-hidden bg-paper-100" ref={contentRef}>
         {fileType === 'pdf' ? (
           <Document
             file={fileUrl}
             onLoadSuccess={handlePdfLoadSuccess}
             onLoadError={handlePdfLoadError}
             loading={
-              <div className="flex items-center justify-center h-40 text-gray-500 text-sm">
+              <div className="flex items-center justify-center h-40 text-bridge-500 text-sm">
                 Loading PDF...
               </div>
             }
@@ -338,15 +338,15 @@ export function DocumentViewer({
                       />
                     ) : (
                       <div
-                        className="flex items-center justify-center bg-gray-50 border border-gray-200"
+                        className="flex items-center justify-center bg-paper-50 border border-paper-200"
                         style={{ width, height: placeholderHeight }}
                       >
-                        <span className="text-sm text-gray-400">
+                        <span className="text-sm text-bridge-400">
                           Page {pageNum}
                         </span>
                       </div>
                     )}
-                    <div className="text-center text-xs text-gray-400 py-1 bg-gray-200">
+                    <div className="text-center text-xs text-bridge-400 py-1 bg-paper-200">
                       Page {pageNum} of {totalPages}
                     </div>
                   </div>
@@ -381,20 +381,20 @@ export function DocumentViewer({
         {scrollMode && deferLoading && !multiPage.isActivated && !loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm z-20">
             <div className="text-center">
-              <div className="text-4xl mb-3 text-gray-300">
+              <div className="text-4xl mb-3 text-bridge-400">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                 </svg>
               </div>
-              <p className="text-sm text-gray-600 mb-1 font-medium">
+              <p className="text-sm text-bridge-600 mb-1 font-medium">
                 {totalPages} page{totalPages !== 1 ? 's' : ''} ready
               </p>
-              <p className="text-xs text-gray-400 mb-4">
+              <p className="text-xs text-bridge-400 mb-4">
                 Pages load as you scroll
               </p>
               <button
                 onClick={multiPage.activate}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors shadow-sm"
+                className="px-4 py-2 text-sm font-medium text-white bg-copper-500 rounded-lg hover:bg-copper-500 transition-colors shadow-sm"
               >
                 Start Viewing
               </button>
@@ -405,21 +405,21 @@ export function DocumentViewer({
 
       {/* Page navigation for PDFs - only show in single page mode */}
       {fileType === 'pdf' && totalPages > 1 && !scrollMode && (
-        <div className="flex items-center justify-center gap-2 py-2 bg-gray-50 border-t border-gray-200">
+        <div className="flex items-center justify-center gap-2 py-2 bg-paper-50 border-t border-paper-200">
           <button
             onClick={() => onPageChange(Math.max(1, currentPage - 1))}
             disabled={currentPage <= 1}
-            className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-1 text-xs bg-white border border-paper-300 rounded hover:bg-paper-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             ←
           </button>
-          <span className="text-xs text-gray-600">
+          <span className="text-xs text-bridge-600">
             {currentPage} / {totalPages}
           </span>
           <button
             onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage >= totalPages}
-            className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-1 text-xs bg-white border border-paper-300 rounded hover:bg-paper-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             →
           </button>
@@ -429,7 +429,7 @@ export function DocumentViewer({
       {/* Loading overlay */}
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/80">
-          <span className="text-sm text-gray-500">Loading...</span>
+          <span className="text-sm text-bridge-500">Loading...</span>
         </div>
       )}
     </div>

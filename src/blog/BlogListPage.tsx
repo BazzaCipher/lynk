@@ -11,8 +11,8 @@ export function BlogListPage() {
       />
 
       <section className="max-w-3xl mx-auto px-6 py-16 md:py-24">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">Blog</h1>
-        <p className="mt-3 text-lg text-gray-500">
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-bridge-900">Blog</h1>
+        <p className="mt-3 text-lg text-bridge-500">
           Guides, tips, and updates from the Paperbridge team.
         </p>
 
@@ -20,11 +20,11 @@ export function BlogListPage() {
           {posts.map((post) => (
             <article key={post.slug}>
               <Link to={`/blog/${post.slug}`} className="group block">
-                <time className="text-sm text-gray-400">{post.date}</time>
-                <h2 className="mt-1 text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                <time className="text-sm text-bridge-400">{post.date}</time>
+                <h2 className="mt-1 text-xl font-semibold text-bridge-900 group-hover:text-copper-500 transition-colors">
                   {post.title}
                 </h2>
-                <p className="mt-2 text-gray-500 leading-relaxed">{post.description}</p>
+                <p className="mt-2 text-bridge-500 leading-relaxed">{post.description}</p>
               </Link>
             </article>
           ))}

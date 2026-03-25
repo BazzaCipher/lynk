@@ -88,29 +88,29 @@ export function NodeContextMenu({
     <div
       ref={menuRef}
       style={{ top: position.y, left: position.x }}
-      className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-xl py-1 min-w-[180px]"
+      className="fixed z-50 bg-white border border-paper-200 rounded-lg shadow-xl py-1 min-w-[180px]"
     >
-      <div className="px-3 py-1.5 text-xs font-medium text-gray-400 uppercase tracking-wide">
+      <div className="px-3 py-1.5 text-xs font-medium text-bridge-400 uppercase tracking-wide">
         Node actions
       </div>
 
       <button
-        className="flex items-center gap-2 w-full px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 text-left"
+        className="flex items-center gap-2 w-full px-3 py-2 text-sm cursor-pointer hover:bg-paper-50 text-left"
         onClick={handleMagneticConnect}
       >
         {magneticMode ? (
-          <svg className="w-4 h-4 text-indigo-600 shrink-0" viewBox="0 0 16 16" fill="currentColor">
+          <svg className="w-4 h-4 text-copper-500 shrink-0" viewBox="0 0 16 16" fill="currentColor">
             <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0z" />
           </svg>
         ) : (
           <span className="w-4 h-4 shrink-0" />
         )}
-        <span className={magneticMode ? 'text-indigo-600 font-medium' : ''}>
+        <span className={magneticMode ? 'text-copper-500 font-medium' : ''}>
           Magnetic Connect
         </span>
       </button>
 
-      <hr className="my-1 border-gray-100" />
+      <hr className="my-1 border-paper-100" />
 
       <button
         className="flex items-center gap-2 w-full px-3 py-2 text-sm cursor-pointer hover:bg-red-50 hover:text-red-600 text-left"

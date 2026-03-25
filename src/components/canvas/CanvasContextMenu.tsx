@@ -178,17 +178,17 @@ export function CanvasContextMenu({ mode, position, flowPosition, onClose }: Can
     <div
       ref={menuRef}
       style={{ top: position.y, left: position.x }}
-      className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-xl py-1 min-w-[180px]"
+      className="fixed z-50 bg-white border border-paper-200 rounded-lg shadow-xl py-1 min-w-[180px]"
     >
       {mode === 'create' && (
         <>
-          <div className="px-3 py-1.5 text-xs font-medium text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1.5 text-xs font-medium text-bridge-400 uppercase tracking-wide">
             Add node
           </div>
           {nodeTypeConfig.map((config) => (
             <button
               key={config.type}
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 text-left"
+              className="flex items-center gap-2 w-full px-3 py-2 text-sm cursor-pointer hover:bg-paper-50 text-left"
               onClick={() => handleAddNode(config.type, config.data as unknown as Record<string, unknown>)}
             >
               <NodeIcon type={config.icon} />
@@ -199,11 +199,11 @@ export function CanvasContextMenu({ mode, position, flowPosition, onClose }: Can
       )}
       {mode === 'actions' && (
         <>
-          <div className="px-3 py-1.5 text-xs font-medium text-gray-400 uppercase tracking-wide">
+          <div className="px-3 py-1.5 text-xs font-medium text-bridge-400 uppercase tracking-wide">
             Canvas
           </div>
           <button
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 text-left"
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm cursor-pointer hover:bg-paper-50 text-left"
             onClick={handleSave}
           >
             <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
@@ -214,7 +214,7 @@ export function CanvasContextMenu({ mode, position, flowPosition, onClose }: Can
             Save
           </button>
           <button
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 text-left"
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm cursor-pointer hover:bg-paper-50 text-left"
             onClick={handleLoad}
           >
             <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
@@ -225,7 +225,7 @@ export function CanvasContextMenu({ mode, position, flowPosition, onClose }: Can
             Load
           </button>
           <button
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 text-left"
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm cursor-pointer hover:bg-paper-50 text-left"
             onClick={handleFiles}
           >
             <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
@@ -233,7 +233,7 @@ export function CanvasContextMenu({ mode, position, flowPosition, onClose }: Can
             </svg>
             Files
           </button>
-          <hr className="my-1 border-gray-100" />
+          <hr className="my-1 border-paper-100" />
           <button
             className="flex items-center gap-2 w-full px-3 py-2 text-sm cursor-pointer hover:bg-red-50 hover:text-red-600 text-left"
             onClick={handleClear}

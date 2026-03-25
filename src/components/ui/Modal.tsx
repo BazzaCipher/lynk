@@ -49,11 +49,11 @@ export function Modal({ isOpen, onClose, title, children, className = '' }: Moda
       >
         {/* Header */}
         {title && (
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">{title}</h2>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-paper-200">
+            <h2 className="text-lg font-medium text-bridge-900">{title}</h2>
             <button
               onClick={onClose}
-              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              className="p-1 text-bridge-400 hover:text-bridge-600 transition-colors"
               aria-label="Close modal"
             >
               <svg

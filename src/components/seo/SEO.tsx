@@ -21,7 +21,7 @@ export function SEO({
   type = 'website',
   publishedTime,
 }: SEOProps) {
-  const fullTitle = title ? `${title} — ${SITE_NAME}` : `${SITE_NAME} — Visual Document Data Extraction`;
+  const fullTitle = title ? `${title} - ${SITE_NAME}` : `${SITE_NAME} - Visual Document Data Extraction`;
 
   return (
     <Helmet>

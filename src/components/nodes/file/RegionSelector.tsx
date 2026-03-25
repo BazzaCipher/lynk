@@ -144,7 +144,7 @@ export function RegionSelector({
       {/* Selection box while dragging */}
       {selectionBox && selectionBox.width > 0 && selectionBox.height > 0 && (
         <div
-          className="absolute border-2 border-dashed border-blue-500 pointer-events-none"
+          className="absolute border-2 border-dashed border-copper-500 pointer-events-none"
           style={{
             left: selectionBox.x,
             top: selectionBox.y,
@@ -160,5 +160,5 @@ export function RegionSelector({
 
 // Export for backwards compatibility
 export function getNextRegionColor(): string {
-  return '#3b82f6'; // Default blue, actual color determined by dataType
+  return '#c27350'; // Default blue, actual color determined by dataType
 }

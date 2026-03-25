@@ -84,7 +84,7 @@ function EditableLabel({
             setEditing(false);
           }
         }}
-        className="text-xs font-medium text-gray-700 bg-white border border-indigo-300 rounded px-1 py-0 w-full outline-none"
+        className="text-xs font-medium text-bridge-700 bg-white border border-copper-400 rounded px-1 py-0 w-full outline-none"
         onClick={(e) => e.stopPropagation()}
       />
     );
@@ -92,7 +92,7 @@ function EditableLabel({
 
   return (
     <span
-      className={className || 'text-xs font-medium text-gray-700 truncate flex-1 cursor-text'}
+      className={className || 'text-xs font-medium text-bridge-700 truncate flex-1 cursor-text'}
       onDoubleClick={(e) => {
         e.stopPropagation();
         setEditing(true);
@@ -172,7 +172,7 @@ function FileEntryRow({
 
   return (
     <div
-      className="p-2 border-b border-gray-100 hover:bg-blue-50"
+      className="p-2 border-b border-paper-100 hover:bg-copper-400/10"
       draggable
       onDragStart={(e) => startFileDrag(e, meta.fileId)}
       onDoubleClick={(e) => {
@@ -186,7 +186,7 @@ function FileEntryRow({
           <EditableLabel
             value={meta.fileName}
             onCommit={(newName) => onRename(meta.fileId, newName)}
-            className="text-xs font-medium text-gray-900 truncate block cursor-text"
+            className="text-xs font-medium text-bridge-900 truncate block cursor-text"
           />
           <div className="flex items-center gap-1.5 mt-0.5">
             <span
@@ -199,10 +199,10 @@ function FileEntryRow({
             >
               {typeColor.label}
             </span>
-            <span className="text-[10px] text-gray-400">
+            <span className="text-[10px] text-bridge-400">
               {formatFileSize(meta.size)}
             </span>
-            <span className="text-[10px] text-gray-400">
+            <span className="text-[10px] text-bridge-400">
               {date.toLocaleDateString()}
             </span>
           </div>
@@ -213,7 +213,7 @@ function FileEntryRow({
       <div className="mt-1.5">
         <button
           onClick={() => setExpanded(!expanded)}
-          className="text-[10px] text-gray-500 hover:text-gray-700"
+          className="text-[10px] text-bridge-500 hover:text-bridge-700"
         >
           Used by {nodeIds.length} node{nodeIds.length !== 1 ? 's' : ''}
           {nodeIds.length > 0 && (expanded ? ' \u25B2' : ' \u25BC')}
@@ -224,7 +224,7 @@ function FileEntryRow({
               <button
                 key={nid}
                 onClick={() => onJumpToNode(nid)}
-                className="block text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline pl-2"
+                className="block text-[10px] text-copper-500 hover:text-copper-700 hover:underline pl-2"
               >
                 {nid}
               </button>
@@ -238,7 +238,7 @@ function FileEntryRow({
         {nodeIds.length > 0 && (
           <button
             onClick={() => onJumpToNode(nodeIds[0])}
-            className="px-1.5 py-0.5 text-[10px] bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 transition-colors"
+            className="px-1.5 py-0.5 text-[10px] bg-copper-400/10 text-copper-600 rounded hover:bg-copper-400/20 transition-colors"
             title="Jump to first node using this file"
           >
             Jump
@@ -253,7 +253,7 @@ function FileEntryRow({
         </button>
         <button
           onClick={() => downloadFile(meta)}
-          className="px-1.5 py-0.5 text-[10px] bg-gray-50 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+          className="px-1.5 py-0.5 text-[10px] bg-paper-50 text-bridge-700 rounded hover:bg-paper-100 transition-colors"
           title="Download file"
         >
           Download
@@ -273,7 +273,7 @@ function FileEntryRow({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Hierarchy view — compact file row (name + small thumbnail only)
+// Hierarchy view - compact file row (name + small thumbnail only)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function CompactFileRow({
@@ -297,7 +297,7 @@ function CompactFileRow({
 
   return (
     <div
-      className="flex items-center gap-1.5 py-1 px-2 hover:bg-blue-50 group"
+      className="flex items-center gap-1.5 py-1 px-2 hover:bg-copper-400/10 group"
       style={{ paddingLeft: `${12 + depth * 16}px` }}
       draggable
       onDragStart={(e) => startFileDrag(e, meta.fileId)}
@@ -312,7 +312,7 @@ function CompactFileRow({
       <EditableLabel
         value={meta.fileName}
         onCommit={(newName) => onRename(meta.fileId, newName)}
-        className="text-xs text-gray-800 truncate flex-1 cursor-text"
+        className="text-xs text-bridge-800 truncate flex-1 cursor-text"
       />
       <span
         className="px-1 py-0.5 text-[7px] font-semibold rounded shrink-0"
@@ -329,7 +329,7 @@ function CompactFileRow({
           {nodeIds.length > 0 && (
             <button
               onClick={(e) => { e.stopPropagation(); onJumpToNode(nodeIds[0]); }}
-              className="px-1 py-0.5 text-[8px] bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100"
+              className="px-1 py-0.5 text-[8px] bg-copper-400/10 text-copper-500 rounded hover:bg-copper-400/20"
               title="Jump"
             >
               J
@@ -344,7 +344,7 @@ function CompactFileRow({
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); downloadFile(meta); }}
-            className="px-1 py-0.5 text-[8px] bg-gray-50 text-gray-600 rounded hover:bg-gray-100"
+            className="px-1 py-0.5 text-[8px] bg-paper-50 text-bridge-600 rounded hover:bg-paper-100"
             title="Download"
           >
             DL
@@ -435,8 +435,8 @@ function VirtualFolderNode({
   return (
     <div>
       <div
-        className={`flex items-center gap-1 py-1 px-2 hover:bg-blue-50 group cursor-pointer transition-colors ${
-          isDragTarget ? 'bg-indigo-50 outline outline-1 outline-indigo-300' : ''
+        className={`flex items-center gap-1 py-1 px-2 hover:bg-copper-400/10 group cursor-pointer transition-colors ${
+          isDragTarget ? 'bg-copper-400/10 outline outline-1 outline-indigo-300' : ''
         }`}
         style={{ paddingLeft: `${4 + depth * 16}px` }}
         onClick={() => setExpanded(!expanded)}
@@ -448,7 +448,7 @@ function VirtualFolderNode({
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className={`h-3 w-3 text-gray-400 transition-transform shrink-0 ${expanded ? 'rotate-90' : ''}`}
+          className={`h-3 w-3 text-bridge-400 transition-transform shrink-0 ${expanded ? 'rotate-90' : ''}`}
           viewBox="0 0 20 20"
           fill="currentColor"
         >
@@ -456,7 +456,7 @@ function VirtualFolderNode({
         </svg>
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className={`h-3.5 w-3.5 shrink-0 transition-colors ${isDragTarget ? 'text-indigo-500' : expanded ? 'text-amber-400' : 'text-amber-500'}`}
+          className={`h-3.5 w-3.5 shrink-0 transition-colors ${isDragTarget ? 'text-copper-500' : expanded ? 'text-amber-400' : 'text-amber-500'}`}
           viewBox="0 0 24 24"
           fill={expanded ? 'none' : 'currentColor'}
           stroke={expanded ? 'currentColor' : 'none'}
@@ -472,7 +472,7 @@ function VirtualFolderNode({
           value={folder.name}
           onCommit={(newName) => onRenameFolder(folder.id, newName)}
         />
-        <span className="text-[10px] text-gray-400 shrink-0">{totalFiles}</span>
+        <span className="text-[10px] text-bridge-400 shrink-0">{totalFiles}</span>
         {showActions && (
           <div className="flex gap-0.5 shrink-0">
             <button
@@ -480,7 +480,7 @@ function VirtualFolderNode({
                 e.stopPropagation();
                 onCreateFolder('New Folder', folder.id);
               }}
-              className="px-1 py-0.5 text-[8px] bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+              className="px-1 py-0.5 text-[8px] bg-paper-100 text-bridge-600 rounded hover:bg-paper-200"
               title="New subfolder"
             >
               +
@@ -594,7 +594,7 @@ function FolderTreeView({
       {/* New folder button */}
       <button
         onClick={() => onCreateFolder('New Folder', null)}
-        className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[10px] text-gray-500 hover:text-indigo-600 hover:bg-gray-50"
+        className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[10px] text-bridge-500 hover:text-copper-500 hover:bg-paper-50"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
@@ -629,10 +629,10 @@ function FolderTreeView({
           onDragOver={handleUngroupedDragOver}
           onDragLeave={() => setIsUngroupedDragTarget(false)}
           onDrop={handleUngroupedDrop}
-          className={`transition-colors ${isUngroupedDragTarget ? 'bg-gray-100' : ''}`}
+          className={`transition-colors ${isUngroupedDragTarget ? 'bg-paper-100' : ''}`}
         >
           {rootFolders.length > 0 && (
-            <div className="px-3 py-1 text-[10px] text-gray-400 font-medium border-t border-gray-100 mt-1">
+            <div className="px-3 py-1 text-[10px] text-bridge-400 font-medium border-t border-paper-100 mt-1">
               Ungrouped
             </div>
           )}
@@ -648,7 +648,7 @@ function FolderTreeView({
             />
           ))}
           {ungroupedFiles.length === 0 && rootFolders.length > 0 && (
-            <div className="px-3 py-2 text-[10px] text-gray-300 italic">
+            <div className="px-3 py-2 text-[10px] text-bridge-400 italic">
               Drop files here to ungroup
             </div>
           )}
@@ -769,7 +769,7 @@ export function FileRegistryPanel() {
 
   return (
     <div
-      className={`absolute top-0 right-0 h-full bg-white shadow-lg border-l border-gray-200 z-20 flex flex-col transition-all duration-300 ease-in-out ${
+      className={`absolute top-0 right-0 h-full bg-white shadow-lg border-l border-paper-200 z-20 flex flex-col transition-all duration-300 ease-in-out ${
         fileRegistryOpen ? 'w-72 opacity-100 translate-x-0' : 'w-0 opacity-0 translate-x-full'
       }`}
       onDoubleClick={(e) => e.stopPropagation()}
@@ -781,22 +781,22 @@ export function FileRegistryPanel() {
     >
       <div className="min-w-[18rem] flex flex-col h-full">
       {/* Header */}
-      <div className="p-3 border-b border-gray-200 flex items-center justify-between">
+      <div className="p-3 border-b border-paper-200 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-gray-900">Files</h3>
-          <span className="px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-600 rounded-full">
+          <h3 className="text-sm font-semibold text-bridge-900">Files</h3>
+          <span className="px-1.5 py-0.5 text-[10px] font-medium bg-paper-100 text-bridge-600 rounded-full">
             {files.length}
           </span>
         </div>
         <div className="flex items-center gap-1">
           {/* View mode toggle */}
-          <div className="flex bg-gray-100 rounded p-0.5">
+          <div className="flex bg-paper-100 rounded p-0.5">
             <button
               onClick={() => setFileRegistryViewMode('flat')}
               className={`px-1.5 py-0.5 text-[10px] rounded transition-colors ${
                 fileRegistryViewMode === 'flat'
-                  ? 'bg-white shadow-sm text-gray-700 font-medium'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-white shadow-sm text-bridge-700 font-medium'
+                  : 'text-bridge-500 hover:text-bridge-700'
               }`}
               title="Flat list view"
             >
@@ -808,8 +808,8 @@ export function FileRegistryPanel() {
               onClick={() => setFileRegistryViewMode('hierarchy')}
               className={`px-1.5 py-0.5 text-[10px] rounded transition-colors ${
                 fileRegistryViewMode === 'hierarchy'
-                  ? 'bg-white shadow-sm text-gray-700 font-medium'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-white shadow-sm text-bridge-700 font-medium'
+                  : 'text-bridge-500 hover:text-bridge-700'
               }`}
               title="Folder hierarchy view"
             >
@@ -820,7 +820,7 @@ export function FileRegistryPanel() {
           </div>
           <button
             onClick={toggleFileRegistry}
-            className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-500"
+            className="p-1 hover:bg-paper-100 rounded transition-colors text-bridge-500"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -830,26 +830,26 @@ export function FileRegistryPanel() {
       </div>
 
       {/* Search */}
-      <div className="p-2 border-b border-gray-100">
+      <div className="p-2 border-b border-paper-100">
         <input
           type="text"
           value={fileRegistrySearch}
           onChange={(e) => setFileRegistrySearch(e.target.value)}
           placeholder="Search files..."
-          className="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
+          className="w-full px-2 py-1 text-xs border border-paper-200 rounded focus:outline-none focus:ring-1 focus:ring-copper-400"
         />
       </div>
 
       {/* Sort controls */}
-      <div className="px-2 py-1.5 border-b border-gray-100 flex gap-1">
+      <div className="px-2 py-1.5 border-b border-paper-100 flex gap-1">
         {(['name', 'type', 'size', 'date'] as const).map((field) => (
           <button
             key={field}
             onClick={() => handleSortClick(field)}
             className={`px-1.5 py-0.5 text-[10px] rounded transition-colors ${
               fileRegistrySort.field === field
-                ? 'bg-blue-100 text-blue-700 font-medium'
-                : 'text-gray-500 hover:bg-gray-100'
+                ? 'bg-copper-400/20 text-copper-600 font-medium'
+                : 'text-bridge-500 hover:bg-paper-100'
             }`}
           >
             {field.charAt(0).toUpperCase() + field.slice(1)}
@@ -870,7 +870,7 @@ export function FileRegistryPanel() {
       {/* File list */}
       <div className="flex-1 overflow-y-auto">
         {files.length === 0 && virtualFolders.length === 0 ? (
-          <div className="p-4 text-center text-xs text-gray-400">
+          <div className="p-4 text-center text-xs text-bridge-400">
             No files loaded
           </div>
         ) : fileRegistryViewMode === 'hierarchy' ? (

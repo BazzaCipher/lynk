@@ -84,8 +84,8 @@ export function ResizeHandle({ corner, onResize, onResizeEnd }: ResizeHandleProp
           style={{
             width: 16,
             height: 16,
-            backgroundColor: isActive ? '#2563eb' : '#ffffff',
-            border: `2px solid ${isActive ? '#1d4ed8' : '#3b82f6'}`,
+            backgroundColor: isActive ? '#a85f3e' : '#ffffff',
+            border: `2px solid ${isActive ? '#8b4d32' : '#c27350'}`,
             boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
             transform: isActive ? 'scale(1.15)' : undefined,
           }}

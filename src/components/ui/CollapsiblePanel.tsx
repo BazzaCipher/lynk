@@ -24,7 +24,7 @@ export function CollapsiblePanel({
   return (
     <div
       className={`
-        flex flex-col bg-white border-gray-200 transition-all duration-200
+        flex flex-col bg-white border-paper-200 transition-all duration-200
         ${side === 'right' ? 'border-l' : 'border-r'}
         ${isOpen ? 'w-72' : 'w-10'}
         ${className}
@@ -34,15 +34,15 @@ export function CollapsiblePanel({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          flex items-center gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200
-          hover:bg-gray-100 transition-colors text-left
+          flex items-center gap-2 px-3 py-2 bg-paper-50 border-b border-paper-200
+          hover:bg-paper-100 transition-colors text-left
           ${headerClassName}
         `}
       >
         {/* Collapse/Expand icon */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className={`h-4 w-4 text-gray-500 transition-transform ${
+          className={`h-4 w-4 text-bridge-500 transition-transform ${
             isOpen ? (side === 'right' ? 'rotate-0' : 'rotate-180') : (side === 'right' ? 'rotate-180' : 'rotate-0')
           }`}
           viewBox="0 0 20 20"
@@ -57,9 +57,9 @@ export function CollapsiblePanel({
 
         {isOpen && (
           <>
-            <span className="flex-1 text-sm font-medium text-gray-700">{title}</span>
+            <span className="flex-1 text-sm font-medium text-bridge-700">{title}</span>
             {badge !== undefined && badge > 0 && (
-              <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+              <span className="px-1.5 py-0.5 text-xs bg-copper-400/20 text-copper-600 rounded-full">
                 {badge}
               </span>
             )}
@@ -77,7 +77,7 @@ export function CollapsiblePanel({
       {/* Collapsed indicator */}
       {!isOpen && badge !== undefined && badge > 0 && (
         <div className="flex justify-center py-2">
-          <span className="w-6 h-6 flex items-center justify-center text-xs bg-blue-100 text-blue-700 rounded-full">
+          <span className="w-6 h-6 flex items-center justify-center text-xs bg-copper-400/20 text-copper-600 rounded-full">
             {badge}
           </span>
         </div>

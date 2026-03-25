@@ -2,8 +2,8 @@
  * .lynk Archive Format
  *
  * A .lynk file is a ZIP archive containing:
- *   manifest.json     — canvas state (metadata, nodes, edges, viewport, version)
- *   files/<id>.bin     — raw binary file data (PDFs, images)
+ *   manifest.json     - canvas state (metadata, nodes, edges, viewport, version)
+ *   files/<id>.bin     - raw binary file data (PDFs, images)
  *
  * The manifest's `files` section maps fileId → metadata (filename, mimeType, size, hash).
  * Actual file bytes live as separate entries for efficient storage (no base64 bloat).
@@ -24,7 +24,7 @@ export interface LynkFileEntry {
 
 /** The manifest.json structure inside a .lynk archive */
 export interface LynkManifest {
-  /** Archive format version — bump when layout changes */
+  /** Archive format version - bump when layout changes */
   formatVersion: 1;
   /** Canvas state version (semver) */
   version: string;

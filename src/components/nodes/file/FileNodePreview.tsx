@@ -65,7 +65,7 @@ export function FileNodePreview({
   const typeColor = getFileTypeColor(resolvedMimeType);
 
   return (
-    <div className="border-b border-gray-100" style={{ borderLeft: `3px solid ${typeColor.border}` }}>
+    <div className="border-b border-paper-100" style={{ borderLeft: `3px solid ${typeColor.border}` }}>
       {/* Optional thumbnail */}
       {showThumbnail && (
         <div
@@ -81,11 +81,11 @@ export function FileNodePreview({
             <img
               src={fileUrl}
               alt={fileName || 'Image'}
-              className="w-full h-full object-contain bg-gray-50"
+              className="w-full h-full object-contain bg-paper-50"
               draggable={false}
             />
           ) : (
-            <div className="w-full h-full bg-gray-50 flex items-center justify-center overflow-hidden">
+            <div className="w-full h-full bg-paper-50 flex items-center justify-center overflow-hidden">
               {pdfError ? (
                 <div className="text-red-500 text-sm">{pdfError}</div>
               ) : (
@@ -94,7 +94,7 @@ export function FileNodePreview({
                   onLoadSuccess={onPdfLoad}
                   onLoadError={onPdfError}
                   loading={
-                    <div className="text-gray-400 text-sm">Loading PDF...</div>
+                    <div className="text-bridge-400 text-sm">Loading PDF...</div>
                   }
                 >
                   <Page
@@ -129,8 +129,8 @@ export function FileNodePreview({
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-gray-900 truncate">{fileName}</p>
-            <p className="text-[10px] text-gray-500">
+            <p className="text-xs font-medium text-bridge-900 truncate">{fileName}</p>
+            <p className="text-[10px] text-bridge-500">
               {fileSize !== undefined && `${formatFileSize(fileSize)} · `}
               {itemCount} {itemLabel}{itemCount !== 1 ? 's' : ''}
               {fileType === 'pdf' && totalPages > 1 && ` · Page ${currentPage}/${totalPages}`}
@@ -152,7 +152,7 @@ export function FileNodePreview({
         <div className="flex gap-1">
           <button
             onClick={onOpenClick}
-            className="flex-1 px-2 py-1.5 text-xs bg-indigo-50 text-indigo-700 rounded hover:bg-indigo-100 transition-colors flex items-center justify-center gap-1"
+            className="flex-1 px-2 py-1.5 text-xs bg-copper-400/10 text-copper-600 rounded hover:bg-copper-400/20 transition-colors flex items-center justify-center gap-1"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
               <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
@@ -162,7 +162,7 @@ export function FileNodePreview({
           </button>
           <button
             onClick={onConvertClick}
-            className="px-2 py-1.5 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors flex items-center justify-center gap-1"
+            className="px-2 py-1.5 text-xs bg-paper-100 text-bridge-700 rounded hover:bg-paper-200 transition-colors flex items-center justify-center gap-1"
             title={`Convert to ${convertLabel} Node`}
           >
             <ConvertIcon type={convertIcon} />

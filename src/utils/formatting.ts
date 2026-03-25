@@ -91,7 +91,7 @@ export function parseDateString(text: string): string | null {
       // Unambiguous: MM/DD
       month = aNum; day = bNum;
     } else {
-      // Ambiguous — default to DD/MM (non-US convention)
+      // Ambiguous - default to DD/MM (non-US convention)
       day = aNum; month = bNum;
     }
 
@@ -222,7 +222,7 @@ export function formatValue(
     case 'date': {
       const iso = parseDateString(strValue);
       if (!iso) return strValue;
-      // Parse ISO parts directly — no Date object to avoid timezone offset bugs
+      // Parse ISO parts directly - no Date object to avoid timezone offset bugs
       const [yyyy, mm, dd] = iso.split('-');
       return `${dd}/${mm}/${yyyy}`;
     }

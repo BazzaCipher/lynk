@@ -161,7 +161,7 @@ export function useFileUpload({ onFileRegistered, allowedTypes = ['pdf', 'image'
 
       const results: FileUploadResult[] = [];
       for (const { file, path } of allFiles) {
-        // path is like "folderName/subfolder/file.pdf" — take the directory part
+        // path is like "folderName/subfolder/file.pdf" - take the directory part
         const dirPath = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : path;
         const folderId = dirPath ? ensureVirtualFoldersForPath(dirPath) : undefined;
         const result = await processFile(file, folderId);
@@ -170,7 +170,7 @@ export function useFileUpload({ onFileRegistered, allowedTypes = ['pdf', 'image'
       return results;
     }
 
-    // No directories — process as regular files
+    // No directories - process as regular files
     const results: FileUploadResult[] = [];
     for (const entry of entries) {
       if (entry.isFile) {

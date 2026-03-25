@@ -97,7 +97,7 @@ export function useDataFlow({ nodeId, targetHandle, acceptedTypes }: UseDataFlow
 /**
  * Resolve the output value from a source node based on the source handle.
  *
- * Generic implementation — reads from the node's Exportable.outputs map.
+ * Generic implementation - reads from the node's Exportable.outputs map.
  * Each node component is responsible for populating its outputs.
  */
 export function resolveNodeOutput(
@@ -138,7 +138,7 @@ export function formatValue(
     currency?: string;
   }
 ): string {
-  if (value === null || value === undefined) return '—';
+  if (value === null || value === undefined) return '-';
 
   switch (format) {
     case 'number': {

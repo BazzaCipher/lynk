@@ -21,7 +21,7 @@ import { useNodeOutputs } from '../../hooks/useNodeOutputs';
 import { type ResolvedInput, resolveNodeOutput } from '../../hooks/useDataFlow';
 import { getOperation } from '../../core/operations/operationRegistry';
 import { OperationSelect } from '../ui/OperationSelect';
-import { DATA_TYPE_COLORS } from '../../utils/colors';
+import { DATA_TYPE_COLORS, createGradientFromTypes } from '../../utils/colors';
 import { formatValue } from '../../utils/formatting';
 import { InputRow } from './base/InputRow';
 import type {
@@ -73,13 +73,16 @@ function EntryRow({
   onInputClick,
   onInputDoubleClick,
 }: EntryRowProps) {
+  const allTypes: SimpleDataType[] = ['string', 'number', 'currency', 'date', 'boolean'];
+  const inputColor = createGradientFromTypes(allTypes);
+
   const outputColor = result
-    ? DATA_TYPE_COLORS[result.dataType]?.border || '#6b7280'
-    : '#6b7280';
+    ? DATA_TYPE_COLORS[result.dataType]?.border || '#9c8468'
+    : '#9c8468';
 
   const resultDisplay = result
     ? formatValue(result.value, result.dataType, { precision: 2 })
-    : '—';
+    : '-';
 
   const inputHandleId = `entry-in-${subheaderId}-${entry.id}`;
   const outputHandleId = `entry-out-${subheaderId}-${entry.id}`;
@@ -100,14 +103,15 @@ function EntryRow({
   }, [inputs, isHighlighted, onInputClick]);
 
   return (
-    <div className={`relative border-b border-gray-100 last:border-b-0 ${
-      isOutputHighlighted ? 'bg-blue-100 ring-1 ring-blue-400 animate-pulse' : ''
+    <div className={`relative border-b border-paper-100 last:border-b-0 ${
+      isOutputHighlighted ? 'bg-copper-400/20 ring-1 ring-copper-400 animate-pulse' : ''
     }`}>
-      {/* Handle overlays — absolutely positioned to span full row width for edge alignment */}
+      {/* Handle overlays - absolutely positioned to span full row width for edge alignment */}
       <NodeEntry
         id={inputHandleId}
         handleType="target"
         handlePosition={Position.Left}
+        handleColor={inputColor}
         allowMultiple
         className="!absolute !inset-0 !min-h-0 !px-0 pointer-events-none"
       >
@@ -123,12 +127,12 @@ function EntryRow({
         <span className="sr-only">Output</span>
       </NodeEntry>
 
-      {/* Content row — padded to avoid overlapping handle hit areas */}
+      {/* Content row - padded to avoid overlapping handle hit areas */}
       <div className="flex items-center gap-1 py-1 px-3 cursor-pointer" onClick={handleEntryClick}>
         {/* Expand/collapse toggle */}
         <button
           onClick={(e) => { e.stopPropagation(); onUpdateEntry(entry.id, { expanded: !entry.expanded }); }}
-          className="p-0.5 hover:bg-gray-100 rounded text-gray-400"
+          className="p-0.5 hover:bg-paper-100 rounded text-bridge-400"
           title={entry.expanded ? 'Collapse' : 'Expand'}
         >
           <svg
@@ -156,17 +160,17 @@ function EntryRow({
         />
 
         {/* Input count badge */}
-        <span className="text-xs text-gray-400 w-5 text-center">{inputs.length}</span>
+        <span className="text-xs text-bridge-400 w-5 text-center">{inputs.length}</span>
 
         {/* Result */}
-        <span className="font-mono text-xs text-gray-800 min-w-[50px] text-right">
+        <span className="font-mono text-xs text-bridge-800 min-w-[50px] text-right">
           {resultDisplay}
         </span>
 
         {/* Delete button */}
         <button
           onClick={(e) => { e.stopPropagation(); onDeleteEntry(entry.id); }}
-          className="p-0.5 hover:bg-red-100 rounded text-gray-400 hover:text-red-500"
+          className="p-0.5 hover:bg-red-100 rounded text-bridge-400 hover:text-red-500"
           title="Delete entry"
         >
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -177,7 +181,7 @@ function EntryRow({
 
       {/* Expanded input list */}
       {entry.expanded && inputs.length > 0 && (
-        <div className="bg-gray-50 border-t border-gray-100">
+        <div className="bg-paper-50 border-t border-paper-100">
           {inputs.map((input) => (
             <InputRow
               key={input.edgeId}
@@ -194,7 +198,7 @@ function EntryRow({
 
       {/* Empty state when expanded but no inputs */}
       {entry.expanded && inputs.length === 0 && (
-        <div className="bg-gray-50 border-t border-gray-100 px-6 py-2 text-xs text-gray-400 italic">
+        <div className="bg-paper-50 border-t border-paper-100 px-6 py-2 text-xs text-bridge-400 italic">
           No inputs connected
         </div>
       )}
@@ -240,20 +244,20 @@ function SubheaderRow({
   onInputDoubleClick,
 }: SubheaderRowProps) {
   const outputColor = result
-    ? DATA_TYPE_COLORS[result.dataType]?.border || '#6b7280'
-    : '#6b7280';
+    ? DATA_TYPE_COLORS[result.dataType]?.border || '#9c8468'
+    : '#9c8468';
 
   const resultDisplay = result
     ? formatValue(result.value, result.dataType, { precision: 2 })
-    : '—';
+    : '-';
 
   const isSubheaderHighlighted = outputHighlights[`subheader-${subheader.id}`] ?? false;
 
   return (
-    <div className="border-b border-gray-200 last:border-b-0">
+    <div className="border-b border-paper-200 last:border-b-0">
       {/* Subheader header row with output handle */}
-      <div className={`relative ${isSubheaderHighlighted ? 'bg-blue-100 ring-1 ring-blue-400 animate-pulse' : ''}`}>
-        {/* Output handle overlay — absolutely positioned for edge alignment */}
+      <div className={`relative ${isSubheaderHighlighted ? 'bg-copper-400/20 ring-1 ring-copper-400 animate-pulse' : ''}`}>
+        {/* Output handle overlay - absolutely positioned for edge alignment */}
         <NodeEntry
           id={`subheader-${subheader.id}`}
           handleType="source"
@@ -265,11 +269,11 @@ function SubheaderRow({
         </NodeEntry>
 
         {/* Subheader content row */}
-        <div className={`flex items-center gap-1 py-1.5 px-3 ${isSubheaderHighlighted ? '' : 'bg-gray-50'}`}>
+        <div className={`flex items-center gap-1 py-1.5 px-3 ${isSubheaderHighlighted ? '' : 'bg-paper-50'}`}>
         {/* Collapse toggle */}
         <button
           onClick={() => onUpdateSubheader({ collapsed: !subheader.collapsed })}
-          className="p-0.5 hover:bg-gray-200 rounded text-gray-500"
+          className="p-0.5 hover:bg-paper-200 rounded text-bridge-500"
           title={subheader.collapsed ? 'Expand' : 'Collapse'}
         >
           <svg
@@ -286,7 +290,7 @@ function SubheaderRow({
         <EditableLabel
           value={subheader.label}
           onSave={(newLabel) => onUpdateSubheader({ label: newLabel })}
-          className="text-sm font-medium text-gray-800"
+          className="text-sm font-medium text-bridge-800"
         />
 
         {/* Operation selector */}
@@ -298,19 +302,19 @@ function SubheaderRow({
         />
 
         {/* Entry count */}
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-bridge-400">
           ({subheader.entries.length})
         </span>
 
         {/* Result */}
-        <span className="font-mono text-sm font-medium text-gray-800 min-w-[60px] text-right">
+        <span className="font-mono text-sm font-medium text-bridge-800 min-w-[60px] text-right">
           {resultDisplay}
         </span>
 
         {/* Delete button */}
         <button
           onClick={onDeleteSubheader}
-          className="p-0.5 hover:bg-red-100 rounded text-gray-400 hover:text-red-500"
+          className="p-0.5 hover:bg-red-100 rounded text-bridge-400 hover:text-red-500"
           title="Delete group"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -343,7 +347,7 @@ function SubheaderRow({
           {/* Add entry button */}
           <button
             onClick={onAddEntry}
-            className="w-full py-1.5 text-xs text-gray-500 hover:text-blue-600 hover:bg-gray-50
+            className="w-full py-1.5 text-xs text-bridge-500 hover:text-copper-500 hover:bg-paper-50
                        transition-colors flex items-center justify-center gap-1"
           >
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -611,7 +615,7 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
     <BaseNode label={data.label} selected={selected} className="min-w-[280px]">
       <div>
         {data.subheaders.length === 0 ? (
-          <div className="px-4 py-6 text-center text-gray-400 text-sm">
+          <div className="px-4 py-6 text-center text-bridge-400 text-sm">
             No groups yet.
             <br />
             <span className="text-xs">Click "Add Group" to create one.</span>
@@ -642,8 +646,8 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
       {/* Add Group button */}
       <button
         onClick={handleAddSubheader}
-        className="w-full py-2 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50
-                   transition-colors flex items-center justify-center gap-1.5 border-t border-gray-200"
+        className="w-full py-2 text-sm text-bridge-600 hover:text-copper-500 hover:bg-copper-400/10
+                   transition-colors flex items-center justify-center gap-1.5 border-t border-paper-200"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

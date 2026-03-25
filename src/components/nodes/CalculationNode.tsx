@@ -234,12 +234,12 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
         >
           <div className="flex-1">
             {resolvedInputs.length === 0 ? (
-              <span className="text-gray-400 text-xs">
+              <span className="text-bridge-400 text-xs">
                 {isSingleInput ? 'Connect one input...' : 'Connect inputs...'}
               </span>
             ) : (
               <div className="space-y-0.5">
-                <span className="text-gray-500 text-xs">
+                <span className="text-bridge-500 text-xs">
                   {isSingleInput
                     ? `Input (${compatibleInputs.length > 0 ? '1' : '0'} value)`
                     : `Inputs (${compatibleInputs.length} values)`}
@@ -276,8 +276,8 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
         </NodeEntry>
 
         {/* Operation dropdown with subheaders */}
-        <div className="flex items-center gap-2 px-2 py-1 border-t border-gray-100 mt-1">
-          <span className="text-gray-500 text-xs">Op:</span>
+        <div className="flex items-center gap-2 px-2 py-1 border-t border-paper-100 mt-1">
+          <span className="text-bridge-500 text-xs">Op:</span>
           <OperationSelect value={data.operation} onChange={handleOperationChange} />
         </div>
 
@@ -287,13 +287,13 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
           handleType="source"
           handlePosition={Position.Right}
           handleColor={outputHandleColor}
-          className={isOutputHighlighted ? 'bg-blue-100 ring-1 ring-blue-400 animate-pulse rounded' : ''}
+          className={isOutputHighlighted ? 'bg-copper-400/20 ring-1 ring-copper-400 animate-pulse rounded' : ''}
         >
           <div className="flex-1 flex items-center gap-2">
             <EditableLabel
               value={data.label}
               onSave={(newLabel) => updateNodeData(id, { label: newLabel })}
-              className="text-gray-500"
+              className="text-bridge-500"
             />
             {/* Result value */}
             {result ? (
@@ -301,7 +301,7 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
                 {displayValue(result.value, result.dataType)}
               </span>
             ) : (
-              <span className="text-gray-400">—</span>
+              <span className="text-bridge-400">-</span>
             )}
           </div>
         </NodeEntry>

@@ -90,7 +90,7 @@ function findNearestCompatibleHandle(
   const draggedInternal = nodeLookup.get(draggedNode.id);
   if (!draggedInternal) return null;
 
-  // The dragged node is the TARGET — snap its input handles to nearby source handles on other nodes.
+  // The dragged node is the TARGET - snap its input handles to nearby source handles on other nodes.
   const draggedTargetHandles = draggedInternal.internals.handleBounds?.target;
   if (!draggedTargetHandles || draggedTargetHandles.length === 0) return null;
 
