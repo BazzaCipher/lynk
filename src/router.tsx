@@ -4,6 +4,8 @@ import { CanvasLayout } from './layouts/CanvasLayout';
 import { LandingPage } from './pages/LandingPage';
 import { CanvasPage } from './pages/CanvasPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { BlogListPage } from './blog/BlogListPage';
+import { BlogPostPage } from './blog/BlogPostPage';
 
 export const router = createBrowserRouter([
   {
@@ -11,6 +13,8 @@ export const router = createBrowserRouter([
     element: <SiteLayout />,
     children: [
       { index: true, element: <LandingPage /> },
+      { path: 'blog', element: <BlogListPage /> },
+      { path: 'blog/:slug', element: <BlogPostPage /> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

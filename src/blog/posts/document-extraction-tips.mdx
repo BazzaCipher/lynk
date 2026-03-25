@@ -1,0 +1,48 @@
+---
+title: "5 Tips for Better Document Data Extraction"
+description: "Practical tips to get cleaner, more accurate data when extracting from PDFs and scanned documents using OCR."
+date: "2026-03-25"
+slug: "document-extraction-tips"
+---
+
+# 5 Tips for Better Document Data Extraction
+
+Whether you're processing invoices, receipts, or reports, the quality of your extracted data depends on how you approach the extraction process. Here are five practical tips to get cleaner results.
+
+## 1. Use Tight Selection Regions
+
+When drawing extraction regions, keep them as tight as possible around the target data. Including extra whitespace or neighboring text can confuse OCR and introduce noise into your extracted values.
+
+**Good:** A region that tightly wraps `$4,200.00`
+
+**Bad:** A region that includes the label, the value, and part of the next row
+
+## 2. Prefer High-Resolution Scans
+
+OCR accuracy drops significantly with low-resolution images. If you're scanning physical documents:
+
+- Scan at **300 DPI** or higher
+- Use grayscale rather than color (reduces noise)
+- Ensure even lighting to avoid shadows
+
+For PDFs that contain embedded text (not scanned images), resolution doesn't matter — Lynk can extract the text layer directly.
+
+## 3. Split Complex Documents Into Sections
+
+Rather than trying to extract everything from a document in one pass, break it into logical sections. In Lynk, you can create multiple extractor nodes on the same document — one for header fields, one for line items, one for totals.
+
+This approach makes your canvas easier to read and your extraction pipeline easier to debug.
+
+## 4. Validate with Calculation Nodes
+
+Use calculation nodes as sanity checks. For example, if you extract individual line items and a stated total from an invoice, wire the line items to a SUM node and compare it to the extracted total. If they don't match, you know there's an extraction error to investigate.
+
+## 5. Save Templates for Recurring Documents
+
+If you regularly process the same type of document (monthly invoices from the same vendor, weekly reports in the same format), save your canvas as a template. The extraction regions and calculation pipeline persist, so you only need to swap in the new document.
+
+---
+
+These tips apply whether you're using Lynk or any other extraction tool. The key principle is the same: structured, deliberate extraction beats brute-force OCR every time.
+
+Try these techniques on the [Lynk canvas](/canvas).

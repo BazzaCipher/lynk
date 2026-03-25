@@ -6,14 +6,10 @@ export function Footer() {
       <div className="max-w-6xl mx-auto px-6 py-12">
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           {/* Brand */}
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
-              <svg width="12" height="12" viewBox="0 0 18 18" fill="none" className="text-white">
-                <path d="M3 6L9 3L15 6V12L9 15L3 12V6Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-              </svg>
-            </div>
+          <Link to="/" className="flex items-center gap-2">
+            <img src="/logo-lynk.jpg" alt="Lynk" className="w-6 h-6 rounded-md object-cover" />
             <span className="text-sm font-semibold text-gray-700">Lynk</span>
-          </div>
+          </Link>
 
           {/* Links */}
           <div className="flex items-center gap-6 text-sm text-gray-400">
@@ -23,6 +19,9 @@ export function Footer() {
             <a href="#features" className="hover:text-gray-600 transition-colors">
               Features
             </a>
+            <Link to="/blog" className="hover:text-gray-600 transition-colors">
+              Blog
+            </Link>
           </div>
 
           {/* Copyright */}

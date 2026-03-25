@@ -21,6 +21,9 @@ export function Header() {
           <a href="#how-it-works" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
             How it Works
           </a>
+          <Link to="/blog" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
+            Blog
+          </Link>
           <Link
             to="/canvas"
             className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
@@ -62,6 +65,13 @@ export function Header() {
           >
             How it Works
           </a>
+          <Link
+            to="/blog"
+            onClick={() => setMobileOpen(false)}
+            className="block text-sm text-gray-600 hover:text-gray-900"
+          >
+            Blog
+          </Link>
           <Link
             to="/canvas"
             onClick={() => setMobileOpen(false)}
