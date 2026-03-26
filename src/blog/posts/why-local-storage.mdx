@@ -1,0 +1,60 @@
+---
+title: "Why Your Data Stays in Your Browser: The Benefits of Local Storage"
+description: "Paperbridge stores all your documents and workflows in your browser's local storage. Here's why that matters for privacy, speed, and control."
+date: "2026-03-26"
+slug: "why-local-storage"
+---
+
+# Why Your Data Stays in Your Browser
+
+When you use Paperbridge, your documents never leave your device. Every PDF, image, extracted value, calculation, and workflow is stored entirely in your browser's local storage. There is no cloud server receiving your files. There is no database storing your data on someone else's infrastructure.
+
+This is a deliberate design decision, and it comes with real benefits.
+
+## Your Documents Are Sensitive
+
+The documents people bring to Paperbridge, such as invoices, bank statements, purchase orders, and contracts, contain sensitive business data. Account numbers, transaction amounts, vendor details, and internal financial figures are not the kind of information that should be uploaded to a third-party server without careful consideration.
+
+By keeping everything in local storage, Paperbridge removes that concern entirely. Your data exists on your machine and nowhere else. There is no transmission to intercept, no server to breach, and no third-party privacy policy to evaluate.
+
+## No Account Required
+
+Because there is no server-side storage, there is no need for user accounts, passwords, or authentication flows. You open Paperbridge and start working. There is no signup form, no email verification, and no password to remember.
+
+This also means there is no user data to leak in the event of a breach, because there is no user data stored remotely in the first place.
+
+## Speed Without Latency
+
+Every interaction in Paperbridge happens locally. When you extract a value from a document, it is saved to local storage instantly. When you open a workflow, it loads from your browser's storage without waiting for a network round trip.
+
+There is no loading spinner while your data is fetched from a remote API. There is no retry logic for failed network requests. The application works as fast as your device allows, regardless of your internet connection.
+
+## Offline by Default
+
+Since all data lives in your browser, Paperbridge works offline. You can extract data from documents, build calculations, and review workflows without an internet connection. This is particularly useful when working in environments with restricted or unreliable connectivity.
+
+## You Own Your Data
+
+There is no vendor lock-in with Paperbridge. Your data is not trapped in a proprietary cloud format that requires a subscription to access. It lives in your browser, and you can export your workflows as portable files at any time.
+
+If you clear your browser data, your Paperbridge data goes with it. If you want to move your work to another device, you export it and import it there. You have full control.
+
+## The Trade-offs
+
+Local storage is not without limitations, and it is worth being transparent about them:
+
+- **Storage limits**: Browsers typically allow 5–10 MB of local storage per origin. For large workflows with many documents, this can become a constraint. Paperbridge uses IndexedDB for larger assets, which provides significantly more capacity.
+- **No automatic sync**: Your data does not automatically appear on another device. You need to export and import workflows manually to move them between machines.
+- **Backup responsibility**: Since there is no cloud backup, you are responsible for exporting your workflows if you want to preserve them beyond your browser's storage.
+
+These are conscious trade-offs. For document workflows that handle sensitive financial data, we believe privacy and control outweigh the convenience of automatic cloud sync.
+
+## A Different Approach
+
+Most SaaS tools default to uploading your data to their servers because it simplifies their architecture and enables features like collaboration and cross-device sync. That model works well for many applications, but it is not the right default for tools that handle sensitive documents.
+
+Paperbridge takes the opposite approach: your data stays local unless you explicitly choose to export it. Privacy is not a feature you opt into. It is the default.
+
+---
+
+Ready to try it? [Open the canvas](/canvas) and start building traceable, private document workflows.

@@ -1,5 +1,6 @@
 import type { Edge } from '@xyflow/react';
 import type { LynkNode } from '../../types';
+import { hasCapability } from '../nodes/nodeRegistry';
 
 export interface LayoutOptions {
   horizontalSpacing: number;
@@ -15,8 +16,11 @@ const DEFAULT_OPTIONS: LayoutOptions = {
   startY: 50,
 };
 
-// Source nodes always start on the left
-const SOURCE_TYPES = new Set(['extractor', 'display']);
+/** File-backed nodes always start on the left */
+function isSourceType(type: string): boolean {
+  return hasCapability(type, 'isFileNode');
+}
+
 // Sink types - nodes typically used as outputs, placed further right when disconnected
 const SINK_TYPES = new Set(['label']);
 
@@ -56,7 +60,7 @@ function computeNodeDepths(
     const outgoing = outgoingEdges.get(node.id) || [];
     const isDisconnected = incoming.length === 0 && outgoing.length === 0;
 
-    if (SOURCE_TYPES.has(node.type)) {
+    if (isSourceType(node.type)) {
       // Source types always at depth 0
       roots.push(node.id);
       depths.set(node.id, 0);

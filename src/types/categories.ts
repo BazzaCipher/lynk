@@ -13,6 +13,7 @@
 import type { LynkNode, LynkNodeType } from './nodes';
 import type { SimpleDataType } from './data';
 import type { DataSourceReference } from './geometry';
+import { hasCapability } from '../core/nodes/nodeRegistry';
 
 // Re-export SimpleDataType for convenience
 export type { SimpleDataType } from './data';
@@ -84,7 +85,7 @@ export class FileNode {
   static readonly types: LynkNodeType[] = ['display', 'extractor'];
 
   static is(node: LynkNode): node is LynkNode & { data: FileNodeData } {
-    return FileNode.types.includes(node.type as LynkNodeType);
+    return hasCapability(node.type, 'isFileNode');
   }
 
   static getFileId(node: LynkNode & { data: FileNodeData }): string | undefined {
@@ -136,13 +137,13 @@ export class SourceNode {
 /** Nodes that can be connection sources (have output handles) */
 export const CanExport = {
   types: ['display', 'extractor', 'calculation', 'sheet', 'label'] as LynkNodeType[],
-  is: (node: LynkNode) => CanExport.types.includes(node.type as LynkNodeType),
+  is: (node: LynkNode) => hasCapability(node.type, 'canExport'),
 };
 
 /** Nodes that can be connection targets (have input handles) */
 export const CanImport = {
   types: ['viewport', 'calculation', 'sheet', 'label'] as LynkNodeType[],
-  is: (node: LynkNode) => CanImport.types.includes(node.type as LynkNodeType),
+  is: (node: LynkNode) => hasCapability(node.type, 'canImport'),
 };
 
 /** Capability helper for highlighting - works with Exportable */

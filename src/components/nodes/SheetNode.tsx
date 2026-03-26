@@ -127,7 +127,7 @@ function EntryRow({
         <span className="sr-only">Output</span>
       </NodeEntry>
 
-      {/* Entry grid row — indented with left accent */}
+      {/* Entry grid row - indented with left accent */}
       <div
         className="grid items-center py-1.5 pl-7 pr-4 ml-3 cursor-pointer hover:bg-paper-50/80 transition-colors border-b border-paper-100/60 border-l-2 border-l-paper-200 last:border-b-0"
         style={{ gridTemplateColumns: '20px 1fr 60px 32px 70px 24px' }}
@@ -166,7 +166,7 @@ function EntryRow({
 
         {/* Input count */}
         <span className="text-[10px] text-bridge-400 text-center tabular-nums">
-          {inputs.length > 0 ? inputs.length : '—'}
+          {inputs.length > 0 ? inputs.length : '-'}
         </span>
 
         {/* Result */}

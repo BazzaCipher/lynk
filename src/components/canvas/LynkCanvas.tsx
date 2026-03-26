@@ -13,15 +13,11 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import { useCanvasStore } from '../../store/canvasStore';
-import { DisplayNode as DisplayNodeComponent } from '../nodes/DisplayNode';
-import { ViewportNode as ViewportNodeComponent } from '../nodes/ViewportNode';
-import { ExtractorNode as ExtractorNodeComponent } from '../nodes/ExtractorNode';
-import { CalculationNode as CalculationNodeComponent } from '../nodes/CalculationNode';
-import { SheetNode as SheetNodeComponent } from '../nodes/SheetNode';
-import { LabelNode as LabelNodeComponent } from '../nodes/LabelNode';
-import { GroupNode as GroupNodeComponent } from '../nodes/GroupNode';
-import { withErrorBoundary } from '../nodes/base/withErrorBoundary';
-import { Toolbar } from './Toolbar';
+import { getNodeTypes } from '../../core/nodes/nodeRegistry';
+import { FileControls } from './Toolbar';
+import { NodeCreationBar } from './NodeCreationBar';
+import { UndoRedoControls } from './UndoRedoControls';
+import { PanelToggle } from './PanelToggle';
 import { ConnectionLine } from './ConnectionLine';
 import { LayoutControls } from './LayoutControls';
 import { FileRegistryPanel } from './FileRegistryPanel';
@@ -38,16 +34,8 @@ import { useCanvasDrop } from '../../hooks/useCanvasDrop';
 import type { LynkNode, DisplayNodeData, ViewportRegion } from '../../types';
 import { DisplayNode } from '../../types';
 
-// Wrap node components with error boundaries to prevent crashes
-const nodeTypes = {
-  display: withErrorBoundary(DisplayNodeComponent, 'display'),
-  viewport: withErrorBoundary(ViewportNodeComponent, 'viewport'),
-  extractor: withErrorBoundary(ExtractorNodeComponent, 'extractor'),
-  calculation: withErrorBoundary(CalculationNodeComponent, 'calculation'),
-  sheet: withErrorBoundary(SheetNodeComponent, 'sheet'),
-  label: withErrorBoundary(LabelNodeComponent, 'label'),
-  group: withErrorBoundary(GroupNodeComponent, 'group'),
-};
+// Node types from registry (wrapped with error boundaries)
+const nodeTypes = getNodeTypes();
 
 interface CanvasMenuState {
   mode: 'create' | 'actions';
@@ -77,6 +65,9 @@ export function LynkCanvas() {
   const setViewport = useCanvasStore((state) => state.setViewport);
   const canvasId = useCanvasStore((state) => state.canvasId);
   const canvasName = useCanvasStore((state) => state.canvasName);
+  const loadFromFile = useCanvasStore((state) => state.loadFromFile);
+  const fileRegistryOpen = useCanvasStore((state) => state.fileRegistryOpen);
+  const toggleFileRegistry = useCanvasStore((state) => state.toggleFileRegistry);
   const { showToast } = useToast();
   const { screenToFlowPosition, fitView, getNodes } = useReactFlow();
 
@@ -420,6 +411,39 @@ export function LynkCanvas() {
     setFocusNameInput(true);
   }, []);
 
+  // Load a file into a new project (preserves the current one)
+  const handleLoad = useCallback(async () => {
+    const state = useCanvasStore.getState();
+
+    // Snapshot current project before loading
+    snapshotsRef.current.set(state.canvasId, {
+      nodes: state.nodes,
+      edges: state.edges,
+      viewport: state.viewport,
+      canvasName: state.canvasName,
+      canvasId: state.canvasId,
+      lastSaved: state.lastSaved,
+    });
+
+    const result = await loadFromFile();
+    if (!result.success) {
+      // Restore snapshot on failure
+      const snapshot = snapshotsRef.current.get(state.canvasId);
+      if (snapshot) {
+        useCanvasStore.setState(snapshot);
+      }
+      if (result.error) {
+        const errorMsg = result.error.startsWith('Invalid canvas file:')
+          ? 'Invalid canvas file. The file may be corrupted or in an incompatible format.'
+          : result.error;
+        showToast(errorMsg, 'error');
+      }
+      return;
+    }
+
+    showToast('Canvas loaded successfully', 'success');
+  }, [loadFromFile, showToast]);
+
   // Register new projects when loading files
   // Track canvasId changes to register new projects
   const lastKnownIdRef = useRef(canvasId);
@@ -459,6 +483,7 @@ export function LynkCanvas() {
         onDeleteProject={handleDeleteProject}
         onCloneProject={handleCloneProject}
         onCreateProject={handleCreateProject}
+        onLoad={handleLoad}
       />
       <div
         className="flex-1 h-full relative"
@@ -468,16 +493,38 @@ export function LynkCanvas() {
         onDrop={handleDrop}
         onDoubleClick={handleDoubleClick}
       >
-        <Toolbar
-          onToggleSidebar={() => setSidebarOpen((v) => !v)}
-          sidebarOpen={sidebarOpen}
-          focusName={focusNameInput}
-          onFocusNameHandled={() => setFocusNameInput(false)}
+        {/* Top center: File controls + Undo/Redo */}
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
+          <FileControls
+            focusName={focusNameInput}
+            onFocusNameHandled={() => setFocusNameInput(false)}
+          />
+          <UndoRedoControls />
+        </div>
+
+        {/* Left: Projects panel toggle */}
+        <PanelToggle
+          side="left"
+          isOpen={sidebarOpen}
+          onClick={() => setSidebarOpen((v) => !v)}
+          label="Projects"
         />
+
+        {/* Right: Files panel toggle */}
+        <PanelToggle
+          side="right"
+          isOpen={fileRegistryOpen}
+          onClick={toggleFileRegistry}
+          label="Files"
+        />
+
+        {/* Bottom center: Node creation */}
+        <NodeCreationBar />
+
         {nodes.length === 0 && <EmptyState />}
         {nodes.length > 0 && <SuggestionBar />}
         {magneticMode && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 pointer-events-none
                           bg-copper-500 text-white text-xs px-3 py-1.5 rounded-full shadow-lg
                           flex items-center gap-2 select-none">
             Magnetic connect {snapTarget ? '- snap ready' : '- drag near a handle'} · press M to disable
@@ -535,7 +582,6 @@ export function LynkCanvas() {
             </div>
           </div>
         )}
-        <FileRegistryPanel />
         {contextMenu && (
           <NodeContextMenu
             node={contextMenu.node}
@@ -551,9 +597,11 @@ export function LynkCanvas() {
             position={{ x: canvasMenu.x, y: canvasMenu.y }}
             flowPosition={canvasMenu.flowPosition}
             onClose={() => setCanvasMenu(null)}
+            onLoad={handleLoad}
           />
         )}
       </div>
+      <FileRegistryPanel />
     </div>
   );
 }

@@ -44,17 +44,3 @@ export const defaultLabelData: LabelNodeData = {
   alignment: 'center',
 };
 
-export type NodeType = 'display' | 'extractor' | 'calculation' | 'sheet' | 'label';
-
-export const nodeTypeConfig: Array<{
-  type: NodeType;
-  label: string;
-  data: DisplayNodeData | ExtractorNodeData | CalculationNodeData | SheetNodeData | LabelNodeData;
-  icon: string;
-}> = [
-  { type: 'extractor', label: 'Extractor', data: defaultExtractorData, icon: 'extractor' },
-  { type: 'display', label: 'Display', data: defaultDisplayData, icon: 'display' },
-  { type: 'calculation', label: 'Calculation', data: defaultCalculationData, icon: 'calculation' },
-  { type: 'sheet', label: 'Sheet', data: defaultSheetData, icon: 'sheet' },
-  { type: 'label', label: 'Label', data: defaultLabelData, icon: 'label' },
-];

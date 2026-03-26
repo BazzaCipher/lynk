@@ -17,6 +17,7 @@ interface ProjectSidebarProps {
   onDeleteProject: (id: string) => void;
   onCloneProject: (id: string) => void;
   onCreateProject: () => void;
+  onLoad: () => Promise<void>;
 }
 
 function formatTime(timestamp: number): string {
@@ -36,6 +37,7 @@ export function ProjectSidebar({
   onDeleteProject,
   onCloneProject,
   onCreateProject,
+  onLoad,
 }: ProjectSidebarProps) {
   const { showToast } = useToast();
   const canvasName = useCanvasStore((state) => state.canvasName);
@@ -62,16 +64,29 @@ export function ProjectSidebar({
         </button>
       </div>
 
-      {/* Create button */}
-      <div className="px-3 pt-3 pb-1">
+      {/* Create / Open buttons */}
+      <div className="px-3 pt-3 pb-1 flex gap-2">
         <button
           onClick={onCreateProject}
-          className="flex items-center justify-center gap-1.5 w-full px-3 py-2 text-sm font-medium text-copper-500 bg-copper-400/10 hover:bg-copper-400/20 rounded-lg transition-colors cursor-pointer"
+          className="flex items-center justify-center gap-1.5 flex-1 px-3 py-2 text-sm font-medium text-copper-500 bg-copper-400/10 hover:bg-copper-400/20 rounded-lg transition-colors cursor-pointer"
+          title="New empty canvas"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
-          New Canvas
+          New
+        </button>
+        <button
+          onClick={() => onLoad()}
+          className="flex items-center justify-center gap-1.5 flex-1 px-3 py-2 text-sm font-medium text-copper-500 bg-copper-400/10 hover:bg-copper-400/20 rounded-lg transition-colors cursor-pointer"
+          title="Open canvas from file"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+            <polyline points="7 10 12 5 17 10" />
+            <line x1="12" y1="5" x2="12" y2="19" />
+          </svg>
+          Open
         </button>
       </div>
 

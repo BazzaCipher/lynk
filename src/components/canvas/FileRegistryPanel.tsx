@@ -769,17 +769,18 @@ export function FileRegistryPanel() {
 
   return (
     <div
-      className={`absolute top-0 right-0 h-full bg-white shadow-lg border-l border-paper-200 z-20 flex flex-col transition-all duration-300 ease-in-out ${
-        fileRegistryOpen ? 'w-72 opacity-100 translate-x-0' : 'w-0 opacity-0 translate-x-full'
-      }`}
+      className="h-full shrink-0 overflow-hidden transition-[max-width] duration-300 ease-in-out"
+      style={{
+        maxWidth: fileRegistryOpen ? '18rem' : '0',
+        pointerEvents: fileRegistryOpen ? 'auto' : 'none',
+      }}
       onDoubleClick={(e) => e.stopPropagation()}
       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
       onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); }}
-      style={{ pointerEvents: fileRegistryOpen ? 'auto' : 'none' }}
     >
-      <div className="min-w-[18rem] flex flex-col h-full">
+      <div className="w-72 h-full bg-white border-l border-paper-200 flex flex-col">
       {/* Header */}
       <div className="p-3 border-b border-paper-200 flex items-center justify-between">
         <div className="flex items-center gap-2">
