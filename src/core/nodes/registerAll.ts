@@ -93,6 +93,6 @@ registerNodeType({
   icon: 'group',
   component: GroupNode,
   defaultData: { label: 'Group', width: 400, height: 300 },
-  capabilities: { canExport: false, canImport: false, isFileNode: false },
+  capabilities: { canExport: true, canImport: true, isFileNode: false },
   creatable: false,
 });

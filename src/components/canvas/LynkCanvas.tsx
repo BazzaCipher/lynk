@@ -3,7 +3,7 @@ import {
   ReactFlow,
   Background,
   Controls,
-  MiniMap,
+  Panel,
   useReactFlow,
   type Connection,
   type Edge,
@@ -27,12 +27,13 @@ import { ProjectSidebar, type SessionProject } from './ProjectSidebar';
 import { EmptyState } from './EmptyState';
 import { SuggestionBar } from './SuggestionBar';
 import { useToast } from '../ui/Toast';
+import { AiPromptPanel } from '../ai/AiPromptPanel';
 import { validateConnection } from '../../core/engine/connectionValidation';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useMagneticConnect } from '../../hooks/useMagneticConnect';
 import { useCanvasDrop } from '../../hooks/useCanvasDrop';
 import type { LynkNode, DisplayNodeData, ViewportRegion } from '../../types';
-import { DisplayNode } from '../../types';
+import { DisplayNode, GroupNode } from '../../types';
 
 // Node types from registry (wrapped with error boundaries)
 const nodeTypes = getNodeTypes();
@@ -74,21 +75,75 @@ export function LynkCanvas() {
   // Keyboard shortcuts (Delete, Ctrl+S, Ctrl+Z, Ctrl+G, etc.)
   useKeyboardShortcuts();
 
-  // Lock children of unselected groups from being dragged
-  const processedNodes = useMemo(() => {
-    const selectedGroups = new Set(
-      nodes.filter((n) => n.type === 'group' && n.selected).map((n) => n.id)
+  // Lock children of unselected groups from being dragged, and hide children of collapsed groups
+  // Build collapsed group mappings: child ID → group ID
+  const { collapsedChildToGroup, collapsedGroups } = useMemo(() => {
+    const cGroups = new Set(
+      nodes.filter((n) => GroupNode.is(n as LynkNode) && (n as LynkNode).data?.collapsed).map((n) => n.id)
     );
-    return nodes.map((node) => {
-      if (!node.parentId) return node;
-      const parentIsGroup = nodes.some((n) => n.id === node.parentId && n.type === 'group');
-      if (!parentIsGroup) return node;
-      const draggable = selectedGroups.has(node.parentId);
-      return node.draggable === draggable ? node : { ...node, draggable };
-    });
+    const childMap = new Map<string, string>();
+    for (const n of nodes) {
+      if (n.parentId && cGroups.has(n.parentId)) {
+        childMap.set(n.id, n.parentId);
+      }
+    }
+    return { collapsedChildToGroup: childMap, collapsedGroups: cGroups };
   }, [nodes]);
 
+  // Hide collapsed children, resize collapsed groups
+  const processedNodes = useMemo(() => {
+    return nodes
+      .filter((node) => !collapsedChildToGroup.has(node.id))
+      .map((node) => {
+        // Collapsed group: override dimensions
+        if (collapsedGroups.has(node.id)) {
+          return { ...node, style: { ...node.style, width: 220, height: 60 } };
+        }
+        return node;
+      });
+  }, [nodes, collapsedChildToGroup, collapsedGroups]);
+
+  // Remap edges: edges to/from collapsed children → point to the group node's handles
+  const processedEdges = useMemo(() => {
+    if (collapsedChildToGroup.size === 0) return edges;
+    const seen = new Set<string>();
+    return edges
+      .map((edge) => {
+        const sourceInGroup = collapsedChildToGroup.get(edge.source);
+        const targetInGroup = collapsedChildToGroup.get(edge.target);
+        // Skip internal edges (both source and target in same collapsed group)
+        if (sourceInGroup && targetInGroup && sourceInGroup === targetInGroup) return null;
+        const newEdge = { ...edge };
+        if (sourceInGroup) {
+          newEdge.source = sourceInGroup;
+          newEdge.sourceHandle = 'group-out';
+        }
+        if (targetInGroup) {
+          newEdge.target = targetInGroup;
+          newEdge.targetHandle = 'group-in';
+        }
+        // Deduplicate remapped edges
+        const key = `${newEdge.source}:${newEdge.sourceHandle}-${newEdge.target}:${newEdge.targetHandle}`;
+        if (seen.has(key)) return null;
+        seen.add(key);
+        return { ...newEdge, id: `remapped-${key}` };
+      })
+      .filter((e): e is Edge => e !== null);
+  }, [edges, collapsedChildToGroup]);
+
   const { magneticMode, snapTarget, toggleMagneticMode, onNodeDrag, onNodeDragStop } = useMagneticConnect();
+
+  // Group-first selection: clicking a child of an unselected group selects the group first,
+  // but still allows dragging (the drag moves the group when it's not selected)
+  const handleNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
+    if (!node.parentId) return;
+    const parent = nodes.find((n) => n.id === node.parentId);
+    if (!parent || parent.type !== 'group' || parent.selected) return;
+    // Group isn't selected — select both the group and the child
+    onNodesChange([
+      { type: 'select', id: parent.id, selected: true },
+    ]);
+  }, [nodes, onNodesChange]);
 
   // Node context menu (right-click on node)
   const [contextMenu, setContextMenu] = useState<{ node: LynkNode; x: number; y: number } | null>(null);
@@ -494,12 +549,15 @@ export function LynkCanvas() {
         onDoubleClick={handleDoubleClick}
       >
         {/* Top center: File controls + Undo/Redo */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
-          <FileControls
-            focusName={focusNameInput}
-            onFocusNameHandled={() => setFocusNameInput(false)}
-          />
-          <UndoRedoControls />
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2">
+          <div className="flex items-center gap-2">
+            <FileControls
+              focusName={focusNameInput}
+              onFocusNameHandled={() => setFocusNameInput(false)}
+            />
+            <UndoRedoControls />
+          </div>
+          {nodes.length > 0 && <SuggestionBar />}
         </div>
 
         {/* Left: Projects panel toggle */}
@@ -522,7 +580,6 @@ export function LynkCanvas() {
         <NodeCreationBar />
 
         {nodes.length === 0 && <EmptyState />}
-        {nodes.length > 0 && <SuggestionBar />}
         {magneticMode && (
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 pointer-events-none
                           bg-copper-500 text-white text-xs px-3 py-1.5 rounded-full shadow-lg
@@ -532,12 +589,13 @@ export function LynkCanvas() {
         )}
         <ReactFlow
           nodes={processedNodes}
-          edges={edges}
+          edges={processedEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           zoomOnDoubleClick={false}
           onViewportChange={setViewport}
+          onNodeClick={handleNodeClick}
           onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
           onNodeContextMenu={handleNodeContextMenu}
@@ -563,11 +621,9 @@ export function LynkCanvas() {
           <Background gap={16} size={1} />
           <Controls />
           <LayoutControls />
-          <MiniMap
-            nodeStrokeWidth={3}
-            zoomable
-            pannable
-          />
+          <Panel position="bottom-right" className="!mb-2 !mr-2">
+            <AiPromptPanel context="canvas" />
+          </Panel>
         </ReactFlow>
         {isDragOver && (
           <div className="absolute inset-0 z-50 bg-copper-500/10 border-2 border-dashed border-copper-400 flex items-center justify-center pointer-events-none">

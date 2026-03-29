@@ -22,6 +22,8 @@ import { getColorForType } from '../../utils/colors';
 import { detectDataType, parseDateString } from '../../utils/formatting';
 import { BlobRegistry, type FileMetadata } from '../../store/canvasPersistence';
 import { FilePickerModal } from '../ui/FilePickerModal';
+import { AiPromptPanel } from '../ai/AiPromptPanel';
+import type { AiDetectedField } from '../../types/ai';
 import type {
   ExtractorNode as ExtractorNodeType,
   NodeOutput,
@@ -481,6 +483,76 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
     }
   }, [id, data.fileUrl, data.fileType, data.regions, data.currentPage, updateNodeData, showToast]);
 
+  // State for OCR text used by AI panel
+  const [ocrTextForAi, setOcrTextForAi] = useState<string | undefined>();
+
+  // Run OCR to get text for AI when modal opens
+  useEffect(() => {
+    if (!isModalOpen || !data.fileUrl) {
+      setOcrTextForAi(undefined);
+      return;
+    }
+    let cancelled = false;
+    const run = async () => {
+      let imageSource: HTMLImageElement | HTMLCanvasElement | string;
+      if (imageRef.current) {
+        imageSource = imageRef.current;
+      } else if (data.fileType === 'image') {
+        imageSource = data.fileUrl!;
+      } else {
+        return;
+      }
+      try {
+        const result = await extractFullPage(imageSource);
+        if (!cancelled) {
+          setOcrTextForAi(result.lines.map((l) => l.text).join('\n'));
+        }
+      } catch {
+        // OCR failed, AI panel will show detect as disabled
+      }
+    };
+    run();
+    return () => { cancelled = true; };
+  }, [isModalOpen, data.fileUrl, data.fileType]);
+
+  const handleAiFieldsDetected = useCallback(
+    (fields: AiDetectedField[]) => {
+      const newRegions: ExtractedRegion[] = fields.map((field) => {
+        const regionId = `region-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const dataType = (['string', 'number', 'date', 'currency', 'boolean'].includes(field.dataType)
+          ? field.dataType
+          : 'string') as SimpleDataType;
+        return {
+          id: regionId,
+          label: field.label,
+          selectionType: 'box' as const,
+          coordinates: field.bbox as RegionCoordinates | undefined,
+          pageNumber: data.currentPage,
+          extractedData: {
+            type: dataType,
+            value: field.text,
+            source: {
+              nodeId: id,
+              regionId,
+              pageNumber: data.currentPage,
+              extractionMethod: 'ai' as const,
+              confidence: field.confidence * 100,
+            } as DataSourceReference,
+          },
+          dataType,
+          color: getColorForType(dataType).border,
+        };
+      });
+
+      updateNodeData(id, {
+        regions: [...data.regions, ...newRegions],
+      });
+
+      showToast(`AI detected ${newRegions.length} field(s)`, 'success');
+    },
+    [id, data.regions, data.currentPage, updateNodeData, showToast]
+  );
+
   // Scroll to selected region once when selection changes
   useEffect(() => {
     if (!isModalOpen || !selectedRegionId || !viewerAreaRef.current) {
@@ -779,6 +851,15 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
               showOcrButton={false}
             />
           </CollapsiblePanel>
+        </div>
+
+        {/* AI Prompt Panel */}
+        <div className="border-t border-paper-200 px-4 py-2">
+          <AiPromptPanel
+            context="extractor"
+            ocrText={ocrTextForAi}
+            onFieldsDetected={handleAiFieldsDetected}
+          />
         </div>
 
         {/* Footer instructions */}

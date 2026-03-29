@@ -70,7 +70,7 @@ export function SuggestionBar() {
   if (!current) return null;
 
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2
+    <div className="flex items-center gap-2
                     bg-white border border-paper-200 text-sm text-bridge-700 px-4 py-2 rounded-lg shadow-md
                     max-w-lg">
       <span className="flex-1">{current.message}</span>

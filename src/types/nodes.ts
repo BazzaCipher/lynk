@@ -231,6 +231,8 @@ export interface GroupNodeData extends BaseNodeData {
   height: number;
   /** Background color (optional, defaults to transparent) */
   backgroundColor?: string;
+  /** Whether the group is collapsed (children hidden) */
+  collapsed?: boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

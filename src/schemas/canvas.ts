@@ -243,6 +243,7 @@ const GroupNodeDataSchema = z.object({
   width: z.number(),
   height: z.number(),
   backgroundColor: z.string().optional(),
+  collapsed: z.boolean().optional(),
 });
 
 // Position
