@@ -8,7 +8,8 @@ import { useNodeHighlights, useIsNodeHighlighted, useHighlightActions } from '..
 import { useCanvasStore } from '../../store/canvasStore';
 import { EditableLabel } from './base/EditableLabel';
 import { useNodeOutputs } from '../../hooks/useNodeOutputs';
-import { getInputHandleColor, getOutputHandleColor } from '../../utils/colors';
+import { useSyncNodeOutputs } from '../../hooks/useSyncNodeOutputs';
+import { getInputHandleColor, getOutputHandleColor, getCompatibleTypes } from '../../utils/colors';
 import type { LabelNode as LabelNodeType, SimpleDataType } from '../../types';
 
 export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
@@ -160,26 +161,32 @@ export function LabelNode({ id, data, selected }: NodeProps<LabelNodeType>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync value and outputs to node data
-  useEffect(() => {
-    if (outputValue === null || outputValue === undefined) {
-      nodeOutputs.clearAll({ value: undefined });
-      return;
-    }
+  // Build outputs map from value
+  const outputs = useMemo((): Record<string, import('../../types').NodeOutput> | undefined => {
+    if (outputValue === null || outputValue === undefined) return undefined;
 
     const dataType: 'number' | 'string' = typeof outputValue === 'number' ? 'number' : 'string';
-    // Determine compatible types based on format
-    const compatibleTypes = (data.format === 'number' || data.format === 'currency')
-      ? ['number', 'currency'] as SimpleDataType[]
-      : undefined;
+    const compatibleTypes = getCompatibleTypes(
+      data.format === 'currency' ? 'currency' : dataType
+    );
 
-    nodeOutputs.set('output', {
-      value: outputValue,
-      dataType,
-      compatibleTypes,
-      label: data.label,
-    }, { value: { type: dataType, value: outputValue } });
-  }, [outputValue, data.label, data.format, nodeOutputs]);
+    return {
+      output: {
+        value: outputValue,
+        dataType,
+        compatibleTypes,
+        label: data.label,
+      },
+    };
+  }, [outputValue, data.label, data.format]);
+
+  const valueData = useMemo(() => {
+    if (outputValue === null || outputValue === undefined) return { value: undefined };
+    const dataType: 'number' | 'string' = typeof outputValue === 'number' ? 'number' : 'string';
+    return { value: { type: dataType, value: outputValue } };
+  }, [outputValue]);
+
+  useSyncNodeOutputs(outputs, nodeOutputs, valueData);
 
   return (
     <BaseNode

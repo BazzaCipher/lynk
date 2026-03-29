@@ -1,8 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAiSettings } from '../../hooks/useAiSettings';
 import { AiSettingsModal } from './AiSettingsModal';
-import { askAI, detectFieldsWithAI } from '../../services/aiService';
-import type { AiMessage, AiDetectedField } from '../../types/ai';
+import { askAI, detectFieldsWithAI, autoConnectWithAI, summariseWithAI } from '../../services/aiService';
+import { useCanvasStore } from '../../store/canvasStore';
+import type { AiMessage, AiDetectedField, AiNodeContext, AiConnectionSuggestion } from '../../types/ai';
+import type { ExtractorNodeData, CalculationNodeData, LabelNodeData, SheetNodeData } from '../../types/nodes';
 
 interface AiPromptPanelProps {
   context: 'canvas' | 'extractor';
@@ -11,6 +13,62 @@ interface AiPromptPanelProps {
   onFieldsDetected?: (fields: AiDetectedField[]) => void;
   /** Called when detect fields is triggered on canvas (caller handles per-node OCR) */
   onCanvasDetect?: () => void;
+  /** Called when AI suggests connections on canvas */
+  onConnectionsSuggested?: (suggestions: AiConnectionSuggestion[]) => void;
+}
+
+/** Build node context from canvas store for AI auto-connect / summarise */
+function gatherNodesContext(): AiNodeContext[] {
+  const { nodes } = useCanvasStore.getState();
+  const contexts: AiNodeContext[] = [];
+
+  for (const node of nodes) {
+    if (node.type === 'extractor') {
+      const data = node.data as ExtractorNodeData;
+      contexts.push({
+        nodeId: node.id,
+        nodeType: 'extractor',
+        label: data.label,
+        fields: data.regions.map((r) => ({
+          id: r.id,
+          label: r.label,
+          dataType: r.dataType,
+          value: String(r.extractedData.value || ''),
+        })),
+      });
+    } else if (node.type === 'calculation') {
+      const data = node.data as CalculationNodeData;
+      contexts.push({
+        nodeId: node.id,
+        nodeType: 'calculation',
+        label: data.label,
+        fields: [{ id: 'result', label: data.operation, dataType: 'number' }],
+      });
+    } else if (node.type === 'label') {
+      const data = node.data as LabelNodeData;
+      contexts.push({
+        nodeId: node.id,
+        nodeType: 'label',
+        label: data.label,
+        fields: [{ id: 'label-in', label: data.label, dataType: data.format?.type ?? 'string' }],
+      });
+    } else if (node.type === 'sheet') {
+      const data = node.data as SheetNodeData;
+      contexts.push({
+        nodeId: node.id,
+        nodeType: 'sheet',
+        label: data.label,
+        fields: data.subheaders?.flatMap((sh) =>
+          sh.entries.map((e) => ({
+            id: e.id,
+            label: e.label,
+            dataType: 'number',
+          }))
+        ) ?? [],
+      });
+    }
+  }
+  return contexts;
 }
 
 export function AiPromptPanel({
@@ -18,6 +76,7 @@ export function AiPromptPanel({
   ocrText,
   onFieldsDetected,
   onCanvasDetect,
+  onConnectionsSuggested,
 }: AiPromptPanelProps) {
   const { activeProvider, activeConfig, enabledProviders } = useAiSettings();
   const [input, setInput] = useState('');
@@ -25,6 +84,8 @@ export function AiPromptPanel({
   const [response, setResponse] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isSummarising, setIsSummarising] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -87,6 +148,70 @@ export function AiPromptPanel({
       setIsDetecting(false);
     }
   }, [context, ocrText, activeProvider, activeConfig, onFieldsDetected, onCanvasDetect]);
+
+  const handleAutoConnect = useCallback(async () => {
+    if (!activeProvider || !activeConfig) return;
+
+    const nodesContext = gatherNodesContext();
+    if (nodesContext.length < 2) {
+      setError('Need at least 2 nodes with fields to auto-connect');
+      return;
+    }
+
+    setIsConnecting(true);
+    setError(null);
+
+    try {
+      const suggestions = await autoConnectWithAI(
+        nodesContext,
+        activeProvider.id,
+        activeConfig.selectedModel,
+        activeConfig.apiKey
+      );
+
+      if (suggestions.length === 0) {
+        setMessages((prev) => [...prev, { role: 'assistant', content: 'No connections suggested — the fields don\'t appear to have matching relationships.' }]);
+      } else {
+        onConnectionsSuggested?.(suggestions);
+        setMessages((prev) => [...prev, {
+          role: 'assistant',
+          content: `Connected ${suggestions.length} field(s):\n${suggestions.map((s) => `• ${s.reason}`).join('\n')}`,
+        }]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Auto-connect failed');
+    } finally {
+      setIsConnecting(false);
+    }
+  }, [activeProvider, activeConfig, onConnectionsSuggested]);
+
+  const handleSummarise = useCallback(async () => {
+    if (!activeProvider || !activeConfig) return;
+
+    setIsSummarising(true);
+    setError(null);
+
+    const nodesContext = gatherNodesContext();
+
+    try {
+      const summary = await summariseWithAI(
+        ocrText,
+        nodesContext.length > 0 ? nodesContext : undefined,
+        activeProvider.id,
+        activeConfig.selectedModel,
+        activeConfig.apiKey
+      );
+      setMessages((prev) => [...prev,
+        { role: 'user', content: 'Summarise this canvas' },
+        { role: 'assistant', content: summary },
+      ]);
+      setResponse(summary);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Summarise failed');
+    } finally {
+      setIsSummarising(false);
+    }
+  }, [activeProvider, activeConfig, ocrText]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

@@ -8,10 +8,11 @@ import type { CanvasState } from '../../types';
 import type { ValidationResult, ExportedCanvas } from '../codecs';
 import * as persistenceService from '../../services/canvasPersistence';
 import { filterValidEdges } from '../../services/canvasValidation';
+import { generateId } from '../../utils/id';
 import type { StateCreator } from './types';
 import { resetNodeIdCounter } from './coreSlice';
 
-const generateCanvasId = () => `canvas-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+const generateCanvasId = () => generateId('canvas');
 
 export interface PersistenceSlice {
   canvasName: string;

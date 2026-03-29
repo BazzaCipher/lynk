@@ -91,6 +91,14 @@ export function createGradientFromTypes(types: SimpleDataType[]): string {
 }
 
 /**
+ * Get compatible types for a data type.
+ * Number and currency are interchangeable; all other types are standalone.
+ */
+export function getCompatibleTypes(dataType: SimpleDataType): SimpleDataType[] | undefined {
+  return (dataType === 'number' || dataType === 'currency') ? ['number', 'currency'] : undefined;
+}
+
+/**
  * Get output handle color from NodeOutput.
  */
 export function getOutputHandleColor(output: { dataType: SimpleDataType; compatibleTypes?: SimpleDataType[] } | undefined): string {

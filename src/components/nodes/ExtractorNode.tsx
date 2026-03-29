@@ -15,12 +15,14 @@ import { extractTextFromRegion, extractFullPage } from '../../core/extraction/oc
 import { detectFields, fieldOverlapsExisting } from '../../core/extraction/fieldDetector';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useToast } from '../ui/Toast';
-import { useFileUpload, type FileUploadResult } from '../../hooks/useFileUpload';
+import { useFileNode } from '../../hooks/useFileNode';
 import { useNodeOutputs } from '../../hooks/useNodeOutputs';
+import { useSyncNodeOutputs } from '../../hooks/useSyncNodeOutputs';
 import { useDocumentZoom } from '../../hooks/useDocumentZoom';
-import { getColorForType } from '../../utils/colors';
-import { detectDataType, parseDateString } from '../../utils/formatting';
-import { BlobRegistry, type FileMetadata } from '../../store/canvasPersistence';
+import { getColorForType, getCompatibleTypes } from '../../utils/colors';
+import { generateId } from '../../utils/id';
+import { createRegionFromBox, createRegionFromText } from '../../utils/regions';
+import { BlobRegistry } from '../../store/canvasPersistence';
 import { FilePickerModal } from '../ui/FilePickerModal';
 import { AiPromptPanel } from '../ai/AiPromptPanel';
 import type { AiDetectedField } from '../../types/ai';
@@ -97,10 +99,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
       map[region.id] = {
         value,
         dataType: region.dataType,
-        // Add compatible types for numeric regions (number/currency are interchangeable)
-        compatibleTypes: (region.dataType === 'number' || region.dataType === 'currency')
-          ? ['number', 'currency']
-          : undefined,
+        compatibleTypes: getCompatibleTypes(region.dataType),
         label: region.label,
         source,
       };
@@ -108,25 +107,15 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
     return map;
   }, [data.regions, id]);
 
-  // Sync outputs to node data
-  useEffect(() => {
-    if (Object.keys(outputs).length > 0) {
-      nodeOutputs.update(outputs);
-    } else {
-      nodeOutputs.clearAll();
-    }
-  }, [outputs, nodeOutputs]);
+  useSyncNodeOutputs(
+    Object.keys(outputs).length > 0 ? outputs : undefined,
+    nodeOutputs
+  );
 
-  const onFileRegistered = useCallback(
-    (result: FileUploadResult) => {
-      BlobRegistry.addNodeReference(result.fileId, id);
-      useCanvasStore.getState().refreshFileRegistry();
-
+  const handleFileInit = useCallback(
+    (fileData: { fileUrl: string; fileId: string; fileName: string; fileType: 'pdf' | 'image' }) => {
       updateNodeData(id, {
-        fileUrl: result.fileUrl,
-        fileId: result.fileId,
-        fileName: result.fileName,
-        fileType: result.fileType,
+        ...fileData,
         currentPage: 1,
         totalPages: 1,
         regions: [],
@@ -135,25 +124,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
     [id, updateNodeData]
   );
 
-  const { handleFileSelect, handleFileDrop, handleDragOver } = useFileUpload({ onFileRegistered, nodeId: id });
-
-  const handlePickFromRegistry = useCallback(
-    (_fileId: string, blobUrl: string, meta: FileMetadata) => {
-      BlobRegistry.addNodeReference(meta.fileId, id);
-      useCanvasStore.getState().refreshFileRegistry();
-
-      updateNodeData(id, {
-        fileUrl: blobUrl,
-        fileId: meta.fileId,
-        fileName: meta.fileName,
-        fileType: meta.fileType,
-        currentPage: 1,
-        totalPages: 1,
-        regions: [],
-      });
-    },
-    [id, updateNodeData]
-  );
+  const { handleFileSelect, handleFileDrop, handleDragOver, handlePickFromRegistry } = useFileNode(id, handleFileInit);
 
   const handlePdfLoad = useCallback(
     ({ numPages }: { numPages: number }) => {
@@ -192,20 +163,12 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
 
   const handleRegionCreate = useCallback(
     (coordinates: RegionCoordinates, pageNumber?: number) => {
-      const newRegion: ExtractedRegion = {
-        id: `region-${Date.now()}`,
-        label: `Field ${data.regions.length + 1}`,
-        selectionType: 'box',
+      const newRegion = createRegionFromBox(
         coordinates,
-        pageNumber: pageNumber ?? data.currentPage,
-        extractedData: { type: 'string', value: '' },
-        dataType: 'string',
-        color: getColorForType('string').border,
-      };
-
-      updateNodeData(id, {
-        regions: [...data.regions, newRegion],
-      });
+        pageNumber ?? data.currentPage,
+        data.regions.length
+      );
+      updateNodeData(id, { regions: [...data.regions, newRegion] });
       setSelectedRegionId(newRegion.id);
     },
     [id, data.regions, data.currentPage, updateNodeData]
@@ -213,28 +176,8 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
 
   const handleTextSelect = useCallback(
     (textRange: TextRange) => {
-      const detectedType = detectDataType(textRange.text);
-      // Normalize values: dates → ISO string, currency → strip leading symbol
-      const value = detectedType === 'date'
-        ? (parseDateString(textRange.text) ?? textRange.text)
-        : detectedType === 'currency'
-        ? textRange.text.replace(/^[$€£¥₹₩₪₫₱]\s*/, '').trim()
-        : textRange.text;
-
-      const newRegion: ExtractedRegion = {
-        id: `region-${Date.now()}`,
-        label: `Text ${data.regions.length + 1}`,
-        selectionType: 'text',
-        textRange,
-        pageNumber: data.currentPage,
-        extractedData: { type: detectedType, value },
-        dataType: detectedType,
-        color: getColorForType(detectedType).border,
-      };
-
-      updateNodeData(id, {
-        regions: [...data.regions, newRegion],
-      });
+      const newRegion = createRegionFromText(textRange, data.currentPage, data.regions.length);
+      updateNodeData(id, { regions: [...data.regions, newRegion] });
       setSelectedRegionId(newRegion.id);
     },
     [id, data.regions, data.currentPage, updateNodeData]
@@ -436,7 +379,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
 
       // 4. Convert to regions
       const newRegions: ExtractedRegion[] = newFields.map((field) => {
-        const regionId = `region-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const regionId = generateId('region');
         return {
           id: regionId,
           label: field.label,
@@ -518,7 +461,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   const handleAiFieldsDetected = useCallback(
     (fields: AiDetectedField[]) => {
       const newRegions: ExtractedRegion[] = fields.map((field) => {
-        const regionId = `region-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const regionId = generateId('region');
         const dataType = (['string', 'number', 'date', 'currency', 'boolean'].includes(field.dataType)
           ? field.dataType
           : 'string') as SimpleDataType;

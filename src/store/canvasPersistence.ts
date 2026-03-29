@@ -5,6 +5,8 @@
  * Export/import logic has moved to src/store/codecs/.
  */
 
+import { generateId } from '../utils/id';
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // FILE METADATA
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -76,7 +78,7 @@ export const BlobRegistry = {
   metadata: new Map<string, FileMetadata>() as Map<string, FileMetadata>,
 
   generateId(): string {
-    return `file-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    return generateId('file');
   },
 
   register(blob: Blob): { fileId: string; blobUrl: string } {
@@ -183,6 +185,17 @@ export const BlobRegistry = {
 
   getBlob(fileId: string): Blob | undefined {
     return this.blobs.get(fileId);
+  },
+
+  removeFile(fileId: string): void {
+    const url = this.idToUrl.get(fileId);
+    if (url) {
+      URL.revokeObjectURL(url);
+      this.urlToId.delete(url);
+    }
+    this.idToUrl.delete(fileId);
+    this.blobs.delete(fileId);
+    this.metadata.delete(fileId);
   },
 
   clear(): void {

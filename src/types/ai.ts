@@ -35,9 +35,33 @@ export interface AiChatRequest {
   provider: ProviderId;
   model: string;
   apiKey: string;
-  mode: 'detect_fields' | 'freeform';
+  mode: 'detect_fields' | 'freeform' | 'auto_connect' | 'summarise';
   ocrText?: string;
+  /** For auto_connect: describes nodes and their fields */
+  nodesContext?: AiNodeContext[];
   messages: AiMessage[];
+}
+
+/** Describes a node and its fields for AI auto-connect */
+export interface AiNodeContext {
+  nodeId: string;
+  nodeType: string;
+  label: string;
+  fields: Array<{
+    id: string;
+    label: string;
+    dataType: string;
+    value?: string;
+  }>;
+}
+
+/** AI-suggested connection between two fields */
+export interface AiConnectionSuggestion {
+  sourceNodeId: string;
+  sourceFieldId: string;
+  targetNodeId: string;
+  targetHandle: string;
+  reason: string;
 }
 
 export interface AiDetectedField {

@@ -9,7 +9,7 @@
  * Each subheader has an output handle (right) for the aggregated result.
  */
 
-import { useMemo, useEffect, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import { Position, useEdges, useNodes, useReactFlow } from '@xyflow/react';
 import { BaseNode } from './base/BaseNode';
@@ -18,6 +18,7 @@ import { useCanvasStore } from '../../store/canvasStore';
 import { useHighlighting, useNodeHighlights } from '../../hooks/useHighlighting';
 import { EditableLabel } from './base/EditableLabel';
 import { useNodeOutputs } from '../../hooks/useNodeOutputs';
+import { useSyncNodeOutputs } from '../../hooks/useSyncNodeOutputs';
 import { type ResolvedInput, resolveNodeOutput } from '../../hooks/useDataFlow';
 import { getOperation } from '../../core/operations/operationRegistry';
 import { OperationSelect } from '../ui/OperationSelect';
@@ -32,14 +33,7 @@ import type {
   SimpleDataType,
   LynkNode,
 } from '../../types';
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// HELPER FUNCTIONS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function generateId(): string {
-  return Math.random().toString(36).substring(2, 9);
-}
+import { generateId } from '../../utils/id';
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -521,16 +515,7 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
     return Object.keys(map).length > 0 ? map : undefined;
   }, [data.subheaders, entryResults, subheaderResults]);
 
-  // Sync results and outputs to node data
-  useEffect(() => {
-    if (!outputs || Object.keys(outputs).length === 0) {
-      nodeOutputs.clearAll({ entryResults, subheaderResults });
-      return;
-    }
-
-    nodeOutputs.update(outputs, { entryResults, subheaderResults });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- entryResults/subheaderResults are derived from same data as outputs
-  }, [outputs, nodeOutputs]);
+  useSyncNodeOutputs(outputs, nodeOutputs, { entryResults, subheaderResults });
 
   // ─────────────────────────────────────────────────────────────────────────────
   // CRUD HANDLERS
@@ -538,7 +523,7 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
 
   const handleAddSubheader = useCallback(() => {
     const newSubheader: SheetSubheader = {
-      id: generateId(),
+      id: generateId('sheet'),
       label: 'New Group',
       operation: 'sum',
       entries: [],
@@ -572,7 +557,7 @@ export function SheetNode({ id, data, selected }: NodeProps<SheetNodeType>) {
   const handleAddEntry = useCallback(
     (subheaderId: string) => {
       const newEntry: SheetEntry = {
-        id: generateId(),
+        id: generateId('sheet'),
         label: 'New Entry',
         operation: 'sum',
         expanded: false,

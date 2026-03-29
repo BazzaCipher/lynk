@@ -2,8 +2,24 @@ import Tesseract from 'tesseract.js';
 import type { DataValue, RegionCoordinates } from '../../types';
 
 let worker: Tesseract.Worker | null = null;
+let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+const IDLE_TIMEOUT_MS = 60_000;
+
+function clearIdleTimer(): void {
+  if (idleTimer) {
+    clearTimeout(idleTimer);
+    idleTimer = null;
+  }
+}
+
+function scheduleIdleCleanup(): void {
+  clearIdleTimer();
+  idleTimer = setTimeout(() => terminateWorker(), IDLE_TIMEOUT_MS);
+}
 
 async function getWorker(): Promise<Tesseract.Worker> {
+  clearIdleTimer();
   if (!worker) {
     worker = await Tesseract.createWorker('eng');
   }
@@ -11,6 +27,7 @@ async function getWorker(): Promise<Tesseract.Worker> {
 }
 
 export async function terminateWorker(): Promise<void> {
+  clearIdleTimer();
   if (worker) {
     await worker.terminate();
     worker = null;
@@ -110,6 +127,8 @@ export async function extractTextFromRegion(
   const confidence = result.data.confidence;
 
   const dataValue = parseExtractedText(text);
+
+  scheduleIdleCleanup();
 
   return {
     text,
@@ -226,6 +245,8 @@ export async function extractFullPage(
       }
     }
   }
+
+  scheduleIdleCleanup();
 
   return {
     text: result.data.text,

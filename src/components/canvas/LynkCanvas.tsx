@@ -23,7 +23,7 @@ import { LayoutControls } from './LayoutControls';
 import { FileRegistryPanel } from './FileRegistryPanel';
 import { NodeContextMenu } from './NodeContextMenu';
 import { CanvasContextMenu } from './CanvasContextMenu';
-import { ProjectSidebar, type SessionProject } from './ProjectSidebar';
+import { ProjectSidebar } from './ProjectSidebar';
 import { EmptyState } from './EmptyState';
 import { SuggestionBar } from './SuggestionBar';
 import { useToast } from '../ui/Toast';
@@ -33,6 +33,7 @@ import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useMagneticConnect } from '../../hooks/useMagneticConnect';
 import { useCanvasDrop } from '../../hooks/useCanvasDrop';
 import type { LynkNode, DisplayNodeData, ViewportRegion } from '../../types';
+import { useProjectSessions } from '../../hooks/useProjectSessions';
 import { DisplayNode, GroupNode } from '../../types';
 
 // Node types from registry (wrapped with error boundaries)
@@ -45,16 +46,6 @@ interface CanvasMenuState {
   flowPosition: XYPosition;
 }
 
-// Session project store - in-memory snapshots for switching between projects
-interface ProjectSnapshot {
-  nodes: LynkNode[];
-  edges: Edge[];
-  viewport: import('@xyflow/react').Viewport;
-  canvasName: string;
-  canvasId: string;
-  lastSaved: string | null;
-}
-
 export function LynkCanvas() {
   const nodes = useCanvasStore((state) => state.nodes);
   const edges = useCanvasStore((state) => state.edges);
@@ -65,8 +56,7 @@ export function LynkCanvas() {
   const removeEdge = useCanvasStore((state) => state.removeEdge);
   const setViewport = useCanvasStore((state) => state.setViewport);
   const canvasId = useCanvasStore((state) => state.canvasId);
-  const canvasName = useCanvasStore((state) => state.canvasName);
-  const loadFromFile = useCanvasStore((state) => state.loadFromFile);
+
   const fileRegistryOpen = useCanvasStore((state) => state.fileRegistryOpen);
   const toggleFileRegistry = useCanvasStore((state) => state.toggleFileRegistry);
   const { showToast } = useToast();
@@ -325,207 +315,17 @@ export function LynkCanvas() {
     return () => document.removeEventListener('paste', onPaste);
   }, [handleCanvasPaste]);
 
-  // Sidebar state
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [focusNameInput, setFocusNameInput] = useState(false);
-
-  // Session projects - in-memory only
-  const [projects, setProjects] = useState<SessionProject[]>(() => [{
-    id: canvasId,
-    name: canvasName,
-    lastModified: Date.now(),
-    nodeCount: nodes.length,
-  }]);
-  const snapshotsRef = useRef<Map<string, ProjectSnapshot>>(new Map());
-
-  // Keep current project metadata in sync
-  const activeProject = projects.find((p) => p.id === canvasId);
-  if (activeProject && (activeProject.name !== canvasName || activeProject.nodeCount !== nodes.length)) {
-    // Update without re-render loop - direct mutation + lazy sync
-    activeProject.name = canvasName;
-    activeProject.nodeCount = nodes.length;
-    activeProject.lastModified = Date.now();
-  }
-
-  const handleSwitchProject = useCallback((targetId: string) => {
-    const state = useCanvasStore.getState();
-
-    // Save current state as snapshot
-    snapshotsRef.current.set(state.canvasId, {
-      nodes: state.nodes,
-      edges: state.edges,
-      viewport: state.viewport,
-      canvasName: state.canvasName,
-      canvasId: state.canvasId,
-      lastSaved: state.lastSaved,
-    });
-
-    // Load target snapshot - direct state set, no validation needed for in-memory data
-    const snapshot = snapshotsRef.current.get(targetId);
-    if (snapshot) {
-      useCanvasStore.setState({
-        nodes: snapshot.nodes,
-        edges: snapshot.edges,
-        viewport: snapshot.viewport,
-        canvasName: snapshot.canvasName,
-        canvasId: snapshot.canvasId,
-        lastSaved: snapshot.lastSaved,
-        highlightedHandle: null,
-      });
-    }
-  }, []);
-
-  const handleDeleteProject = useCallback((targetId: string) => {
-    const state = useCanvasStore.getState();
-
-    if (targetId === state.canvasId) {
-      // Switching away from active - find another project
-      setProjects((prev) => {
-        const remaining = prev.filter((p) => p.id !== targetId);
-        if (remaining.length > 0) {
-          // Switch to first remaining
-          setTimeout(() => handleSwitchProject(remaining[0].id), 0);
-        }
-        return remaining;
-      });
-    } else {
-      setProjects((prev) => prev.filter((p) => p.id !== targetId));
-    }
-
-    snapshotsRef.current.delete(targetId);
-  }, [handleSwitchProject]);
-
-  const handleCloneProject = useCallback((targetId: string) => {
-    const state = useCanvasStore.getState();
-    const newId = `canvas-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-
-    // Get source data
-    let sourceSnapshot: ProjectSnapshot;
-    if (targetId === state.canvasId) {
-      sourceSnapshot = {
-        nodes: state.nodes,
-        edges: state.edges,
-        viewport: state.viewport,
-        canvasName: state.canvasName,
-        canvasId: newId,
-        lastSaved: null,
-      };
-    } else {
-      const snap = snapshotsRef.current.get(targetId);
-      if (!snap) return;
-      sourceSnapshot = { ...snap, canvasId: newId, lastSaved: null };
-    }
-
-    const sourceName = targetId === state.canvasId ? state.canvasName : projects.find((p) => p.id === targetId)?.name || 'Untitled';
-
-    // Store snapshot
-    snapshotsRef.current.set(newId, sourceSnapshot);
-
-    // Add to project list
-    setProjects((prev) => [...prev, {
-      id: newId,
-      name: `${sourceName} (copy)`,
-      lastModified: Date.now(),
-      nodeCount: sourceSnapshot.nodes.length,
-    }]);
-  }, [projects]);
-
-  const handleCreateProject = useCallback(() => {
-    const state = useCanvasStore.getState();
-    const newId = `canvas-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-
-    // Save current state
-    snapshotsRef.current.set(state.canvasId, {
-      nodes: state.nodes,
-      edges: state.edges,
-      viewport: state.viewport,
-      canvasName: state.canvasName,
-      canvasId: state.canvasId,
-      lastSaved: state.lastSaved,
-    });
-
-    // Set empty canvas
-    useCanvasStore.setState({
-      nodes: [],
-      edges: [],
-      viewport: { x: 0, y: 0, zoom: 1 },
-      canvasName: 'Untitled Canvas',
-      canvasId: newId,
-      lastSaved: null,
-      highlightedHandle: null,
-    });
-
-    setProjects((prev) => [...prev, {
-      id: newId,
-      name: 'Untitled Canvas',
-      lastModified: Date.now(),
-      nodeCount: 0,
-    }]);
-
-    // Focus the name input so user can immediately rename
-    setFocusNameInput(true);
-  }, []);
-
-  // Load a file into a new project (preserves the current one)
-  const handleLoad = useCallback(async () => {
-    const state = useCanvasStore.getState();
-
-    // Snapshot current project before loading
-    snapshotsRef.current.set(state.canvasId, {
-      nodes: state.nodes,
-      edges: state.edges,
-      viewport: state.viewport,
-      canvasName: state.canvasName,
-      canvasId: state.canvasId,
-      lastSaved: state.lastSaved,
-    });
-
-    const result = await loadFromFile();
-    if (!result.success) {
-      // Restore snapshot on failure
-      const snapshot = snapshotsRef.current.get(state.canvasId);
-      if (snapshot) {
-        useCanvasStore.setState(snapshot);
-      }
-      if (result.error) {
-        const errorMsg = result.error.startsWith('Invalid canvas file:')
-          ? 'Invalid canvas file. The file may be corrupted or in an incompatible format.'
-          : result.error;
-        showToast(errorMsg, 'error');
-      }
-      return;
-    }
-
-    showToast('Canvas loaded successfully', 'success');
-  }, [loadFromFile, showToast]);
-
-  // Register new projects when loading files
-  // Track canvasId changes to register new projects
-  const lastKnownIdRef = useRef(canvasId);
-  if (canvasId !== lastKnownIdRef.current) {
-    const prevId = lastKnownIdRef.current;
-    lastKnownIdRef.current = canvasId;
-
-    if (!projects.some((p) => p.id === canvasId)) {
-      // If the previous project had no nodes (e.g. initial empty canvas before session restore),
-      // replace it instead of adding a new entry
-      const prevProject = projects.find((p) => p.id === prevId);
-      if (prevProject && prevProject.nodeCount === 0 && !snapshotsRef.current.has(prevId)) {
-        setProjects((prev) => prev.map((p) =>
-          p.id === prevId
-            ? { id: canvasId, name: canvasName, lastModified: Date.now(), nodeCount: nodes.length }
-            : p
-        ));
-      } else {
-        setProjects((prev) => [...prev, {
-          id: canvasId,
-          name: canvasName,
-          lastModified: Date.now(),
-          nodeCount: nodes.length,
-        }]);
-      }
-    }
-  }
+  // Project session management
+  const {
+    projects,
+    sidebarOpen, setSidebarOpen,
+    focusNameInput, clearFocusName,
+    switchProject: handleSwitchProject,
+    deleteProject: handleDeleteProject,
+    cloneProject: handleCloneProject,
+    createProject: handleCreateProject,
+    handleLoad,
+  } = useProjectSessions();
 
   return (
     <div className="w-full h-full flex">
@@ -553,7 +353,7 @@ export function LynkCanvas() {
           <div className="flex items-center gap-2">
             <FileControls
               focusName={focusNameInput}
-              onFocusNameHandled={() => setFocusNameInput(false)}
+              onFocusNameHandled={clearFocusName}
             />
             <UndoRedoControls />
           </div>

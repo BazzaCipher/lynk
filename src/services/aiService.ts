@@ -1,4 +1,4 @@
-import type { AiChatRequest, AiDetectedField, AiMessage, ProviderId } from '../types/ai';
+import type { AiChatRequest, AiDetectedField, AiConnectionSuggestion, AiMessage, AiNodeContext, ProviderId } from '../types/ai';
 
 const API_URL = '/api/ai/chat';
 
@@ -59,6 +59,49 @@ export async function askAI(
     mode: 'freeform',
     ocrText,
     messages: [...history, { role: 'user', content: question }],
+  });
+}
+
+export async function autoConnectWithAI(
+  nodesContext: AiNodeContext[],
+  provider: ProviderId,
+  model: string,
+  apiKey: string
+): Promise<AiConnectionSuggestion[]> {
+  const content = await callAi({
+    provider,
+    model,
+    apiKey,
+    mode: 'auto_connect',
+    nodesContext,
+    messages: [{ role: 'user', content: 'Analyse these nodes and suggest connections between matching fields.' }],
+  });
+
+  const jsonStr = content.replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim();
+  try {
+    const suggestions = JSON.parse(jsonStr);
+    if (!Array.isArray(suggestions)) throw new Error('Expected array');
+    return suggestions;
+  } catch {
+    throw new Error('Failed to parse AI connection suggestions');
+  }
+}
+
+export async function summariseWithAI(
+  ocrText: string | undefined,
+  nodesContext: AiNodeContext[] | undefined,
+  provider: ProviderId,
+  model: string,
+  apiKey: string
+): Promise<string> {
+  return callAi({
+    provider,
+    model,
+    apiKey,
+    mode: 'summarise',
+    ocrText,
+    nodesContext,
+    messages: [{ role: 'user', content: 'Summarise the documents and fields on this canvas.' }],
   });
 }
 

@@ -6,6 +6,7 @@
  */
 
 import { BlobRegistry, type FileMetadata, type VirtualFolder } from '../canvasPersistence';
+import { generateId } from '../../utils/id';
 import type { StateCreator } from './types';
 
 export interface FileRegistrySlice {
@@ -32,7 +33,7 @@ export interface FileRegistrySlice {
 }
 
 function generateFolderId(): string {
-  return `folder-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  return generateId('folder');
 }
 
 export const createFileRegistrySlice: StateCreator<FileRegistrySlice> = (set, get) => ({

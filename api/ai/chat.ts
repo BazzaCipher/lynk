@@ -18,12 +18,45 @@ Be thorough — extract all identifiable fields including dates, amounts, names,
 
 const FREEFORM_SYSTEM_PROMPT = `You are a helpful assistant for a document processing application called Paper Bridge. You help users understand and work with their documents. When answering questions, be concise and specific. If document text is provided as context, reference it directly.`;
 
+const AUTO_CONNECT_SYSTEM_PROMPT = `You are a document processing assistant that analyses extracted fields across multiple document nodes and suggests connections between them.
+
+Given a list of nodes with their fields (labels, data types, values), suggest connections where:
+- Fields with matching or related names should be connected (e.g. "Total" in one document → "Amount" input in a calculation)
+- Fields that represent the same entity across documents should be linked
+- Numeric fields can feed into calculation nodes (sum, average, etc.)
+- Label nodes can display values from extractor fields
+
+Return ONLY a JSON array of connection suggestions. Each suggestion should have:
+- "sourceNodeId": the node ID containing the source field
+- "sourceFieldId": the field/region ID to connect from
+- "targetNodeId": the node ID to connect to
+- "targetHandle": the target handle name (for calculation nodes use the input handle pattern, for label nodes use "label-in")
+- "reason": brief explanation of why these should be connected
+
+Example: [{"sourceNodeId": "node-1", "sourceFieldId": "region-123", "targetNodeId": "node-2", "targetHandle": "input-0", "reason": "Invoice total feeds into sum calculation"}]
+
+Be conservative — only suggest connections that make semantic sense.`;
+
+const SUMMARISE_SYSTEM_PROMPT = `You are a document processing assistant. Given OCR text or field data from documents, provide a concise summary that covers:
+- Document type (invoice, receipt, contract, etc.)
+- Key entities (people, companies, dates)
+- Important values (totals, amounts, reference numbers)
+- Any notable observations
+
+Keep the summary brief (3-5 bullet points). Use plain language.`;
+
 interface ChatRequestBody {
   provider: 'anthropic' | 'openai';
   model: string;
   apiKey: string;
-  mode: 'detect_fields' | 'freeform';
+  mode: 'detect_fields' | 'freeform' | 'auto_connect' | 'summarise';
   ocrText?: string;
+  nodesContext?: Array<{
+    nodeId: string;
+    nodeType: string;
+    label: string;
+    fields: Array<{ id: string; label: string; dataType: string; value?: string }>;
+  }>;
   messages: Array<{ role: 'user' | 'assistant'; content: string }>;
 }
 
@@ -39,16 +72,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  const systemPrompt =
-    mode === 'detect_fields' ? FIELD_DETECTION_SYSTEM_PROMPT : FREEFORM_SYSTEM_PROMPT;
+  const systemPromptMap: Record<string, string> = {
+    detect_fields: FIELD_DETECTION_SYSTEM_PROMPT,
+    freeform: FREEFORM_SYSTEM_PROMPT,
+    auto_connect: AUTO_CONNECT_SYSTEM_PROMPT,
+    summarise: SUMMARISE_SYSTEM_PROMPT,
+  };
+  const systemPrompt = systemPromptMap[mode] ?? FREEFORM_SYSTEM_PROMPT;
 
-  // Prepend OCR text context to the first user message if available
+  // Build context string from OCR text and/or node descriptions
+  let contextBlock = '';
+  if (ocrText) {
+    contextBlock += `Document OCR text:\n---\n${ocrText}\n---\n\n`;
+  }
+  if (body.nodesContext?.length) {
+    contextBlock += `Canvas nodes:\n---\n${JSON.stringify(body.nodesContext, null, 2)}\n---\n\n`;
+  }
+
+  // Prepend context to the first user message if available
   const enrichedMessages = messages.map((m, i) => {
-    if (i === 0 && m.role === 'user' && ocrText) {
-      return {
-        ...m,
-        content: `Document OCR text:\n---\n${ocrText}\n---\n\n${m.content}`,
-      };
+    if (i === 0 && m.role === 'user' && contextBlock) {
+      return { ...m, content: contextBlock + m.content };
     }
     return m;
   });

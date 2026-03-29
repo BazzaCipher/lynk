@@ -13,9 +13,11 @@ import { ZoomControls } from '../ui/ZoomControls';
 import { CollapsiblePanel } from '../ui/CollapsiblePanel';
 import { FileDropZone } from '../ui/FileDropZone';
 import { useCanvasStore } from '../../store/canvasStore';
-import { useFileUpload, type FileUploadResult } from '../../hooks/useFileUpload';
+import { useFileNode } from '../../hooks/useFileNode';
 import { useNodeOutputs } from '../../hooks/useNodeOutputs';
-import { BlobRegistry, type FileMetadata } from '../../store/canvasPersistence';
+import { useSyncNodeOutputs } from '../../hooks/useSyncNodeOutputs';
+import { BlobRegistry } from '../../store/canvasPersistence';
+import { generateId } from '../../utils/id';
 import { FilePickerModal } from '../ui/FilePickerModal';
 import type {
   DisplayNode as DisplayNodeType,
@@ -98,66 +100,15 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
     return map;
   }, [viewports, data.fileUrl, data.fileType]);
 
-  // Sync outputs to node data
-  useEffect(() => {
-    if (Object.keys(outputs).length > 0) {
-      nodeOutputs.update(outputs);
-    } else {
-      nodeOutputs.clearAll();
-    }
-  }, [outputs, nodeOutputs]);
-
-  // ── File handling ──────────────────────────────────────────────────────────
-  const onFileRegistered = useCallback(
-    (result: FileUploadResult) => {
-      BlobRegistry.addNodeReference(result.fileId, id);
-      useCanvasStore.getState().refreshFileRegistry();
-
-      if (result.fileType === 'image') {
-        const img = new Image();
-        img.onload = () => {
-          const aspectRatio = img.naturalWidth / img.naturalHeight;
-          let width = DEFAULT_WIDTH;
-          let height = width / aspectRatio;
-          if (height > 600) {
-            height = 600;
-            width = height * aspectRatio;
-          }
-          updateNodeData(id, {
-            fileUrl: result.fileUrl,
-            fileId: result.fileId,
-            fileName: result.fileName,
-            fileType: 'image',
-            view: createImageView(Math.round(width), Math.round(height)),
-            totalPages: 1,
-            viewports: [],
-            documentSize: { width: img.naturalWidth, height: img.naturalHeight },
-          });
-        };
-        img.src = result.fileUrl;
-      } else {
-        updateNodeData(id, {
-          fileUrl: result.fileUrl,
-          fileId: result.fileId,
-          fileName: result.fileName,
-          fileType: 'pdf',
-          view: createPdfView(1, 400, 300),
-          totalPages: 1,
-          viewports: [],
-        });
-      }
-    },
-    [id, updateNodeData]
+  useSyncNodeOutputs(
+    Object.keys(outputs).length > 0 ? outputs : undefined,
+    nodeOutputs
   );
 
-  const { handleFileSelect, handleFileDrop, handleDragOver } = useFileUpload({ onFileRegistered, nodeId: id });
-
-  const handlePickFromRegistry = useCallback(
-    (_fileId: string, blobUrl: string, meta: FileMetadata) => {
-      BlobRegistry.addNodeReference(meta.fileId, id);
-      useCanvasStore.getState().refreshFileRegistry();
-
-      if (meta.fileType === 'image') {
+  // ── File handling ──────────────────────────────────────────────────────────
+  const handleFileInit = useCallback(
+    (fileData: { fileUrl: string; fileId: string; fileName: string; fileType: 'pdf' | 'image' }, blobUrl: string) => {
+      if (fileData.fileType === 'image') {
         const img = new Image();
         img.onload = () => {
           const aspectRatio = img.naturalWidth / img.naturalHeight;
@@ -168,10 +119,7 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
             width = height * aspectRatio;
           }
           updateNodeData(id, {
-            fileUrl: blobUrl,
-            fileId: meta.fileId,
-            fileName: meta.fileName,
-            fileType: 'image',
+            ...fileData,
             view: createImageView(Math.round(width), Math.round(height)),
             totalPages: 1,
             viewports: [],
@@ -181,10 +129,7 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
         img.src = blobUrl;
       } else {
         updateNodeData(id, {
-          fileUrl: blobUrl,
-          fileId: meta.fileId,
-          fileName: meta.fileName,
-          fileType: 'pdf',
+          ...fileData,
           view: createPdfView(1, 400, 300),
           totalPages: 1,
           viewports: [],
@@ -193,6 +138,8 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
     },
     [id, updateNodeData]
   );
+
+  const { handleFileSelect, handleFileDrop, handleDragOver, handlePickFromRegistry } = useFileNode(id, handleFileInit);
 
   // ── PDF handling ──────────────────────────────────────────────────────────
   const handlePdfLoad = useCallback(
@@ -277,7 +224,7 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
       const resolvedPage = pageNumber ?? currentPage;
 
       const newViewport: ViewportRegion = {
-        id: `viewport-${Date.now()}`,
+        id: generateId('viewport'),
         label: `Viewport ${viewports.length + 1}`,
         normalizedRect,
         pixelRect: coordinates,

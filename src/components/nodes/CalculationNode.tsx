@@ -21,6 +21,7 @@ import { useCanvasStore } from '../../store/canvasStore';
 import { useHighlighting, useNodeHighlights } from '../../hooks/useHighlighting';
 import { useDataFlow, type ResolvedInput } from '../../hooks/useDataFlow';
 import { useNodeOutputs } from '../../hooks/useNodeOutputs';
+import { useSyncNodeOutputs } from '../../hooks/useSyncNodeOutputs';
 import { EditableLabel } from './base/EditableLabel';
 import { getOperation, isTypeCompatible } from '../../core/operations/operationRegistry';
 import { OperationSelect } from '../ui/OperationSelect';
@@ -110,27 +111,27 @@ export function CalculationNode({ id, data, selected }: NodeProps<CalculationNod
     };
   }, [compatibleInputs, currentOperation, data.precision]);
 
-  // Sync result and outputs to node data
-  useEffect(() => {
-    if (!result) {
-      nodeOutputs.clearAll({ result: undefined });
-      return;
-    }
+  // Build outputs map from result
+  const outputs = useMemo((): Record<string, import('../../types').NodeOutput> | undefined => {
+    if (!result) return undefined;
 
-    // Determine compatible types for output handle coloring
     const compatibleTypes = (currentOperation?.compatibleTypes.includes('number')
       && currentOperation?.compatibleTypes.includes('currency'))
       ? ['number', 'currency'] as SimpleDataType[]
       : undefined;
 
-    nodeOutputs.set('output', {
-      value: result.value,
-      dataType: result.dataType,
-      compatibleTypes,
-      label: data.label,
-      source: result.source ?? null,
-    }, { result });
-  }, [result, data.label, currentOperation, nodeOutputs]);
+    return {
+      output: {
+        value: result.value,
+        dataType: result.dataType,
+        compatibleTypes,
+        label: data.label,
+        source: result.source ?? null,
+      },
+    };
+  }, [result, currentOperation, data.label]);
+
+  useSyncNodeOutputs(outputs, nodeOutputs, { result: result ?? undefined });
 
   // ─────────────────────────────────────────────────────────────────────────────
   // OPERATION CHANGE HANDLING
