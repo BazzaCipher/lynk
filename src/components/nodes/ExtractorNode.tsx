@@ -60,6 +60,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   const [pdfError, setPdfError] = useState<string | null>(null);
   const imageRef = useRef<HTMLImageElement | HTMLCanvasElement | null>(null);
   const viewerAreaRef = useRef<HTMLDivElement>(null);
+  const documentRef = useRef<HTMLDivElement>(null);
   const lastScrolledRef = useRef<string | null>(null);
   const { zoom, zoomIn, zoomOut, resetZoom } = useDocumentZoom(viewerAreaRef, isModalOpen);
 
@@ -653,8 +654,9 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
             </div>
 
             {/* Document with overlays - CSS transform zoom (GPU, no re-render) */}
-            <div className="relative p-6 flex justify-center">
+            <div className="relative p-6 flex justify-center" ref={viewerAreaRef}>
               <div
+                ref={documentRef}
                 className="relative bg-white shadow-lg"
                 style={{
                   transform: `scale(${zoom})`,
@@ -692,17 +694,17 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
                       pageOffsets={pageOffsets}
                     />
                   )}
-                  {data.fileUrl && selectionMode === 'box' && (
-                    <RegionSelector
-                      onRegionCreate={handleRegionCreate}
-                      width={VIEWER_WIDTH}
-                      height={viewerHeight}
-                      pageOffsets={pageOffsets}
-                      zoom={zoom}
-                    />
-                  )}
                 </DocumentViewer>
               </div>
+              {/* RegionSelector fills entire viewer area — allows drawing outside the page */}
+              {data.fileUrl && selectionMode === 'box' && (
+                <RegionSelector
+                  onRegionCreate={handleRegionCreate}
+                  documentRef={documentRef}
+                  pageOffsets={pageOffsets}
+                  zoom={zoom}
+                />
+              )}
             </div>
           </div>
 

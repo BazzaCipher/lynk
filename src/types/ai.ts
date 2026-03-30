@@ -1,6 +1,6 @@
 /** AI provider and settings types */
 
-export type ProviderId = 'anthropic' | 'openai';
+export type ProviderId = 'anthropic' | 'openai' | 'gemini';
 
 export interface AiProviderDefinition {
   id: ProviderId;
@@ -26,9 +26,29 @@ export interface AiSettings {
   activeProvider: ProviderId | null;
 }
 
+export interface AiContentPart {
+  type: 'text' | 'image';
+  text?: string;
+  mimeType?: string;
+  base64?: string;
+}
+
+export interface AiToolCall {
+  id: string;
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
+export interface AiToolResult {
+  toolCallId: string;
+  content: AiContentPart[];
+}
+
 export interface AiMessage {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'tool_result';
   content: string;
+  toolCalls?: AiToolCall[];
+  toolResults?: AiToolResult[];
 }
 
 export interface AiChatRequest {
@@ -40,6 +60,10 @@ export interface AiChatRequest {
   /** For auto_connect: describes nodes and their fields */
   nodesContext?: AiNodeContext[];
   messages: AiMessage[];
+  /** Base64 images to include in the request */
+  images?: Array<{ mimeType: string; base64: string }>;
+  /** Tool names to enable for this request */
+  tools?: string[];
 }
 
 /** Describes a node and its fields for AI auto-connect */
@@ -94,6 +118,16 @@ export const AI_PROVIDERS: AiProviderDefinition[] = [
     ],
     apiKeyLabel: 'API Key',
     apiKeyPlaceholder: 'sk-...',
+  },
+  {
+    id: 'gemini',
+    name: 'Google Gemini',
+    models: [
+      { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
+      { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
+    ],
+    apiKeyLabel: 'API Key',
+    apiKeyPlaceholder: 'AIza...',
   },
 ];
 

@@ -1,8 +1,14 @@
-import type { AiChatRequest, AiDetectedField, AiConnectionSuggestion, AiMessage, AiNodeContext, ProviderId } from '../types/ai';
+import type { AiChatRequest, AiDetectedField, AiConnectionSuggestion, AiMessage, AiNodeContext, ProviderId, AiToolCall } from '../types/ai';
+import { executeToolCall } from './ai/toolExecutor';
 
 const API_URL = '/api/ai/chat';
 
-async function callAi(request: AiChatRequest): Promise<string> {
+interface AiResponse {
+  content: string;
+  toolCalls?: AiToolCall[];
+}
+
+async function callAiRaw(request: AiChatRequest): Promise<AiResponse> {
   const res = await fetch(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -14,8 +20,58 @@ async function callAi(request: AiChatRequest): Promise<string> {
     throw new Error(body.error ?? `API error: ${res.status}`);
   }
 
-  const data = await res.json();
-  return data.content;
+  return res.json();
+}
+
+/** Call AI with automatic tool-call loop. Executes tools client-side until the model returns a text response. */
+async function callAi(
+  request: AiChatRequest,
+  onToolCall?: (toolName: string) => void,
+  maxRounds = 10
+): Promise<string> {
+  let messages = [...request.messages];
+  let round = 0;
+
+  while (round < maxRounds) {
+    const response = await callAiRaw({ ...request, messages });
+
+    if (!response.toolCalls?.length) {
+      return response.content;
+    }
+
+    // Execute tools client-side
+    const toolResults = await Promise.all(
+      response.toolCalls.map(async (tc) => {
+        onToolCall?.(tc.name);
+        return executeToolCall(tc.id, tc.name, tc.arguments);
+      })
+    );
+
+    // Append assistant message with tool calls, then tool results
+    messages = [
+      ...messages,
+      {
+        role: 'assistant' as const,
+        content: response.content,
+        toolCalls: response.toolCalls,
+      },
+      {
+        role: 'tool_result' as const,
+        content: '',
+        toolResults: toolResults.map((tr) => ({
+          toolCallId: tr.toolCallId,
+          content: tr.content.map((c) => ({
+            type: c.type,
+            ...(c.type === 'text' ? { text: c.text } : { mimeType: c.mimeType, base64: c.base64 }),
+          })),
+        })),
+      },
+    ];
+
+    round++;
+  }
+
+  throw new Error('Tool call loop exceeded maximum rounds');
 }
 
 export async function detectFieldsWithAI(
@@ -33,7 +89,6 @@ export async function detectFieldsWithAI(
     messages: [{ role: 'user', content: 'Detect all fields in this document.' }],
   });
 
-  // Parse JSON from response (handle markdown code blocks)
   const jsonStr = content.replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim();
   try {
     const fields = JSON.parse(jsonStr);
@@ -50,16 +105,20 @@ export async function askAI(
   provider: ProviderId,
   model: string,
   apiKey: string,
-  history: AiMessage[] = []
+  history: AiMessage[] = [],
+  onToolCall?: (toolName: string) => void
 ): Promise<string> {
-  return callAi({
-    provider,
-    model,
-    apiKey,
-    mode: 'freeform',
-    ocrText,
-    messages: [...history, { role: 'user', content: question }],
-  });
+  return callAi(
+    {
+      provider,
+      model,
+      apiKey,
+      mode: 'freeform',
+      ocrText,
+      messages: [...history, { role: 'user', content: question }],
+    },
+    onToolCall
+  );
 }
 
 export async function autoConnectWithAI(
@@ -112,7 +171,7 @@ export async function verifyApiKey(
   apiKey: string
 ): Promise<boolean> {
   try {
-    await callAi({
+    await callAiRaw({
       provider,
       model,
       apiKey,

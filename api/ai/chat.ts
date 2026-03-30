@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import Anthropic from '@anthropic-ai/sdk';
-import OpenAI from 'openai';
+import { getAdapter } from './adapters';
+import type { AiAdapterMessage, AiContentPart, AiToolDefinition } from './adapters';
+import { getAllToolDefinitions, getToolsByNames } from './tools';
 
 const FIELD_DETECTION_SYSTEM_PROMPT = `You are a document field extraction assistant. Given OCR text from a document, identify all key fields and their values.
 
@@ -16,7 +17,9 @@ Example response:
 
 Be thorough — extract all identifiable fields including dates, amounts, names, addresses, reference numbers, and any labeled key-value pairs.`;
 
-const FREEFORM_SYSTEM_PROMPT = `You are a helpful assistant for a document processing application called Paper Bridge. You help users understand and work with their documents. When answering questions, be concise and specific. If document text is provided as context, reference it directly.`;
+const FREEFORM_SYSTEM_PROMPT = `You are a helpful assistant for a document processing application called Paper Bridge. You help users understand and work with their documents. When answering questions, be concise and specific. If document text is provided as context, reference it directly.
+
+You have access to tools that let you inspect the canvas, view files, and interact with the document graph. Use them when you need context to answer questions.`;
 
 const AUTO_CONNECT_SYSTEM_PROMPT = `You are a document processing assistant that analyses extracted fields across multiple document nodes and suggests connections between them.
 
@@ -46,7 +49,7 @@ const SUMMARISE_SYSTEM_PROMPT = `You are a document processing assistant. Given 
 Keep the summary brief (3-5 bullet points). Use plain language.`;
 
 interface ChatRequestBody {
-  provider: 'anthropic' | 'openai';
+  provider: string;
   model: string;
   apiKey: string;
   mode: 'detect_fields' | 'freeform' | 'auto_connect' | 'summarise';
@@ -57,7 +60,14 @@ interface ChatRequestBody {
     label: string;
     fields: Array<{ id: string; label: string; dataType: string; value?: string }>;
   }>;
-  messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+  messages: Array<{
+    role: 'user' | 'assistant' | 'tool_result';
+    content: string;
+    toolCalls?: Array<{ id: string; name: string; arguments: Record<string, unknown> }>;
+    toolResults?: Array<{ toolCallId: string; content: Array<{ type: 'text' | 'image'; text?: string; mimeType?: string; base64?: string }> }>;
+  }>;
+  images?: Array<{ mimeType: string; base64: string }>;
+  tools?: string[];
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -89,45 +99,68 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     contextBlock += `Canvas nodes:\n---\n${JSON.stringify(body.nodesContext, null, 2)}\n---\n\n`;
   }
 
-  // Prepend context to the first user message if available
-  const enrichedMessages = messages.map((m, i) => {
-    if (i === 0 && m.role === 'user' && contextBlock) {
-      return { ...m, content: contextBlock + m.content };
+  // Convert messages to adapter format
+  const adapterMessages: AiAdapterMessage[] = messages.map((m, i) => {
+    if (m.role === 'tool_result') {
+      return {
+        role: 'tool_result' as const,
+        content: '',
+        toolResults: m.toolResults?.map((tr) => ({
+          toolCallId: tr.toolCallId,
+          content: tr.content as AiContentPart[],
+        })),
+      };
     }
-    return m;
+
+    if (m.role === 'assistant' && m.toolCalls?.length) {
+      return {
+        role: 'assistant' as const,
+        content: m.content,
+        toolCalls: m.toolCalls,
+      };
+    }
+
+    // User message — prepend context to the first one
+    if (i === 0 && m.role === 'user' && contextBlock) {
+      const contentParts: AiContentPart[] = [
+        { type: 'text', text: contextBlock + m.content },
+      ];
+      // Attach images to first user message
+      if (body.images?.length) {
+        for (const img of body.images) {
+          contentParts.push({ type: 'image', mimeType: img.mimeType, base64: img.base64 });
+        }
+      }
+      return { role: 'user' as const, content: contentParts };
+    }
+
+    return { role: m.role as 'user' | 'assistant', content: m.content };
   });
 
+  // Resolve tool definitions
+  let toolDefs: AiToolDefinition[] | undefined;
+  if (body.tools?.length) {
+    toolDefs = getToolsByNames(body.tools);
+  } else if (mode === 'freeform') {
+    // Freeform mode always has tools available
+    toolDefs = getAllToolDefinitions();
+  }
+
   try {
-    if (provider === 'anthropic') {
-      const client = new Anthropic({ apiKey });
-      const response = await client.messages.create({
-        model,
-        max_tokens: 4096,
-        system: systemPrompt,
-        messages: enrichedMessages,
-      });
-      const text = response.content
-        .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-        .map((b) => b.text)
-        .join('');
-      return res.status(200).json({ content: text });
-    }
+    const adapter = getAdapter(provider);
+    const response = await adapter.call({
+      model,
+      apiKey,
+      systemPrompt,
+      messages: adapterMessages,
+      tools: toolDefs,
+      maxTokens: 4096,
+    });
 
-    if (provider === 'openai') {
-      const client = new OpenAI({ apiKey });
-      const response = await client.chat.completions.create({
-        model,
-        max_tokens: 4096,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...enrichedMessages,
-        ],
-      });
-      const text = response.choices[0]?.message?.content ?? '';
-      return res.status(200).json({ content: text });
-    }
-
-    return res.status(400).json({ error: `Unknown provider: ${provider}` });
+    return res.status(200).json({
+      content: response.content,
+      toolCalls: response.toolCalls,
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     const status =

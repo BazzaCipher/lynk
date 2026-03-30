@@ -1,12 +1,12 @@
-import { useState, useCallback, useRef, type MouseEvent } from 'react';
+import { useState, useCallback, useRef, type MouseEvent, type RefObject } from 'react';
 import type { RegionCoordinates } from '../../../types';
 
 interface RegionSelectorProps {
   onRegionCreate: (coordinates: RegionCoordinates, pageNumber?: number) => void;
-  width: number;
-  height: number;
-  pageOffsets?: Map<number, number>; // Y offset for each page in scrollMode
-  zoom?: number; // Current zoom level for coordinate correction
+  /** Ref to the document element — coordinates are computed relative to this */
+  documentRef: RefObject<HTMLDivElement | null>;
+  pageOffsets?: Map<number, number>;
+  zoom?: number;
 }
 
 interface DragState {
@@ -18,8 +18,7 @@ interface DragState {
 
 export function RegionSelector({
   onRegionCreate,
-  width,
-  height,
+  documentRef,
   pageOffsets,
   zoom = 1,
 }: RegionSelectorProps) {
@@ -35,7 +34,6 @@ export function RegionSelector({
     let currentPage = 1;
     let currentOffset = 0;
 
-    // Find the page this Y coordinate is on
     const sortedEntries = Array.from(pageOffsets.entries()).sort((a, b) => a[1] - b[1]);
     for (const [pageNum, offset] of sortedEntries) {
       if (y >= offset) {
@@ -47,66 +45,87 @@ export function RegionSelector({
     return { pageNumber: currentPage, localY: y - currentOffset };
   };
 
-  const getRelativeCoordinates = useCallback(
+  /** Get coordinates relative to the document element, accounting for zoom and offset within the viewer area */
+  const getDocumentRelativeCoordinates = useCallback(
+    (e: MouseEvent): { x: number; y: number } => {
+      if (!documentRef.current) {
+        // Fallback to overlay-relative
+        if (!overlayRef.current) return { x: 0, y: 0 };
+        const rect = overlayRef.current.getBoundingClientRect();
+        return { x: (e.clientX - rect.left) / zoom, y: (e.clientY - rect.top) / zoom };
+      }
+
+      const docRect = documentRef.current.getBoundingClientRect();
+      return {
+        x: (e.clientX - docRect.left) / zoom,
+        y: (e.clientY - docRect.top) / zoom,
+      };
+    },
+    [documentRef, zoom]
+  );
+
+  /** Get coordinates relative to the overlay (for visual display of the selection box) */
+  const getOverlayRelativeCoordinates = useCallback(
     (e: MouseEvent): { x: number; y: number } => {
       if (!overlayRef.current) return { x: 0, y: 0 };
       const rect = overlayRef.current.getBoundingClientRect();
-      return {
-        x: (e.clientX - rect.left) / zoom,
-        y: (e.clientY - rect.top) / zoom,
-      };
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     },
-    [zoom]
+    []
   );
+
+  const [displayDrag, setDisplayDrag] = useState<DragState | null>(null);
 
   const handleMouseDown = useCallback(
     (e: MouseEvent) => {
-      // Don't start if clicking on a region or viewport overlay
       const target = e.target as HTMLElement;
       if (target.closest('[data-region-id]') || target.closest('[data-viewport-id]')) {
         return;
       }
 
-      const coords = getRelativeCoordinates(e);
+      const docCoords = getDocumentRelativeCoordinates(e);
+      const displayCoords = getOverlayRelativeCoordinates(e);
       setDragState({
-        startX: coords.x,
-        startY: coords.y,
-        currentX: coords.x,
-        currentY: coords.y,
+        startX: docCoords.x,
+        startY: docCoords.y,
+        currentX: docCoords.x,
+        currentY: docCoords.y,
+      });
+      setDisplayDrag({
+        startX: displayCoords.x,
+        startY: displayCoords.y,
+        currentX: displayCoords.x,
+        currentY: displayCoords.y,
       });
     },
-    [getRelativeCoordinates]
+    [getDocumentRelativeCoordinates, getOverlayRelativeCoordinates]
   );
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!dragState) return;
 
-      const coords = getRelativeCoordinates(e);
+      const docCoords = getDocumentRelativeCoordinates(e);
+      const displayCoords = getOverlayRelativeCoordinates(e);
       setDragState((prev) =>
-        prev
-          ? {
-              ...prev,
-              currentX: coords.x,
-              currentY: coords.y,
-            }
-          : null
+        prev ? { ...prev, currentX: docCoords.x, currentY: docCoords.y } : null
+      );
+      setDisplayDrag((prev) =>
+        prev ? { ...prev, currentX: displayCoords.x, currentY: displayCoords.y } : null
       );
     },
-    [dragState, getRelativeCoordinates]
+    [dragState, getDocumentRelativeCoordinates, getOverlayRelativeCoordinates]
   );
 
   const handleMouseUp = useCallback(() => {
     if (!dragState) return;
 
-    const minSize = 10; // Minimum region size in pixels
+    const minSize = 10;
     const regionWidth = Math.abs(dragState.currentX - dragState.startX);
     const regionHeight = Math.abs(dragState.currentY - dragState.startY);
 
     if (regionWidth >= minSize && regionHeight >= minSize) {
       const globalY = Math.min(dragState.startY, dragState.currentY);
-
-      // Determine which page this region is on (based on top of selection)
       const { pageNumber, localY } = getPageForY(globalY);
 
       const coordinates: RegionCoordinates = {
@@ -119,29 +138,28 @@ export function RegionSelector({
     }
 
     setDragState(null);
+    setDisplayDrag(null);
   }, [dragState, onRegionCreate, getPageForY]);
 
-  // Calculate selection box dimensions
-  const selectionBox = dragState
+  // Display box uses overlay-relative coordinates (so it renders correctly in the viewer area)
+  const selectionBox = displayDrag
     ? {
-        x: Math.min(dragState.startX, dragState.currentX),
-        y: Math.min(dragState.startY, dragState.currentY),
-        width: Math.abs(dragState.currentX - dragState.startX),
-        height: Math.abs(dragState.currentY - dragState.startY),
+        x: Math.min(displayDrag.startX, displayDrag.currentX),
+        y: Math.min(displayDrag.startY, displayDrag.currentY),
+        width: Math.abs(displayDrag.currentX - displayDrag.startX),
+        height: Math.abs(displayDrag.currentY - displayDrag.startY),
       }
     : null;
 
   return (
     <div
       ref={overlayRef}
-      className="absolute inset-0 cursor-crosshair"
-      style={{ width, height }}
+      className="absolute inset-0 cursor-crosshair z-10"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
-      {/* Selection box while dragging */}
       {selectionBox && selectionBox.width > 0 && selectionBox.height > 0 && (
         <div
           className="absolute border-2 border-dashed border-copper-500 pointer-events-none"
@@ -158,7 +176,6 @@ export function RegionSelector({
   );
 }
 
-// Export for backwards compatibility
 export function getNextRegionColor(): string {
-  return '#c27350'; // Default blue, actual color determined by dataType
+  return '#c27350';
 }
