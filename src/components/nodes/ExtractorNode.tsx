@@ -635,6 +635,15 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
         title={data.fileName || 'Document Viewer'}
         className="w-[950px] max-w-[95vw]"
       >
+        {/* AI Prompt Panel */}
+        <div className="border-b border-paper-200 px-4 py-2">
+          <AiPromptPanel
+            context="extractor"
+            ocrText={ocrTextForAi}
+            onFieldsDetected={handleAiFieldsDetected}
+          />
+        </div>
+
         <div className="flex h-[75vh]">
           {/* Document viewer area */}
           <div
@@ -794,15 +803,6 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
               showOcrButton={false}
             />
           </CollapsiblePanel>
-        </div>
-
-        {/* AI Prompt Panel */}
-        <div className="border-t border-paper-200 px-4 py-2">
-          <AiPromptPanel
-            context="extractor"
-            ocrText={ocrTextForAi}
-            onFieldsDetected={handleAiFieldsDetected}
-          />
         </div>
 
         {/* Footer instructions */}

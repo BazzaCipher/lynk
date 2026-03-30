@@ -28,6 +28,7 @@ import { EmptyState } from './EmptyState';
 import { SuggestionBar } from './SuggestionBar';
 import { useToast } from '../ui/Toast';
 import { AiPromptPanel } from '../ai/AiPromptPanel';
+import type { AiConnectionSuggestion } from '../../types/ai';
 import { validateConnection } from '../../core/engine/connectionValidation';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useMagneticConnect } from '../../hooks/useMagneticConnect';
@@ -279,6 +280,26 @@ export function LynkCanvas() {
     [edges, nodes, storeAddEdge, showToast]
   );
 
+  const handleConnectionsSuggested = useCallback(
+    (suggestions: AiConnectionSuggestion[]) => {
+      let connected = 0;
+      for (const s of suggestions) {
+        const edge = {
+          id: `edge-${s.sourceNodeId}-${s.sourceFieldId}-${s.targetNodeId}-${s.targetHandle}`,
+          source: s.sourceNodeId,
+          target: s.targetNodeId,
+          sourceHandle: s.sourceFieldId,
+          targetHandle: s.targetHandle,
+        };
+        if (storeAddEdge(edge)) connected++;
+      }
+      if (connected > 0) {
+        showToast(`Auto-connected ${connected} field(s)`, 'success');
+      }
+    },
+    [storeAddEdge, showToast]
+  );
+
   const { handleCanvasDragOver, handleCanvasDrop, handleCanvasPaste } = useCanvasDrop();
 
   // Drag overlay state
@@ -422,7 +443,7 @@ export function LynkCanvas() {
           <Controls />
           <LayoutControls />
           <Panel position="bottom-right" className="!mb-2 !mr-2">
-            <AiPromptPanel context="canvas" />
+            <AiPromptPanel context="canvas" onConnectionsSuggested={handleConnectionsSuggested} />
           </Panel>
         </ReactFlow>
         {isDragOver && (
