@@ -24,8 +24,6 @@ import { generateId } from '../../utils/id';
 import { createRegionFromBox, createRegionFromText } from '../../utils/regions';
 import { BlobRegistry } from '../../store/canvasPersistence';
 import { FilePickerModal } from '../ui/FilePickerModal';
-import { AiPromptPanel } from '../ai/AiPromptPanel';
-import type { AiDetectedField } from '../../types/ai';
 import type {
   ExtractorNode as ExtractorNodeType,
   NodeOutput,
@@ -56,6 +54,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   const [isAutoDetecting, setIsAutoDetecting] = useState(false);
   const [viewerHeight, setViewerHeight] = useState(400);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectionMode, setSelectionMode] = useState<'select' | 'box' | 'text'>('box');
   const [pageOffsets, setPageOffsets] = useState<Map<number, number>>(new Map());
   const [pdfError, setPdfError] = useState<string | null>(null);
@@ -426,76 +425,6 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
     }
   }, [id, data.fileUrl, data.fileType, data.regions, data.currentPage, updateNodeData, showToast]);
 
-  // State for OCR text used by AI panel
-  const [ocrTextForAi, setOcrTextForAi] = useState<string | undefined>();
-
-  // Run OCR to get text for AI when modal opens
-  useEffect(() => {
-    if (!isModalOpen || !data.fileUrl) {
-      setOcrTextForAi(undefined);
-      return;
-    }
-    let cancelled = false;
-    const run = async () => {
-      let imageSource: HTMLImageElement | HTMLCanvasElement | string;
-      if (imageRef.current) {
-        imageSource = imageRef.current;
-      } else if (data.fileType === 'image') {
-        imageSource = data.fileUrl!;
-      } else {
-        return;
-      }
-      try {
-        const result = await extractFullPage(imageSource);
-        if (!cancelled) {
-          setOcrTextForAi(result.lines.map((l) => l.text).join('\n'));
-        }
-      } catch {
-        // OCR failed, AI panel will show detect as disabled
-      }
-    };
-    run();
-    return () => { cancelled = true; };
-  }, [isModalOpen, data.fileUrl, data.fileType]);
-
-  const handleAiFieldsDetected = useCallback(
-    (fields: AiDetectedField[]) => {
-      const newRegions: ExtractedRegion[] = fields.map((field) => {
-        const regionId = generateId('region');
-        const dataType = (['string', 'number', 'date', 'currency', 'boolean'].includes(field.dataType)
-          ? field.dataType
-          : 'string') as SimpleDataType;
-        return {
-          id: regionId,
-          label: field.label,
-          selectionType: 'box' as const,
-          coordinates: field.bbox as RegionCoordinates | undefined,
-          pageNumber: data.currentPage,
-          extractedData: {
-            type: dataType,
-            value: field.text,
-            source: {
-              nodeId: id,
-              regionId,
-              pageNumber: data.currentPage,
-              extractionMethod: 'ai' as const,
-              confidence: field.confidence * 100,
-            } as DataSourceReference,
-          },
-          dataType,
-          color: getColorForType(dataType).border,
-        };
-      });
-
-      updateNodeData(id, {
-        regions: [...data.regions, ...newRegions],
-      });
-
-      showToast(`AI detected ${newRegions.length} field(s)`, 'success');
-    },
-    [id, data.regions, data.currentPage, updateNodeData, showToast]
-  );
-
   // Scroll to selected region once when selection changes
   useEffect(() => {
     if (!isModalOpen || !selectedRegionId || !viewerAreaRef.current) {
@@ -524,6 +453,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
 
   const closeModal = useCallback(() => {
     setIsModalOpen(false);
+    setIsFullscreen(false);
     resetZoom();
   }, [resetZoom]);
 
@@ -634,17 +564,10 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
         onClose={closeModal}
         title={data.fileName || 'Document Viewer'}
         className="w-[950px] max-w-[95vw]"
+        fullscreen={isFullscreen}
+        onToggleFullscreen={() => setIsFullscreen((f) => !f)}
       >
-        {/* AI Prompt Panel */}
-        <div className="border-b border-paper-200 px-4 py-2">
-          <AiPromptPanel
-            context="extractor"
-            ocrText={ocrTextForAi}
-            onFieldsDetected={handleAiFieldsDetected}
-          />
-        </div>
-
-        <div className="flex h-[75vh]">
+        <div className={`flex ${isFullscreen ? 'h-[calc(100vh-49px)]' : 'h-[75vh]'}`}>
           {/* Document viewer area */}
           <div
             className="flex-1 overflow-auto bg-paper-50"

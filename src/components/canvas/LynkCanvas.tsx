@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ReactFlow,
   Background,
   Controls,
-  Panel,
   useReactFlow,
   type Connection,
   type Edge,
@@ -442,10 +442,13 @@ export function LynkCanvas() {
           <Background gap={16} size={1} />
           <Controls />
           <LayoutControls />
-          <Panel position="bottom-right" className="!mb-2 !mr-2">
-            <AiPromptPanel context="canvas" onConnectionsSuggested={handleConnectionsSuggested} />
-          </Panel>
         </ReactFlow>
+        {createPortal(
+          <div className="fixed bottom-4 right-4 z-[60]">
+            <AiPromptPanel context="canvas" onConnectionsSuggested={handleConnectionsSuggested} />
+          </div>,
+          document.body
+        )}
         {isDragOver && (
           <div className="absolute inset-0 z-50 bg-copper-500/10 border-2 border-dashed border-copper-400 flex items-center justify-center pointer-events-none">
             <div className="bg-white/90 rounded-lg px-6 py-4 shadow-lg text-center">
