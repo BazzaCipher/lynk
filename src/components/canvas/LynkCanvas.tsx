@@ -29,6 +29,7 @@ import { SuggestionBar } from './SuggestionBar';
 import { useToast } from '../ui/Toast';
 import { AiPromptPanel } from '../ai/AiPromptPanel';
 import type { AiConnectionSuggestion } from '../../types/ai';
+import type { ExtractorNodeData } from '../../types/nodes';
 import { validateConnection } from '../../core/engine/connectionValidation';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useMagneticConnect } from '../../hooks/useMagneticConnect';
@@ -314,11 +315,38 @@ export function LynkCanvas() {
     (suggestions: AiConnectionSuggestion[]) => {
       let connected = 0;
       for (const s of suggestions) {
+        // Resolve sourceFieldId: the LLM returns labels/names, but handles use region IDs.
+        // Try direct match first, then fuzzy-match by label.
+        const sourceNode = nodes.find((n) => n.id === s.sourceNodeId);
+        let resolvedSourceHandle = s.sourceFieldId;
+        if (sourceNode?.type === 'extractor') {
+          const data = sourceNode.data as ExtractorNodeData;
+          // Check if sourceFieldId is already a valid region ID
+          const directMatch = data.regions.find((r) => r.id === s.sourceFieldId);
+          if (!directMatch) {
+            // Match by label (case-insensitive)
+            const byLabel = data.regions.find(
+              (r) => r.label.toLowerCase() === s.sourceFieldId.toLowerCase()
+            );
+            if (byLabel) {
+              resolvedSourceHandle = byLabel.id;
+            } else {
+              // Partial match
+              const partial = data.regions.find(
+                (r) =>
+                  r.label.toLowerCase().includes(s.sourceFieldId.toLowerCase()) ||
+                  s.sourceFieldId.toLowerCase().includes(r.label.toLowerCase())
+              );
+              if (partial) resolvedSourceHandle = partial.id;
+            }
+          }
+        }
+
         const edge = {
-          id: `edge-${s.sourceNodeId}-${s.sourceFieldId}-${s.targetNodeId}-${s.targetHandle}`,
+          id: `edge-${s.sourceNodeId}-${resolvedSourceHandle}-${s.targetNodeId}-${s.targetHandle}`,
           source: s.sourceNodeId,
           target: s.targetNodeId,
-          sourceHandle: s.sourceFieldId,
+          sourceHandle: resolvedSourceHandle,
           targetHandle: s.targetHandle,
         };
         if (storeAddEdge(edge)) connected++;
@@ -327,7 +355,7 @@ export function LynkCanvas() {
         showToast(`Auto-connected ${connected} field(s)`, 'success');
       }
     },
-    [storeAddEdge, showToast]
+    [nodes, storeAddEdge, showToast]
   );
 
   const { handleCanvasDragOver, handleCanvasDrop, handleCanvasPaste } = useCanvasDrop();
