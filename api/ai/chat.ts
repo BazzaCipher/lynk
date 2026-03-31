@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAdapter } from './adapters';
-import type { AiAdapterMessage, AiContentPart, AiToolDefinition } from './adapters';
-import { getAllToolDefinitions, getToolsByNames } from './tools';
+import { getAdapter } from '../../lib/ai/adapters';
+import type { AiAdapterMessage, AiContentPart, AiToolDefinition } from '../../lib/ai/adapters';
+import { getAllToolDefinitions, getToolsByNames } from '../../lib/ai/tools';
 
 const FIELD_DETECTION_SYSTEM_PROMPT = `You are a document field extraction assistant. Given OCR text from a document, identify all key fields and their values.
 
