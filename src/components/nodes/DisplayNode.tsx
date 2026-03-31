@@ -47,7 +47,7 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const viewerAreaRef = useRef<HTMLDivElement>(null);
   const [selectedViewportId, setSelectedViewportId] = useState<string | null>(null);
-  const [viewerHeight, setViewerHeight] = useState(400);
+  const [, setViewerHeight] = useState(400);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [pageOffsets, setPageOffsets] = useState<Map<number, number>>(new Map());
   const { zoom, zoomIn, zoomOut, resetZoom } = useDocumentZoom(viewerAreaRef, isModalOpen);
@@ -507,8 +507,7 @@ export function DisplayNode({ id, data, selected }: NodeProps<DisplayNodeType>) 
                   {data.fileUrl && (
                     <RegionSelector
                       onRegionCreate={handleViewportCreate}
-                      width={VIEWER_WIDTH}
-                      height={viewerHeight}
+                      documentRef={viewerAreaRef}
                       pageOffsets={pageOffsets}
                       zoom={zoom}
                     />

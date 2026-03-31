@@ -159,6 +159,9 @@ export function DocumentViewer({
       if (!contentRef.current?.contains(range.commonAncestorContainer)) return;
 
       const contentRect = contentRef.current.getBoundingClientRect();
+      // Account for CSS transform scale: getBoundingClientRect() returns post-transform
+      // coordinates, but overlay positioning uses pre-transform (layout) coordinates.
+      const scale = contentRect.width / contentRef.current.offsetWidth || 1;
       const clientRects = range.getClientRects();
       const rects: TextRange['rects'] = [];
 
@@ -166,16 +169,16 @@ export function DocumentViewer({
         const rect = clientRects[i];
         if (rect.width <= 0 || rect.height <= 0) continue;
 
-        const x = rect.left - contentRect.left;
-        const y = rect.top - contentRect.top;
+        const x = (rect.left - contentRect.left) / scale;
+        const y = (rect.top - contentRect.top) / scale;
 
         if (x < 0 || y < 0) continue;
 
         rects.push({
           x,
           y,
-          width: rect.width,
-          height: rect.height,
+          width: rect.width / scale,
+          height: rect.height / scale,
         });
       }
 
@@ -232,6 +235,7 @@ export function DocumentViewer({
         if (currencyPrefix) text = currencyPrefix + text;
 
         const contentRect = contentRef.current.getBoundingClientRect();
+        const scale = contentRect.width / contentRef.current.offsetWidth || 1;
         const clientRects = range.getClientRects();
         const rects: TextRange['rects'] = [];
 
@@ -239,16 +243,16 @@ export function DocumentViewer({
           const rect = clientRects[i];
           if (rect.width <= 0 || rect.height <= 0) continue;
 
-          const x = rect.left - contentRect.left;
-          const y = rect.top - contentRect.top;
+          const x = (rect.left - contentRect.left) / scale;
+          const y = (rect.top - contentRect.top) / scale;
 
           if (x < 0 || y < 0) continue;
 
           rects.push({
             x,
             y,
-            width: rect.width,
-            height: rect.height,
+            width: rect.width / scale,
+            height: rect.height / scale,
           });
         }
 

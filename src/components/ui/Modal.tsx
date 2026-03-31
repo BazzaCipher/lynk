@@ -65,8 +65,11 @@ export function Modal({ isOpen, onClose, title, children, className = '', fullsc
                   aria-label={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
                 >
                   {fullscreen ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M7 9a1 1 0 011 1v1.586l2.293-2.293a1 1 0 111.414 1.414L9.414 13H11a1 1 0 110 2H7a1 1 0 01-1-1v-4a1 1 0 011-1zm6-4a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 100-2h-1.586l2.293-2.293a1 1 0 00-1.414-1.414L14 7.586V6a1 1 0 00-1-1zM3.707 3.293a1 1 0 00-1.414 1.414L4.586 7H3a1 1 0 000 2h4a1 1 0 001-1V4a1 1 0 10-2 0v1.586L3.707 3.293zM13 12a1 1 0 10-2 0v4a1 1 0 001 1h4a1 1 0 100-2h-1.586l2.293-2.293a1 1 0 00-1.414-1.414L13 13.586V12z" clipRule="evenodd" />
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4.5 4.5L8 8M4.5 4.5H7M4.5 4.5V7" />
+                      <path d="M15.5 4.5L12 8M15.5 4.5H13M15.5 4.5V7" />
+                      <path d="M4.5 15.5L8 12M4.5 15.5H7M4.5 15.5V13" />
+                      <path d="M15.5 15.5L12 12M15.5 15.5H13M15.5 15.5V13" />
                     </svg>
                   ) : (
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

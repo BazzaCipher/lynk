@@ -107,11 +107,11 @@ export function LynkCanvas() {
         const newEdge = { ...edge };
         if (sourceInGroup) {
           newEdge.source = sourceInGroup;
-          newEdge.sourceHandle = 'group-out';
+          newEdge.sourceHandle = `group-out:${edge.source}:${edge.sourceHandle}`;
         }
         if (targetInGroup) {
           newEdge.target = targetInGroup;
-          newEdge.targetHandle = 'group-in';
+          newEdge.targetHandle = `group-in:${edge.target}:${edge.targetHandle}`;
         }
         // Deduplicate remapped edges
         const key = `${newEdge.source}:${newEdge.sourceHandle}-${newEdge.target}:${newEdge.targetHandle}`;
@@ -121,6 +121,36 @@ export function LynkCanvas() {
       })
       .filter((e): e is Edge => e !== null);
   }, [edges, collapsedChildToGroup]);
+
+  // Mirror child outputs onto collapsed group nodes so downstream resolveNodeOutput works
+  const groupOutputsRef = useRef<string>('');
+  useEffect(() => {
+    if (collapsedGroups.size === 0) {
+      groupOutputsRef.current = '';
+      return;
+    }
+    const updates: Array<{ groupId: string; outputs: Record<string, unknown> }> = [];
+    for (const groupId of collapsedGroups) {
+      const childNodes = nodes.filter((n) => n.parentId === groupId);
+      const mergedOutputs: Record<string, unknown> = {};
+      for (const child of childNodes) {
+        const childOutputs = (child.data as { outputs?: Record<string, unknown> }).outputs;
+        if (childOutputs) {
+          for (const [handle, value] of Object.entries(childOutputs)) {
+            mergedOutputs[`group-out:${child.id}:${handle}`] = value;
+          }
+        }
+      }
+      updates.push({ groupId, outputs: mergedOutputs });
+    }
+    const serialized = JSON.stringify(updates);
+    if (serialized !== groupOutputsRef.current) {
+      groupOutputsRef.current = serialized;
+      for (const { groupId, outputs } of updates) {
+        updateNodeData(groupId, { outputs });
+      }
+    }
+  }, [nodes, collapsedGroups, updateNodeData]);
 
   const { magneticMode, snapTarget, toggleMagneticMode, onNodeDrag, onNodeDragStop } = useMagneticConnect();
 

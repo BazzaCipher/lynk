@@ -63,7 +63,7 @@ const toolHandlers: Record<string, ToolHandler> = {
         }
         if (n.type === 'sheet') {
           const data = n.data as SheetNodeData;
-          return { ...base, columns: data.columns?.length ?? 0 };
+          return { ...base, columns: data.subheaders?.length ?? 0 };
         }
         return base;
       }),

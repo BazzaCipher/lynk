@@ -52,7 +52,7 @@ export function ExtractorNode({ id, data, selected }: NodeProps<ExtractorNodeTyp
   const [isExtracting, setIsExtracting] = useState(false);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [isAutoDetecting, setIsAutoDetecting] = useState(false);
-  const [viewerHeight, setViewerHeight] = useState(400);
+  const [, setViewerHeight] = useState(400);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectionMode, setSelectionMode] = useState<'select' | 'box' | 'text'>('box');

@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { Handle, Position, useEdges } from '@xyflow/react';
 import type { NodeProps } from '@xyflow/react';
 import type { GroupNode as GroupNodeType } from '../../types';
 import { useCanvasStore } from '../../store/canvasStore';
@@ -37,7 +37,17 @@ function setCollapsedState(groupId: string, collapsed: boolean) {
 
 export function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
+  const allEdges = useEdges();
   const collapsed = data.collapsed ?? false;
+
+  // Derive dynamic handles for collapsed view from remapped edges
+  const { outHandles, inHandles } = useMemo(() => {
+    if (!collapsed) return { outHandles: [] as string[], inHandles: [] as string[] };
+    return {
+      outHandles: [...new Set(allEdges.filter(e => e.source === id && e.sourceHandle?.startsWith('group-out:')).map(e => e.sourceHandle!))],
+      inHandles: [...new Set(allEdges.filter(e => e.target === id && e.targetHandle?.startsWith('group-in:')).map(e => e.targetHandle!))],
+    };
+  }, [collapsed, allEdges, id]);
 
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(data.label);
@@ -126,25 +136,52 @@ export function GroupNode({ id, data, selected }: NodeProps<GroupNodeType>) {
           )}
         </div>
 
-        {/* Body with group indicator */}
-        <div className="px-2 py-1 flex items-center justify-center">
-          <span className="text-[10px] text-bridge-400 uppercase tracking-wider">Group</span>
+        {/* Body with connection counts */}
+        <div className="px-2 py-1 flex items-center justify-between">
+          {inHandles.length > 0 && (
+            <span className="text-[10px] text-bridge-400 tabular-nums">{inHandles.length} in</span>
+          )}
+          <span className="text-[10px] text-bridge-400 uppercase tracking-wider flex-1 text-center">Group</span>
+          {outHandles.length > 0 && (
+            <span className="text-[10px] text-bridge-400 tabular-nums">{outHandles.length} out</span>
+          )}
         </div>
 
-        {/* Handles matching NodeEntry style */}
+        {/* Hidden handles for edge rendering (invisible, stacked at center) */}
+        {inHandles.map((h) => (
+          <Handle
+            key={h}
+            type="target"
+            position={Position.Left}
+            id={h}
+            style={{ ...handleStyle, left: -8, opacity: 0, pointerEvents: 'none' }}
+          />
+        ))}
+        {outHandles.map((h) => (
+          <Handle
+            key={h}
+            type="source"
+            position={Position.Right}
+            id={h}
+            style={{ ...handleStyle, right: -8, opacity: 0, pointerEvents: 'none' }}
+          />
+        ))}
+        {/* Single visible non-interactive handles */}
         <Handle
           type="target"
           position={Position.Left}
           id="group-in"
           style={{ ...handleStyle, left: -8 }}
-          className="border-2 border-white"
+          className="border-2 border-white !pointer-events-none"
+          isConnectable={false}
         />
         <Handle
           type="source"
           position={Position.Right}
           id="group-out"
           style={{ ...handleStyle, right: -8 }}
-          className="border-2 border-white"
+          className="border-2 border-white !pointer-events-none"
+          isConnectable={false}
         />
       </div>
     );
