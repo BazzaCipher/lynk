@@ -1,5 +1,6 @@
 import type { AiChatRequest, AiDetectedField, AiConnectionSuggestion, AiMessage, AiNodeContext, ProviderId, AiToolCall } from '../types/ai';
 import { executeToolCall } from './ai/toolExecutor';
+import type { OcrWord } from '../core/extraction/ocrExtractor';
 
 const API_URL = '/api/ai/chat';
 
@@ -74,19 +75,40 @@ async function callAi(
   throw new Error('Tool call loop exceeded maximum rounds');
 }
 
+export interface DetectFieldsOptions {
+  /** Base64-encoded image to send directly (for small images) */
+  image?: { mimeType: string; base64: string };
+  /** OCR words with bounding boxes (fallback for large images) */
+  ocrWords?: OcrWord[];
+  /** Raw OCR text (legacy fallback) */
+  ocrText?: string;
+}
+
 export async function detectFieldsWithAI(
-  ocrText: string,
+  options: DetectFieldsOptions,
   provider: ProviderId,
   model: string,
   apiKey: string
 ): Promise<AiDetectedField[]> {
+  const { image, ocrWords, ocrText } = options;
+
+  let userContent = 'Detect all fields in this document.';
+  if (ocrWords?.length) {
+    userContent += `\n\nOCR word data (with bounding boxes):\n${JSON.stringify(
+      ocrWords.map((w) => ({ text: w.text, confidence: w.confidence, bbox: w.bbox })),
+      null,
+      2
+    )}`;
+  }
+
   const content = await callAi({
     provider,
     model,
     apiKey,
     mode: 'detect_fields',
-    ocrText,
-    messages: [{ role: 'user', content: 'Detect all fields in this document.' }],
+    ocrText: !image ? ocrText : undefined,
+    messages: [{ role: 'user', content: userContent }],
+    images: image ? [image] : undefined,
   });
 
   const jsonStr = content.replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim();

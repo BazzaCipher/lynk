@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { create } from 'zustand';
 import {
   AI_PROVIDERS,
   DEFAULT_AI_SETTINGS,
@@ -24,103 +24,102 @@ function saveSettings(settings: AiSettings): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
 }
 
-export function useAiSettings() {
-  const [settings, setSettings] = useState<AiSettings>(loadSettings);
+interface AiSettingsStore {
+  settings: AiSettings;
+  enabledProviders: AiProviderDefinition[];
+  activeProvider: AiProviderDefinition | null;
+  activeConfig: AiProviderConfig | null;
+  getProviderConfig: (id: ProviderId) => AiProviderConfig | undefined;
+  setApiKey: (id: ProviderId, apiKey: string) => void;
+  setVerified: (id: ProviderId, verified: boolean) => void;
+  setSelectedModel: (id: ProviderId, model: string) => void;
+  setActiveProvider: (id: ProviderId) => void;
+  removeProvider: (id: ProviderId) => void;
+}
 
-  // Persist on change
-  useEffect(() => {
-    saveSettings(settings);
-  }, [settings]);
-
-  const getProviderConfig = useCallback(
-    (id: ProviderId): AiProviderConfig | undefined => settings.providers[id],
-    [settings]
-  );
-
-  const setApiKey = useCallback((id: ProviderId, apiKey: string) => {
-    setSettings((prev) => ({
-      ...prev,
-      providers: {
-        ...prev.providers,
-        [id]: {
-          ...prev.providers[id],
-          apiKey,
-          verified: false, // reset on key change
-          selectedModel:
-            prev.providers[id]?.selectedModel ??
-            AI_PROVIDERS.find((p) => p.id === id)!.models[0].id,
-        },
-      },
-    }));
-  }, []);
-
-  const setVerified = useCallback((id: ProviderId, verified: boolean) => {
-    setSettings((prev) => {
-      const config = prev.providers[id];
-      if (!config) return prev;
-      const updated: AiSettings = {
-        ...prev,
-        providers: { ...prev.providers, [id]: { ...config, verified } },
-      };
-      // Auto-set active provider if none set
-      if (verified && !prev.activeProvider) {
-        updated.activeProvider = id;
-      }
-      return updated;
-    });
-  }, []);
-
-  const setSelectedModel = useCallback((id: ProviderId, model: string) => {
-    setSettings((prev) => {
-      const config = prev.providers[id];
-      if (!config) return prev;
-      return {
-        ...prev,
-        providers: {
-          ...prev.providers,
-          [id]: { ...config, selectedModel: model },
-        },
-      };
-    });
-  }, []);
-
-  const setActiveProvider = useCallback((id: ProviderId) => {
-    setSettings((prev) => ({ ...prev, activeProvider: id }));
-  }, []);
-
-  const removeProvider = useCallback((id: ProviderId) => {
-    setSettings((prev) => {
-      const { [id]: _, ...rest } = prev.providers;
-      return {
-        ...prev,
-        providers: rest,
-        activeProvider: prev.activeProvider === id ? null : prev.activeProvider,
-      };
-    });
-  }, []);
-
-  const enabledProviders: AiProviderDefinition[] = AI_PROVIDERS.filter(
+function deriveFromSettings(settings: AiSettings) {
+  const enabledProviders = AI_PROVIDERS.filter(
     (p) => settings.providers[p.id]?.verified
   );
-
   const activeProvider = settings.activeProvider
     ? AI_PROVIDERS.find((p) => p.id === settings.activeProvider) ?? null
     : null;
-
   const activeConfig = settings.activeProvider
     ? settings.providers[settings.activeProvider] ?? null
     : null;
-
-  return {
-    settings,
-    enabledProviders,
-    activeProvider,
-    activeConfig,
-    getProviderConfig,
-    setApiKey,
-    setVerified,
-    setSelectedModel,
-    setActiveProvider,
-    removeProvider,
-  };
+  return { enabledProviders, activeProvider, activeConfig };
 }
+
+function update(set: (fn: (state: AiSettingsStore) => Partial<AiSettingsStore>) => void, updater: (prev: AiSettings) => AiSettings) {
+  set((state) => {
+    const settings = updater(state.settings);
+    saveSettings(settings);
+    return { settings, ...deriveFromSettings(settings) };
+  });
+}
+
+export const useAiSettings = create<AiSettingsStore>((set, get) => {
+  const initial = loadSettings();
+  return {
+    settings: initial,
+    ...deriveFromSettings(initial),
+
+    getProviderConfig: (id: ProviderId) => get().settings.providers[id],
+
+    setApiKey: (id: ProviderId, apiKey: string) =>
+      update(set, (prev) => ({
+        ...prev,
+        providers: {
+          ...prev.providers,
+          [id]: {
+            ...prev.providers[id],
+            apiKey,
+            verified: false,
+            selectedModel:
+              prev.providers[id]?.selectedModel ??
+              AI_PROVIDERS.find((p) => p.id === id)!.models[0].id,
+          },
+        },
+      })),
+
+    setVerified: (id: ProviderId, verified: boolean) =>
+      update(set, (prev) => {
+        const config = prev.providers[id];
+        if (!config) return prev;
+        const updated: AiSettings = {
+          ...prev,
+          providers: { ...prev.providers, [id]: { ...config, verified } },
+        };
+        if (verified && !prev.activeProvider) {
+          updated.activeProvider = id;
+        }
+        return updated;
+      }),
+
+    setSelectedModel: (id: ProviderId, model: string) =>
+      update(set, (prev) => {
+        const config = prev.providers[id];
+        if (!config) return prev;
+        return {
+          ...prev,
+          providers: {
+            ...prev.providers,
+            [id]: { ...config, selectedModel: model },
+          },
+        };
+      }),
+
+    setActiveProvider: (id: ProviderId) =>
+      update(set, (prev) => ({ ...prev, activeProvider: id })),
+
+    removeProvider: (id: ProviderId) =>
+      update(set, (prev) => {
+        const { [id]: _, ...rest } = prev.providers;
+        return {
+          ...prev,
+          providers: rest,
+          activeProvider: prev.activeProvider === id ? null : prev.activeProvider,
+        };
+      }),
+  };
+});

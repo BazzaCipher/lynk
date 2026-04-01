@@ -1,8 +1,12 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useAiSettings } from '../../hooks/useAiSettings';
 import { AiSettingsModal } from './AiSettingsModal';
 import { askAI, detectFieldsWithAI, autoConnectWithAI, summariseWithAI } from '../../services/aiService';
 import { useCanvasStore } from '../../store/canvasStore';
+import { BlobRegistry } from '../../store/canvasPersistence';
+import { extractFullPage } from '../../core/extraction/ocrExtractor';
+import { AI_IMAGE_SIZE_LIMIT } from '../../config/ai';
 import type { AiMessage, AiDetectedField, AiNodeContext, AiConnectionSuggestion } from '../../types/ai';
 import type { ExtractorNodeData, CalculationNodeData, LabelNodeData, SheetNodeData } from '../../types/nodes';
 
@@ -71,6 +75,28 @@ function gatherNodesContext(): AiNodeContext[] {
   return contexts;
 }
 
+/** Get first image file from extractor nodes for vision-based detect */
+async function getExtractorImage(): Promise<{ mimeType: string; base64: string; size: number } | null> {
+  const { nodes } = useCanvasStore.getState();
+  for (const node of nodes) {
+    if (node.type !== 'extractor') continue;
+    const data = node.data as ExtractorNodeData;
+    const fileId = data.fileId;
+    if (!fileId) continue;
+
+    const blob = BlobRegistry.getBlob(fileId);
+    const meta = BlobRegistry.getMetadata(fileId);
+    if (!blob || !meta) continue;
+
+    const buffer = await blob.arrayBuffer();
+    const base64 = btoa(
+      new Uint8Array(buffer).reduce((d, byte) => d + String.fromCharCode(byte), '')
+    );
+    return { mimeType: meta.mimeType, base64, size: meta.size };
+  }
+  return null;
+}
+
 export function AiPromptPanel({
   context,
   ocrText,
@@ -94,6 +120,13 @@ export function AiPromptPanel({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, response]);
+
+  // Resolve human-readable model name
+  const modelDisplayName = useMemo(() => {
+    if (!activeProvider || !activeConfig?.selectedModel) return null;
+    const model = activeProvider.models.find((m) => m.id === activeConfig.selectedModel);
+    return model?.name ?? activeConfig.selectedModel;
+  }, [activeProvider, activeConfig]);
 
   const handleSend = useCallback(async () => {
     if (!input.trim() || !activeProvider || !activeConfig) return;
@@ -129,7 +162,56 @@ export function AiPromptPanel({
 
   const handleDetectFields = useCallback(async () => {
     if (context === 'canvas') {
-      onCanvasDetect?.();
+      // Try vision-based detection for canvas context
+      if (!activeProvider || !activeConfig) {
+        onCanvasDetect?.();
+        return;
+      }
+
+      setIsDetecting(true);
+      setError(null);
+
+      try {
+        const imageData = await getExtractorImage();
+
+        let fields: AiDetectedField[];
+        if (imageData && imageData.size <= AI_IMAGE_SIZE_LIMIT) {
+          // Small image: send directly to vision model
+          fields = await detectFieldsWithAI(
+            { image: { mimeType: imageData.mimeType, base64: imageData.base64 } },
+            activeProvider.id,
+            activeConfig.selectedModel,
+            activeConfig.apiKey
+          );
+        } else if (imageData) {
+          // Large image: run Tesseract OCR, send words to AI
+          const img = new Image();
+          img.src = `data:${imageData.mimeType};base64,${imageData.base64}`;
+          await new Promise((resolve) => { img.onload = resolve; });
+          const ocrResult = await extractFullPage(img);
+          fields = await detectFieldsWithAI(
+            { ocrWords: ocrResult.words, ocrText: ocrResult.text },
+            activeProvider.id,
+            activeConfig.selectedModel,
+            activeConfig.apiKey
+          );
+        } else {
+          // No image found, fall back to caller
+          onCanvasDetect?.();
+          setIsDetecting(false);
+          return;
+        }
+
+        onFieldsDetected?.(fields);
+        setMessages((prev) => [...prev, {
+          role: 'assistant',
+          content: `Detected ${fields.length} field(s):\n${fields.map((f) => `- **${f.label}**: ${f.text}`).join('\n')}`,
+        }]);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Detection failed');
+      } finally {
+        setIsDetecting(false);
+      }
       return;
     }
 
@@ -140,7 +222,7 @@ export function AiPromptPanel({
 
     try {
       const fields = await detectFieldsWithAI(
-        ocrText,
+        { ocrText },
         activeProvider.id,
         activeConfig.selectedModel,
         activeConfig.apiKey
@@ -242,7 +324,7 @@ export function AiPromptPanel({
           <div className="flex items-center gap-1">
             {activeProvider && (
               <span className="text-[10px] text-bridge-400 px-1.5 py-0.5 bg-paper-100 rounded">
-                {activeProvider.name}
+                {activeProvider.name}{modelDisplayName ? ` · ${modelDisplayName}` : ''}
               </span>
             )}
             <button
@@ -282,7 +364,13 @@ export function AiPromptPanel({
                         : 'bg-paper-100 text-bridge-700'
                     }`}
                   >
-                    {msg.content}
+                    {msg.role === 'assistant' ? (
+                      <div className="prose prose-xs max-w-none [&_p]:m-0 [&_ul]:m-0 [&_ol]:m-0 [&_li]:m-0 [&_pre]:text-[10px] [&_code]:text-[10px] [&_code]:bg-paper-200 [&_code]:px-1 [&_code]:rounded">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      msg.content
+                    )}
                   </div>
                 ))}
                 {isLoading && (
