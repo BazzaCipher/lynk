@@ -315,39 +315,43 @@ export function LynkCanvas() {
     (suggestions: AiConnectionSuggestion[]) => {
       let connected = 0;
       for (const s of suggestions) {
-        // Resolve sourceFieldId: the LLM returns labels/names, but handles use region IDs.
-        // Try direct match first, then fuzzy-match by label.
         const sourceNode = nodes.find((n) => n.id === s.sourceNodeId);
+        const targetNode = nodes.find((n) => n.id === s.targetNodeId);
+        if (!sourceNode || !targetNode) continue;
+
+        // Resolve source handle: try ID match, then label match
         let resolvedSourceHandle = s.sourceFieldId;
-        if (sourceNode?.type === 'extractor') {
+        if (sourceNode.type === 'extractor') {
           const data = sourceNode.data as ExtractorNodeData;
-          // Check if sourceFieldId is already a valid region ID
-          const directMatch = data.regions.find((r) => r.id === s.sourceFieldId);
-          if (!directMatch) {
-            // Match by label (case-insensitive)
+          const direct = data.regions.find((r) => r.id === s.sourceFieldId);
+          if (!direct) {
             const byLabel = data.regions.find(
               (r) => r.label.toLowerCase() === s.sourceFieldId.toLowerCase()
+            ) ?? data.regions.find(
+              (r) =>
+                r.label.toLowerCase().includes(s.sourceFieldId.toLowerCase()) ||
+                s.sourceFieldId.toLowerCase().includes(r.label.toLowerCase())
             );
-            if (byLabel) {
-              resolvedSourceHandle = byLabel.id;
-            } else {
-              // Partial match
-              const partial = data.regions.find(
-                (r) =>
-                  r.label.toLowerCase().includes(s.sourceFieldId.toLowerCase()) ||
-                  s.sourceFieldId.toLowerCase().includes(r.label.toLowerCase())
-              );
-              if (partial) resolvedSourceHandle = partial.id;
-            }
+            if (!byLabel) continue; // Can't resolve — skip
+            resolvedSourceHandle = byLabel.id;
           }
         }
 
+        // Resolve target handle: normalize common LLM patterns
+        let resolvedTargetHandle = s.targetHandle;
+        if (targetNode.type === 'calculation') {
+          // Calculation nodes use 'inputs' handle, not 'input-0' etc.
+          resolvedTargetHandle = 'inputs';
+        } else if (targetNode.type === 'label') {
+          resolvedTargetHandle = 'input';
+        }
+
         const edge = {
-          id: `edge-${s.sourceNodeId}-${resolvedSourceHandle}-${s.targetNodeId}-${s.targetHandle}`,
+          id: `edge-${s.sourceNodeId}-${resolvedSourceHandle}-${s.targetNodeId}-${resolvedTargetHandle}`,
           source: s.sourceNodeId,
           target: s.targetNodeId,
           sourceHandle: resolvedSourceHandle,
-          targetHandle: s.targetHandle,
+          targetHandle: resolvedTargetHandle,
         };
         if (storeAddEdge(edge)) connected++;
       }

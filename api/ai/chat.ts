@@ -330,7 +330,7 @@ const TOOL_DEFINITIONS: AiToolDefinition[] = [
         sourceNodeId: { type: 'string', description: 'Source node ID' },
         sourceFieldId: { type: 'string', description: 'Source field/region ID (used as output handle)' },
         targetNodeId: { type: 'string', description: 'Target node ID' },
-        targetHandle: { type: 'string', description: 'Target handle name (e.g. "input-0", "label-in")' },
+        targetHandle: { type: 'string', description: 'Target handle name (e.g. "inputs" for calculation nodes, "input" for label nodes)' },
         reason: { type: 'string', description: 'Brief reason for this connection' },
       },
       required: ['sourceNodeId', 'sourceFieldId', 'targetNodeId', 'targetHandle', 'reason'],
@@ -398,7 +398,7 @@ Return ONLY a JSON array of connection suggestions. Each suggestion should have:
 - "sourceNodeId": the node ID containing the source field
 - "sourceFieldId": the field/region ID to connect from
 - "targetNodeId": the node ID to connect to
-- "targetHandle": the target handle name (for calculation nodes use the input handle pattern, for label nodes use "label-in")
+- "targetHandle": the target handle name (for calculation nodes use "inputs", for label nodes use "input")
 - "reason": brief explanation of why these should be connected
 
 Example: [{"sourceNodeId": "node-1", "sourceFieldId": "region-123", "targetNodeId": "node-2", "targetHandle": "input-0", "reason": "Invoice total feeds into sum calculation"}]
