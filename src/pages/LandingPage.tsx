@@ -86,48 +86,48 @@ function HeroCanvas() {
             );
           })}
 
-          {/* Purchase Order Node */}
+          {/* Rental Statement Node */}
           <g transform={`translate(${po.x},${po.y})`}>
             <rect width="170" height="130" rx="8" fill="white" stroke="#e8dfd3" strokeWidth="1.5" />
             <rect width="170" height="28" rx="8" fill="#faf8f5" stroke="none" />
             <rect y="28" width="170" height="1" fill="#e8dfd3" />
-            <text x="10" y="18" fontSize="10" fontWeight="600" fill="#5e4f3d">Purchase Order</text>
-            <text x="10" y="48" fontSize="9" fill="#b8a58e">vendor</text>
+            <text x="10" y="18" fontSize="10" fontWeight="600" fill="#5e4f3d">Rental Statement</text>
+            <text x="10" y="48" fontSize="9" fill="#b8a58e">property</text>
             <rect x="60" y="39" width="90" height="14" rx="3" fill="rgba(56,132,212,0.1)" />
-            <text x="66" y="49" fontSize="8" fill="#2560a0">Meridian Ltd</text>
-            <text x="10" y="68" fontSize="9" fill="#b8a58e">total</text>
+            <text x="66" y="49" fontSize="8" fill="#2560a0">14 Elm St</text>
+            <text x="10" y="68" fontSize="9" fill="#b8a58e">rent</text>
             <rect x="60" y="59" width="90" height="14" rx="3" fill="rgba(228,160,28,0.1)" />
-            <text x="66" y="69" fontSize="8" fill="#b07a10">$12,400.00</text>
-            <text x="10" y="88" fontSize="9" fill="#b8a58e">issued</text>
+            <text x="66" y="69" fontSize="8" fill="#b07a10">$31,200.00</text>
+            <text x="10" y="88" fontSize="9" fill="#b8a58e">period</text>
             <rect x="60" y="79" width="90" height="14" rx="3" fill="rgba(148,90,210,0.1)" />
-            <text x="66" y="89" fontSize="8" fill="#6e3aaa">2026-02-10</text>
-            <text x="10" y="108" fontSize="9" fill="#b8a58e">shipping</text>
+            <text x="66" y="89" fontSize="8" fill="#6e3aaa">FY 2024–25</text>
+            <text x="10" y="108" fontSize="9" fill="#b8a58e">agent fees</text>
             <rect x="60" y="99" width="90" height="14" rx="3" fill="rgba(228,160,28,0.1)" />
-            <text x="66" y="109" fontSize="8" fill="#b07a10">$650.00</text>
+            <text x="66" y="109" fontSize="8" fill="#b07a10">$3,432.00</text>
             <circle cx="170" cy="49" r="4" fill="#3884d4" stroke="white" strokeWidth="2" />
             <circle cx="170" cy="69" r="4" fill="#e4a01c" stroke="white" strokeWidth="2" />
             <circle cx="170" cy="89" r="4" fill="#945ad2" stroke="white" strokeWidth="2" />
             <circle cx="170" cy="109" r="4" fill="#e4a01c" stroke="white" strokeWidth="2" />
           </g>
 
-          {/* Bank Statement Node */}
+          {/* Loan Summary Node */}
           <g transform={`translate(${bank.x},${bank.y})`}>
             <rect width="170" height="130" rx="8" fill="white" stroke="#e8dfd3" strokeWidth="1.5" />
             <rect width="170" height="28" rx="8" fill="#faf8f5" stroke="none" />
             <rect y="28" width="170" height="1" fill="#e8dfd3" />
-            <text x="10" y="18" fontSize="10" fontWeight="600" fill="#5e4f3d">Bank Statement</text>
-            <text x="10" y="48" fontSize="9" fill="#b8a58e">account</text>
+            <text x="10" y="18" fontSize="10" fontWeight="600" fill="#5e4f3d">Loan Summary</text>
+            <text x="10" y="48" fontSize="9" fill="#b8a58e">lender</text>
             <rect x="60" y="39" width="90" height="14" rx="3" fill="rgba(56,132,212,0.1)" />
-            <text x="66" y="49" fontSize="8" fill="#2560a0">Ops ••4821</text>
-            <text x="10" y="68" fontSize="9" fill="#b8a58e">deposited</text>
+            <text x="66" y="49" fontSize="8" fill="#2560a0">CBA ••7193</text>
+            <text x="10" y="68" fontSize="9" fill="#b8a58e">interest</text>
             <rect x="60" y="59" width="90" height="14" rx="3" fill="rgba(228,160,28,0.1)" />
-            <text x="66" y="69" fontSize="8" fill="#b07a10">$8,300.00</text>
-            <text x="10" y="88" fontSize="9" fill="#b8a58e">withdrawn</text>
+            <text x="66" y="69" fontSize="8" fill="#b07a10">$18,640.00</text>
+            <text x="10" y="88" fontSize="9" fill="#b8a58e">principal</text>
             <rect x="60" y="79" width="90" height="14" rx="3" fill="rgba(228,160,28,0.1)" />
-            <text x="66" y="89" fontSize="8" fill="#b07a10">$3,175.00</text>
+            <text x="66" y="89" fontSize="8" fill="#b07a10">$6,200.00</text>
             <text x="10" y="108" fontSize="9" fill="#b8a58e">balance</text>
             <rect x="60" y="99" width="90" height="14" rx="3" fill="rgba(228,160,28,0.1)" />
-            <text x="66" y="109" fontSize="8" fill="#b07a10">$5,125.00</text>
+            <text x="66" y="109" fontSize="8" fill="#b07a10">$412,000</text>
             <circle cx="170" cy="49" r="4" fill="#3884d4" stroke="white" strokeWidth="2" />
             <circle cx="170" cy="69" r="4" fill="#e4a01c" stroke="white" strokeWidth="2" />
             <circle cx="170" cy="89" r="4" fill="#e4a01c" stroke="white" strokeWidth="2" />
@@ -139,17 +139,17 @@ function HeroCanvas() {
             <rect width="170" height="120" rx="8" fill="white" stroke="#e8dfd3" strokeWidth="1.5" />
             <rect width="170" height="28" rx="8" fill="#faf8f5" stroke="none" />
             <rect y="28" width="170" height="1" fill="#e8dfd3" />
-            <text x="10" y="18" fontSize="10" fontWeight="600" fill="#5e4f3d">Calculation</text>
-            <rect x="10" y="38" width="40" height="16" rx="4" fill="rgba(228,160,28,0.15)" />
-            <text x="18" y="49" fontSize="8" fontWeight="600" fill="#b07a10">SUM</text>
+            <text x="10" y="18" fontSize="10" fontWeight="600" fill="#5e4f3d">Net Rental Income</text>
+            <rect x="10" y="38" width="60" height="16" rx="4" fill="rgba(228,160,28,0.15)" />
+            <text x="16" y="49" fontSize="8" fontWeight="600" fill="#b07a10">SUBTRACT</text>
             <circle cx="0" cy="49" r="4" fill="#e4a01c" stroke="white" strokeWidth="2" />
-            <text x="10" y="70" fontSize="9" fill="#b8a58e">PO total</text>
-            <text x="100" y="70" fontSize="8" fill="#b07a10">$12,400</text>
+            <text x="10" y="70" fontSize="9" fill="#b8a58e">Rent</text>
+            <text x="100" y="70" fontSize="8" fill="#b07a10">$31,200</text>
             <circle cx="0" cy="87" r="4" fill="#e4a01c" stroke="white" strokeWidth="2" />
-            <text x="10" y="87" fontSize="9" fill="#b8a58e">Deposited</text>
-            <text x="100" y="87" fontSize="8" fill="#b07a10">$8,300</text>
+            <text x="10" y="87" fontSize="9" fill="#b8a58e">Interest</text>
+            <text x="100" y="87" fontSize="8" fill="#b07a10">$18,640</text>
             <rect x="10" y="96" width="150" height="16" rx="4" fill="rgba(228,160,28,0.1)" />
-            <text x="18" y="107" fontSize="9" fontWeight="600" fill="#b07a10">= $20,700.00</text>
+            <text x="18" y="107" fontSize="9" fontWeight="600" fill="#b07a10">= $12,560.00</text>
             <circle cx="170" cy="104" r="4" fill="#e4a01c" stroke="white" strokeWidth="2" />
           </g>
 
@@ -157,7 +157,7 @@ function HeroCanvas() {
           <g transform={`translate(${label.x},${label.y})`}>
             <rect width="200" height="44" rx="8" fill="white" stroke="#e8dfd3" strokeWidth="1.5" />
             <text x="14" y="18" fontSize="9" fill="#9c8468" fontWeight="600">Label</text>
-            <text x="14" y="34" fontSize="12" fontWeight="600" fill="#3f3529">Monthly reconciliation</text>
+            <text x="14" y="34" fontSize="12" fontWeight="600" fill="#3f3529">14 Elm St — FY 2024–25</text>
           </g>
 
           {/* Sheet Node */}
@@ -165,26 +165,26 @@ function HeroCanvas() {
             <rect width="180" height="200" rx="8" fill="white" stroke="#e8dfd3" strokeWidth="1.5" />
             <rect width="180" height="28" rx="8" fill="#faf8f5" stroke="none" />
             <rect y="28" width="180" height="1" fill="#e8dfd3" />
-            <text x="10" y="18" fontSize="10" fontWeight="600" fill="#5e4f3d">Sheet</text>
+            <text x="10" y="18" fontSize="10" fontWeight="600" fill="#5e4f3d">Rental Schedule</text>
             <circle cx="0" cy="50" r="4" fill="#3884d4" stroke="white" strokeWidth="2" />
             <circle cx="0" cy="75" r="4" fill="#3884d4" stroke="white" strokeWidth="2" />
             <circle cx="0" cy="100" r="4" fill="#e4a01c" stroke="white" strokeWidth="2" />
             <rect x="8" y="36" width="164" height="20" rx="4" fill="#faf8f5" />
-            <text x="14" y="50" fontSize="9" fontWeight="600" fill="#3f3529">Sources</text>
-            <text x="14" y="72" fontSize="8" fill="#b8a58e">Vendor</text>
-            <text x="100" y="72" fontSize="8" fill="#7d6a52">Meridian Ltd</text>
-            <text x="14" y="88" fontSize="8" fill="#b8a58e">Account</text>
-            <text x="100" y="88" fontSize="8" fill="#7d6a52">Ops ••4821</text>
+            <text x="14" y="50" fontSize="9" fontWeight="600" fill="#3f3529">Property</text>
+            <text x="14" y="72" fontSize="8" fill="#b8a58e">Address</text>
+            <text x="100" y="72" fontSize="8" fill="#7d6a52">14 Elm St</text>
+            <text x="14" y="88" fontSize="8" fill="#b8a58e">Lender</text>
+            <text x="100" y="88" fontSize="8" fill="#7d6a52">CBA ••7193</text>
             <rect x="8" y="100" width="164" height="20" rx="4" fill="#faf8f5" />
-            <text x="14" y="114" fontSize="9" fontWeight="600" fill="#3f3529">Totals</text>
-            <text x="110" y="114" fontSize="9" fill="#b07a10" fontWeight="600">$20,700</text>
-            <text x="14" y="136" fontSize="8" fill="#b8a58e">PO total</text>
-            <text x="110" y="136" fontSize="8" fill="#7d6a52">$12,400</text>
-            <text x="14" y="152" fontSize="8" fill="#b8a58e">Deposited</text>
-            <text x="110" y="152" fontSize="8" fill="#7d6a52">$8,300</text>
+            <text x="14" y="114" fontSize="9" fontWeight="600" fill="#3f3529">Income</text>
+            <text x="110" y="114" fontSize="9" fill="#b07a10" fontWeight="600">$31,200</text>
+            <text x="14" y="136" fontSize="8" fill="#b8a58e">Interest</text>
+            <text x="110" y="136" fontSize="8" fill="#7d6a52">$18,640</text>
+            <text x="14" y="152" fontSize="8" fill="#b8a58e">Agent fees</text>
+            <text x="110" y="152" fontSize="8" fill="#7d6a52">$3,432</text>
             <rect x="8" y="164" width="164" height="20" rx="4" fill="#faf8f5" />
-            <text x="14" y="178" fontSize="9" fontWeight="600" fill="#3f3529">Balance</text>
-            <text x="110" y="178" fontSize="9" fill="#e4a01c" fontWeight="600">$5,125</text>
+            <text x="14" y="178" fontSize="9" fontWeight="600" fill="#3f3529">Net income</text>
+            <text x="110" y="178" fontSize="9" fill="#e4a01c" fontWeight="600">$9,128</text>
           </g>
         </svg>
       </div>
@@ -197,8 +197,8 @@ function HeroCanvas() {
 const features = [
   {
     num: '01',
-    title: '100% Local & Private',
-    description: 'Every document stays in your browser. No uploads, no accounts, no server-side processing. Your data never leaves your device.',
+    title: 'Rental Property Schedules',
+    description: 'Built for the documents you actually get — rental statements, loan summaries, depreciation schedules, strata levies, and insurance renewals.',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
@@ -207,8 +207,8 @@ const features = [
   },
   {
     num: '02',
-    title: 'Source-Linked Extraction',
-    description: 'Every extracted value stays linked to the exact region on the original document. Hover any number to see where it came from.',
+    title: 'Source-Linked Numbers',
+    description: 'Every figure in your summary links back to the exact line on the original document. If the ATO asks, you can show them.',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
@@ -217,8 +217,8 @@ const features = [
   },
   {
     num: '03',
-    title: 'Traceable Calculations',
-    description: 'Connect values to calculation nodes with visible data flow. Every result shows its inputs and the documents they came from.',
+    title: 'Automatic Totals',
+    description: 'Rental income, interest, repairs, agent fees — totalled and cross-checked automatically. No formulas to maintain.',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75V18m-7.5-6.75h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V13.5zm0 2.25h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V18zm2.498-6.75h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V13.5zm0 2.25h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V18zm2.504-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zm0 2.25h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V18zm2.498-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zM8.25 6h7.5v2.25h-7.5V6zM12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.65 4.5 4.757V19.5a2.25 2.25 0 002.25 2.25h10.5a2.25 2.25 0 002.25-2.25V4.757c0-1.108-.806-2.057-1.907-2.185A48.507 48.507 0 0012 2.25z" />
@@ -227,8 +227,8 @@ const features = [
   },
   {
     num: '04',
-    title: 'Smart Type Detection',
-    description: 'Extracted values are automatically classified as strings, numbers, currencies, or dates — no manual mapping or configuration needed.',
+    title: 'Client-Ready Output',
+    description: 'Generate a clean rental property summary you can attach to the return or send to your client for sign-off.',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
@@ -238,8 +238,8 @@ const features = [
   },
   {
     num: '05',
-    title: 'Sheets & Groups',
-    description: 'Organize results into structured sheets. Group related documents and calculations to keep multi-document audits clean and navigable.',
+    title: 'Multi-Property Support',
+    description: 'Clients with two, five, or ten properties? Each one gets its own workspace. Roll them up into a single summary at the end.',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M10.875 12c-.621 0-1.125.504-1.125 1.125M12 12c.621 0 1.125.504 1.125 1.125m0 0v1.5c0 .621-.504 1.125-1.125 1.125m-1.125-2.625c0 .621-.504 1.125-1.125 1.125" />
@@ -248,8 +248,8 @@ const features = [
   },
   {
     num: '06',
-    title: 'Full Chain of Custody',
-    description: 'Export complete workflows with full provenance as a single portable file. Every source, extraction, and calculation preserved.',
+    title: 'Full Audit Trail',
+    description: 'Export the complete workpaper — every source document, every extracted value, every calculation — as a single portable file.',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
@@ -261,36 +261,36 @@ const features = [
 const steps = [
   {
     num: '01',
-    title: 'Drop a document',
-    description: 'Upload a PDF or image directly onto the canvas. Paperbridge handles rendering and page navigation.',
+    title: 'Upload the documents',
+    description: 'Drop your client\'s rental statements, loan letters, and receipts onto the canvas. PDF or image, it just works.',
     pulseClass: 'step-pulse-1',
   },
   {
     num: '02',
-    title: 'Select & extract',
-    description: 'Draw rectangles over the data you need. OCR runs in-browser and automatically detects value types.',
+    title: 'Extract the numbers',
+    description: 'Select the figures you need — rent received, interest paid, agent fees. Each value stays linked to the original document.',
     pulseClass: 'step-pulse-2',
   },
   {
     num: '03',
-    title: 'Connect & calculate',
-    description: 'Wire extracted values to calculations, labels, and sheets. Every output traces back to the source.',
+    title: 'Export the summary',
+    description: 'Get a rental property schedule ready for the tax return. Every number traceable, every document attached.',
     pulseClass: 'step-pulse-3',
   },
 ];
 
 const comparisons = [
   {
-    before: 'Copy-paste from PDFs into spreadsheets',
-    after: 'OCR extraction linked to source regions',
+    before: 'Manually keying rental statements into spreadsheets',
+    after: 'Upload once, extract automatically',
   },
   {
-    before: 'Untraceable spreadsheet formulas',
-    after: 'Visual calculation nodes with data flow',
+    before: 'Chasing clients for missing documents at lodgement',
+    after: 'See gaps before you start the return',
   },
   {
-    before: 'Screenshots and email audit trails',
-    after: 'Portable exports with full provenance',
+    before: 'Hoping the ATO doesn\'t ask how you got that number',
+    after: 'Every figure traced to its source document',
   },
 ];
 
@@ -301,7 +301,7 @@ function ComparisonSection({ comparisons }: { comparisons: { before: string; aft
   return (
     <section ref={ref} className="py-16 md:py-20 bg-paper-50/40">
       <div className={`max-w-3xl mx-auto px-6 transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}>
-        <p className="text-xs font-semibold text-copper-500 uppercase tracking-[0.15em] mb-8 text-center">What changes</p>
+        <p className="text-xs font-semibold text-copper-500 uppercase tracking-[0.15em] mb-8 text-center">Before &amp; after Paperbridge</p>
         <div className="space-y-3">
           {comparisons.map((c, i) => (
             <div
@@ -337,13 +337,13 @@ function FeaturesSection({ features }: { features: { num: string; title: string;
 
       <div className="relative max-w-6xl mx-auto px-6">
         <div className={`max-w-2xl mb-16 transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
-          <p className="text-xs font-semibold text-copper-400 uppercase tracking-[0.15em] mb-3">Capabilities</p>
+          <p className="text-xs font-semibold text-copper-400 uppercase tracking-[0.15em] mb-3">Why practices switch</p>
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
-            Built for traceability
+            Rental property work, without the grunt work
           </h2>
           <p className="mt-4 text-base text-bridge-400 leading-relaxed">
-            A visual canvas where every value traces back to its source.
-            No hidden formulas, no broken references, no manual reconciliation.
+            Purpose-built for Australian tax practices handling rental portfolios.
+            Every number sourced, every schedule audit-ready.
           </p>
         </div>
 
@@ -375,7 +375,7 @@ function StepsSection({ steps }: { steps: { num: string; title: string; descript
         <div className={`text-center mb-16 transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           <p className="text-xs font-semibold text-copper-500 uppercase tracking-[0.15em] mb-3">How it works</p>
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-bridge-900">
-            Three steps to an auditable result
+            Documents in, rental schedule out
           </h2>
         </div>
 
@@ -429,7 +429,7 @@ export function LandingPage() {
               <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-copper-400/10 border border-copper-400/20">
                 <span className="w-1.5 h-1.5 rounded-full bg-copper-500" />
                 <span className="text-xs font-medium text-copper-600 tracking-wide">
-                  Built for auditors, finance ops &amp; compliance
+                  For Australian tax practices
                 </span>
               </span>
             </div>
@@ -455,8 +455,7 @@ export function LandingPage() {
             </h1>
 
             <p className="mt-6 text-lg md:text-xl text-bridge-500 leading-relaxed max-w-2xl mx-auto">
-              A visual canvas for extracting data from invoices, bank statements, and contracts — then
-              connecting every value through calculations you can trace end-to-end. No spreadsheet black boxes.
+              Upload your rental property clients' documents. Get an audit-ready summary in minutes — no manual keying, no black boxes.
             </p>
 
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -464,7 +463,7 @@ export function LandingPage() {
                 to="/canvas"
                 className="group inline-flex items-center px-7 py-3.5 text-sm font-semibold bg-bridge-900 text-white rounded-lg hover:bg-bridge-800 transition-all duration-200 shadow-lg shadow-bridge-900/20 hover:shadow-bridge-900/30 hover:-translate-y-0.5"
               >
-                Open Canvas — it's free
+                Try the Canvas
                 <svg className="ml-2 w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                 </svg>
@@ -483,21 +482,21 @@ export function LandingPage() {
                 <svg className="w-3.5 h-3.5 text-copper-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                 </svg>
-                No account required
+                Rental property schedules
               </span>
               <span className="text-paper-200">·</span>
               <span className="flex items-center gap-1.5">
                 <svg className="w-3.5 h-3.5 text-copper-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                 </svg>
-                Runs entirely in-browser
+                ATO audit-ready output
               </span>
               <span className="text-paper-200">·</span>
               <span className="flex items-center gap-1.5">
                 <svg className="w-3.5 h-3.5 text-copper-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Zero data leaves your device
+                Minutes, not hours
               </span>
             </div>
           </div>
@@ -532,10 +531,10 @@ export function LandingPage() {
 
         <div className="relative max-w-2xl mx-auto px-6 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
-            Stop reconciling in the dark
+            Tax season doesn't have to mean late nights
           </h2>
           <p className="mt-4 text-base text-bridge-400 max-w-lg mx-auto leading-relaxed">
-            Open the canvas and start extracting. Every value linked back to its source, every calculation fully traceable, every export audit-ready.
+            Process your rental property clients faster, with every number sourced and every schedule ready for the ATO.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
