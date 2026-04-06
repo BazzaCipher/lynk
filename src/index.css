@@ -33,23 +33,16 @@ html, body, #root {
   height: 100%;
 }
 
-/* Toast animation */
+/* ─── Toast ───────────────────────────────────────────────────── */
+
 @keyframes slide-in {
-  from {
-    transform: translateX(-50%) translateY(-100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(-50%) translateY(0);
-    opacity: 1;
-  }
+  from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
 }
+.animate-slide-in { animation: slide-in 0.3s ease-out; }
 
-.animate-slide-in {
-  animation: slide-in 0.3s ease-out;
-}
+/* ─── React Flow overrides ────────────────────────────────────── */
 
-/* Override React Flow's built-in group node styles */
 .react-flow__node-group {
   width: auto !important;
   padding: 0 !important;
@@ -57,8 +50,87 @@ html, body, #root {
   background-color: transparent !important;
   box-shadow: none !important;
 }
-
 .react-flow__node-group.selected,
 .react-flow__node-group.selectable.selected {
   box-shadow: none !important;
 }
+
+/* ─── Landing: hero stagger ───────────────────────────────────── */
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-stagger > * {
+  opacity: 0;
+  animation: fade-up 0.65s cubic-bezier(0.16, 0.84, 0.2, 1) forwards;
+}
+.hero-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.hero-stagger > *:nth-child(2) { animation-delay: 100ms; }
+.hero-stagger > *:nth-child(3) { animation-delay: 180ms; }
+.hero-stagger > *:nth-child(4) { animation-delay: 260ms; }
+.hero-stagger > *:nth-child(5) { animation-delay: 340ms; }
+
+/* ─── Landing: illustration entrance ──────────────────────────── */
+
+@keyframes illo-enter {
+  from { opacity: 0; transform: translateY(40px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.hero-illo-enter {
+  opacity: 0;
+  animation: illo-enter 0.8s cubic-bezier(0.16, 0.84, 0.2, 1) 0.45s forwards;
+}
+
+/* ─── Landing: shimmer line ───────────────────────────────────── */
+
+@keyframes shimmer-sweep {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer-line {
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--color-copper-400) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer-sweep 3.5s ease-in-out infinite;
+}
+
+/* ─── Landing: underline draw ─────────────────────────────────── */
+
+@keyframes draw-underline {
+  from { stroke-dashoffset: 200; }
+  to { stroke-dashoffset: 0; }
+}
+.underline-draw {
+  animation: draw-underline 0.9s cubic-bezier(0.16, 0.84, 0.2, 1) 0.6s forwards;
+}
+
+/* ─── Landing: edge dash (mobile compact) ─────────────────────── */
+
+@keyframes hero-dash {
+  to { stroke-dashoffset: -16; }
+}
+.hero-edge { animation: hero-dash 1.2s linear infinite; }
+
+/* ─── Landing: feature card stagger ───────────────────────────── */
+
+/* feature-stagger removed — scroll-reveal handles feature animation via JS */
+
+/* ─── Landing: step pulse ─────────────────────────────────────── */
+
+@keyframes step-pulse {
+  0%, 30%, 100% { box-shadow: 0 0 0 0 transparent; }
+  15% { box-shadow: 0 0 0 6px rgba(194,115,80,0.15); }
+}
+.step-pulse-1 { animation: step-pulse 6s ease-in-out infinite; }
+.step-pulse-2 { animation: step-pulse 6s ease-in-out 2s infinite; }
+.step-pulse-3 { animation: step-pulse 6s ease-in-out 4s infinite; }
+
+/* ─── Landing: comparison arrow bounce ────────────────────────── */
+
+@keyframes arrow-bounce {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(3px); }
+}
+.arrow-bounce { animation: arrow-bounce 2s ease-in-out infinite; }
