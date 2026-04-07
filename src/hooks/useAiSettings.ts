@@ -98,8 +98,7 @@ export const useAiSettings = create<AiSettingsStore>((set, get) => {
 
     setSelectedModel: (id: ProviderId, model: string) =>
       update(set, (prev) => {
-        const config = prev.providers[id];
-        if (!config) return prev;
+        const config = prev.providers[id] ?? { apiKey: '', verified: false, selectedModel: model };
         return {
           ...prev,
           providers: {

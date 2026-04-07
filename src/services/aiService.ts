@@ -24,6 +24,64 @@ async function callAiRaw(request: AiChatRequest): Promise<AiResponse> {
   return res.json();
 }
 
+/** Stream AI text response, calling onChunk for each text delta */
+async function callAiStream(
+  request: AiChatRequest,
+  onChunk: (text: string) => void,
+  onToolCall?: (toolName: string) => void,
+): Promise<{ text: string; toolCalls?: AiToolCall[] }> {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...request, stream: true }),
+  });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error ?? `API error: ${res.status}`);
+  }
+
+  const reader = res.body?.getReader();
+  if (!reader) throw new Error('No response body');
+
+  const decoder = new TextDecoder();
+  let fullText = '';
+  let toolCalls: AiToolCall[] | undefined;
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const data = line.slice(6);
+      if (data === '[DONE]') continue;
+
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed.type === 'text') {
+          fullText += parsed.text;
+          onChunk(parsed.text);
+        } else if (parsed.type === 'tool_calls') {
+          toolCalls = parsed.toolCalls;
+          for (const tc of parsed.toolCalls) {
+            onToolCall?.(tc.name);
+          }
+        }
+      } catch {
+        // skip malformed chunks
+      }
+    }
+  }
+
+  return { text: fullText, toolCalls };
+}
+
 /** Call AI with automatic tool-call loop. Executes tools client-side until the model returns a text response. */
 async function callAi(
   request: AiChatRequest,
@@ -76,8 +134,8 @@ async function callAi(
 }
 
 export interface DetectFieldsOptions {
-  /** Base64-encoded image to send directly (for small images) */
-  image?: { mimeType: string; base64: string };
+  /** Base64-encoded images to send directly (for small images) */
+  images?: Array<{ mimeType: string; base64: string }>;
   /** OCR words with bounding boxes (fallback for large images) */
   ocrWords?: OcrWord[];
   /** Raw OCR text (legacy fallback) */
@@ -90,15 +148,17 @@ export async function detectFieldsWithAI(
   model: string,
   apiKey: string
 ): Promise<AiDetectedField[]> {
-  const { image, ocrWords, ocrText } = options;
+  const { images, ocrWords, ocrText } = options;
 
-  let userContent = 'Detect all fields in this document.';
+  let userContent = 'Detect all fields in this document. Be thorough — extract every field you can identify, including table rows as separate line items.';
   if (ocrWords?.length) {
-    userContent += `\n\nOCR word data (with bounding boxes):\n${JSON.stringify(
-      ocrWords.map((w) => ({ text: w.text, confidence: w.confidence, bbox: w.bbox })),
-      null,
-      2
-    )}`;
+    // Send structured OCR data with spatial info for better bbox computation
+    const ocrData = ocrWords.map((w) => ({
+      t: w.text,
+      c: Math.round(w.confidence),
+      b: [w.bbox.x0, w.bbox.y0, w.bbox.x1, w.bbox.y1],
+    }));
+    userContent += `\n\nOCR words (t=text, c=confidence, b=[x0,y0,x1,y1]):\n${JSON.stringify(ocrData)}`;
   }
 
   const content = await callAi({
@@ -106,9 +166,9 @@ export async function detectFieldsWithAI(
     model,
     apiKey,
     mode: 'detect_fields',
-    ocrText: !image ? ocrText : undefined,
+    ocrText: !images?.length ? ocrText : undefined,
     messages: [{ role: 'user', content: userContent }],
-    images: image ? [image] : undefined,
+    images: images,
   });
 
   const jsonStr = content.replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim();
@@ -121,6 +181,12 @@ export async function detectFieldsWithAI(
   }
 }
 
+export interface AskAIOptions {
+  onChunk?: (text: string) => void;
+  onToolCall?: (toolName: string) => void;
+  stream?: boolean;
+}
+
 export async function askAI(
   question: string,
   ocrText: string | undefined,
@@ -128,19 +194,34 @@ export async function askAI(
   model: string,
   apiKey: string,
   history: AiMessage[] = [],
-  onToolCall?: (toolName: string) => void
+  optionsOrOnToolCall?: AskAIOptions | ((toolName: string) => void),
 ): Promise<string> {
-  return callAi(
-    {
-      provider,
-      model,
-      apiKey,
-      mode: 'freeform',
-      ocrText,
-      messages: [...history, { role: 'user', content: question }],
-    },
-    onToolCall
-  );
+  // Support old signature (onToolCall callback) and new options object
+  const opts: AskAIOptions = typeof optionsOrOnToolCall === 'function'
+    ? { onToolCall: optionsOrOnToolCall }
+    : optionsOrOnToolCall ?? {};
+
+  const request: AiChatRequest = {
+    provider,
+    model,
+    apiKey,
+    mode: 'freeform',
+    ocrText,
+    messages: [...history, { role: 'user', content: question }],
+  };
+
+  if (opts.stream && opts.onChunk) {
+    const result = await callAiStream(request, opts.onChunk, opts.onToolCall);
+
+    // If there were tool calls, fall back to non-streaming loop for tool execution
+    if (result.toolCalls?.length) {
+      return callAi(request, opts.onToolCall);
+    }
+
+    return result.text;
+  }
+
+  return callAi(request, opts.onToolCall);
 }
 
 export async function autoConnectWithAI(

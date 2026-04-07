@@ -25,6 +25,26 @@ export function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
 
   const handleVerify = async (providerId: ProviderId) => {
     const config = getProviderConfig(providerId);
+
+    // Gateway can work without an API key (OIDC auth)
+    if (providerId === 'gateway') {
+      // Ensure config exists even with empty key
+      if (!config) {
+        setApiKey(providerId, '');
+      }
+      setVerifying(providerId);
+      setError(null);
+      const provider = AI_PROVIDERS.find((p) => p.id === providerId)!;
+      const model = config?.selectedModel ?? provider.models[0].id;
+      const success = await verifyApiKey(providerId, model, config?.apiKey ?? '');
+      setVerified(providerId, success);
+      if (!success) {
+        setError('Gateway verification failed. Ensure AI Gateway is enabled in your Vercel project settings, or provide a gateway API key.');
+      }
+      setVerifying(null);
+      return;
+    }
+
     if (!config?.apiKey) return;
 
     setVerifying(providerId);
@@ -129,17 +149,22 @@ export function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
                 />
                 <button
                   onClick={() => handleVerify(provider.id)}
-                  disabled={!config?.apiKey || verifying === provider.id}
+                  disabled={(provider.id !== 'gateway' && !config?.apiKey) || verifying === provider.id}
                   className="px-3 py-1.5 text-xs rounded-md bg-copper-500 text-white hover:bg-copper-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
                 >
                   {verifying === provider.id ? 'Verifying...' : 'Verify'}
                 </button>
               </div>
+              {provider.id === 'gateway' && (
+                <p className="text-[10px] text-bridge-400 mb-2">
+                  Uses Vercel OIDC by default — no key needed if deployed on Vercel with AI Gateway enabled.
+                </p>
+              )}
 
               {/* Model selection */}
-              {config?.apiKey && (
+              {(config?.apiKey || provider.id === 'gateway') && (
                 <select
-                  value={config.selectedModel ?? provider.models[0].id}
+                  value={config?.selectedModel ?? provider.models[0].id}
                   onChange={(e) => setSelectedModel(provider.id, e.target.value)}
                   className="w-full px-2.5 py-1.5 text-xs border border-paper-200 rounded-md bg-white text-bridge-900 focus:outline-none focus:ring-1 focus:ring-copper-400"
                 >
@@ -155,7 +180,7 @@ export function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
         })}
 
         <p className="text-xs text-bridge-400">
-          API keys are stored locally in your browser and sent directly to the provider.
+          API keys are stored locally in your browser. Direct provider keys are sent to the provider; Gateway routes through Vercel AI Gateway.
         </p>
       </div>
     </Modal>

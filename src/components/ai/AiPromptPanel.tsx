@@ -75,9 +75,11 @@ function gatherNodesContext(): AiNodeContext[] {
   return contexts;
 }
 
-/** Get first image file from extractor nodes for vision-based detect */
-async function getExtractorImage(): Promise<{ mimeType: string; base64: string; size: number } | null> {
+/** Get ALL image files from extractor nodes for vision-based detect */
+async function getExtractorImages(): Promise<Array<{ mimeType: string; base64: string; size: number }>> {
   const { nodes } = useCanvasStore.getState();
+  const results: Array<{ mimeType: string; base64: string; size: number }> = [];
+
   for (const node of nodes) {
     if (node.type !== 'extractor') continue;
     const data = node.data as ExtractorNodeData;
@@ -92,9 +94,9 @@ async function getExtractorImage(): Promise<{ mimeType: string; base64: string; 
     const base64 = btoa(
       new Uint8Array(buffer).reduce((d, byte) => d + String.fromCharCode(byte), '')
     );
-    return { mimeType: meta.mimeType, base64, size: meta.size };
+    results.push({ mimeType: meta.mimeType, base64, size: meta.size });
   }
-  return null;
+  return results;
 }
 
 export function AiPromptPanel({
@@ -139,6 +141,10 @@ export function AiPromptPanel({
     const newMessages: AiMessage[] = [...messages, { role: 'user', content: question }];
     setMessages(newMessages);
 
+    // Add a placeholder assistant message for streaming
+    const streamingIdx = newMessages.length;
+    setMessages([...newMessages, { role: 'assistant', content: '' }]);
+
     try {
       const reply = await askAI(
         question,
@@ -147,13 +153,31 @@ export function AiPromptPanel({
         activeConfig.selectedModel,
         activeConfig.apiKey,
         messages,
-        (toolName) => setActiveToolCall(toolName)
+        {
+          stream: true,
+          onChunk: (chunk) => {
+            setMessages((prev) => {
+              const updated = [...prev];
+              if (updated[streamingIdx]) {
+                updated[streamingIdx] = {
+                  ...updated[streamingIdx],
+                  content: updated[streamingIdx].content + chunk,
+                };
+              }
+              return updated;
+            });
+          },
+          onToolCall: (toolName) => setActiveToolCall(toolName),
+        }
       );
       setActiveToolCall(null);
+      // Finalize with the complete reply
       setMessages([...newMessages, { role: 'assistant', content: reply }]);
       setResponse(reply);
     } catch (err) {
       setActiveToolCall(null);
+      // Remove the placeholder on error
+      setMessages(newMessages);
       setError(err instanceof Error ? err.message : 'Failed to get response');
     } finally {
       setIsLoading(false);
@@ -172,40 +196,59 @@ export function AiPromptPanel({
       setError(null);
 
       try {
-        const imageData = await getExtractorImage();
+        const allImages = await getExtractorImages();
 
-        let fields: AiDetectedField[];
-        if (imageData && imageData.size <= AI_IMAGE_SIZE_LIMIT) {
-          // Small image: send directly to vision model
-          fields = await detectFieldsWithAI(
-            { image: { mimeType: imageData.mimeType, base64: imageData.base64 } },
-            activeProvider.id,
-            activeConfig.selectedModel,
-            activeConfig.apiKey
-          );
-        } else if (imageData) {
-          // Large image: run Tesseract OCR, send words to AI
-          const img = new Image();
-          img.src = `data:${imageData.mimeType};base64,${imageData.base64}`;
-          await new Promise((resolve) => { img.onload = resolve; });
-          const ocrResult = await extractFullPage(img);
-          fields = await detectFieldsWithAI(
-            { ocrWords: ocrResult.words, ocrText: ocrResult.text },
-            activeProvider.id,
-            activeConfig.selectedModel,
-            activeConfig.apiKey
-          );
-        } else {
-          // No image found, fall back to caller
+        if (allImages.length === 0) {
+          // No images found, fall back to caller
           onCanvasDetect?.();
           setIsDetecting(false);
           return;
         }
 
+        // Split images into small (vision) and large (OCR) groups
+        const smallImages = allImages.filter((img) => img.size <= AI_IMAGE_SIZE_LIMIT);
+        const largeImages = allImages.filter((img) => img.size > AI_IMAGE_SIZE_LIMIT);
+
+        let fields: AiDetectedField[] = [];
+
+        // Process small images: send all together to vision model
+        if (smallImages.length > 0) {
+          const visionFields = await detectFieldsWithAI(
+            { images: smallImages.map((img) => ({ mimeType: img.mimeType, base64: img.base64 })) },
+            activeProvider.id,
+            activeConfig.selectedModel,
+            activeConfig.apiKey
+          );
+          fields.push(...visionFields);
+        }
+
+        // Process large images: run Tesseract OCR on each, combine words
+        if (largeImages.length > 0) {
+          const allOcrWords: import('../../core/extraction/ocrExtractor').OcrWord[] = [];
+          const allOcrTexts: string[] = [];
+
+          for (const imageData of largeImages) {
+            const img = new Image();
+            img.src = `data:${imageData.mimeType};base64,${imageData.base64}`;
+            await new Promise((resolve) => { img.onload = resolve; });
+            const ocrResult = await extractFullPage(img);
+            allOcrWords.push(...ocrResult.words);
+            allOcrTexts.push(ocrResult.text);
+          }
+
+          const ocrFields = await detectFieldsWithAI(
+            { ocrWords: allOcrWords, ocrText: allOcrTexts.join('\n\n---\n\n') },
+            activeProvider.id,
+            activeConfig.selectedModel,
+            activeConfig.apiKey
+          );
+          fields.push(...ocrFields);
+        }
+
         onFieldsDetected?.(fields);
         setMessages((prev) => [...prev, {
           role: 'assistant',
-          content: `Detected ${fields.length} field(s):\n${fields.map((f) => `- **${f.label}**: ${f.text}`).join('\n')}`,
+          content: `Detected ${fields.length} field(s) across ${allImages.length} document(s):\n${fields.map((f) => `- **${f.label}**: ${f.text}`).join('\n')}`,
         }]);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Detection failed');
@@ -365,7 +408,7 @@ export function AiPromptPanel({
                     }`}
                   >
                     {msg.role === 'assistant' ? (
-                      <div className="prose prose-xs max-w-none [&_p]:m-0 [&_ul]:m-0 [&_ol]:m-0 [&_li]:m-0 [&_pre]:text-[10px] [&_code]:text-[10px] [&_code]:bg-paper-200 [&_code]:px-1 [&_code]:rounded">
+                      <div className="max-w-none leading-relaxed [&_*]:text-xs [&_*]:leading-relaxed [&_p]:m-0 [&_h1]:m-0 [&_h1]:font-semibold [&_h2]:m-0 [&_h2]:font-semibold [&_h3]:m-0 [&_h3]:font-semibold [&_h4]:m-0 [&_h4]:font-medium [&_h5]:m-0 [&_h6]:m-0 [&_ul]:m-0 [&_ul]:pl-4 [&_ul]:list-disc [&_ol]:m-0 [&_ol]:pl-4 [&_ol]:list-decimal [&_li]:m-0 [&_pre]:bg-paper-200 [&_pre]:rounded [&_pre]:px-2 [&_pre]:py-1 [&_code]:bg-paper-200 [&_code]:px-1 [&_code]:rounded [&_strong]:font-semibold [&_a]:text-copper-500 [&_a]:underline [&>*+*]:mt-1">
                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                       </div>
                     ) : (
