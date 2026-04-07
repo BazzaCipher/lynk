@@ -19,6 +19,8 @@ interface AiPromptPanelProps {
   onCanvasDetect?: () => void;
   /** Called when AI suggests connections on canvas */
   onConnectionsSuggested?: (suggestions: AiConnectionSuggestion[]) => void;
+  /** Render flat (no card border/shadow/fixed width) for use in a docked bottom strip */
+  docked?: boolean;
 }
 
 /** Build node context from canvas store for AI auto-connect / summarise */
@@ -105,6 +107,7 @@ export function AiPromptPanel({
   onFieldsDetected,
   onCanvasDetect,
   onConnectionsSuggested,
+  docked = false,
 }: AiPromptPanelProps) {
   const { activeProvider, activeConfig, enabledProviders } = useAiSettings();
   const [input, setInput] = useState('');
@@ -351,11 +354,16 @@ export function AiPromptPanel({
 
   const hasProvider = enabledProviders.length > 0;
 
+  const outerStyle = docked
+    ? undefined
+    : (context === 'canvas' ? { width: 320, maxHeight: 400 } : { width: '100%', maxHeight: 300 });
+  const outerClass = docked
+    ? 'flex flex-col bg-white overflow-hidden'
+    : 'flex flex-col bg-white border border-paper-200 rounded-lg shadow-lg overflow-hidden';
+
   return (
     <>
-      <div className="flex flex-col bg-white border border-paper-200 rounded-lg shadow-lg overflow-hidden"
-        style={context === 'canvas' ? { width: 320, maxHeight: 400 } : { width: '100%', maxHeight: 300 }}
-      >
+      <div className={outerClass} style={outerStyle}>
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-paper-200 bg-paper-50">
           <span className="text-xs font-medium text-bridge-900 flex items-center gap-1.5">
@@ -397,7 +405,7 @@ export function AiPromptPanel({
           <>
             {/* Messages area */}
             {messages.length > 0 && (
-              <div className="flex-1 overflow-auto px-3 py-2 space-y-2 min-h-0" style={{ maxHeight: 200 }}>
+              <div className="flex-1 overflow-auto px-3 py-2 space-y-2 min-h-0" style={{ maxHeight: docked ? 120 : 200 }}>
                 {messages.map((msg, i) => (
                   <div
                     key={i}

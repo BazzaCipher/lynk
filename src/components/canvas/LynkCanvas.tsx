@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import {
   ReactFlow,
   Background,
@@ -456,8 +455,11 @@ export function LynkCanvas() {
     handleLoad,
   } = useProjectSessions();
 
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+
   return (
-    <div className="w-full h-full flex">
+    <div className="w-full h-full flex flex-col">
+    <div className="flex flex-1 min-h-0">
       <ProjectSidebar
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -555,12 +557,6 @@ export function LynkCanvas() {
           <Controls />
           <LayoutControls />
         </ReactFlow>
-        {createPortal(
-          <div className="fixed bottom-4 right-4 z-[60]">
-            <AiPromptPanel context="canvas" onConnectionsSuggested={handleConnectionsSuggested} />
-          </div>,
-          document.body
-        )}
         {isDragOver && (
           <div className="absolute inset-0 z-50 bg-copper-500/10 border-2 border-dashed border-copper-400 flex items-center justify-center pointer-events-none">
             <div className="bg-white/90 rounded-lg px-6 py-4 shadow-lg text-center">
@@ -594,6 +590,36 @@ export function LynkCanvas() {
         )}
       </div>
       <FileRegistryPanel />
+    </div>
+
+    {/* AI Assistant strip — sits below the canvas, never overlaps it */}
+    <div className="shrink-0 border-t border-paper-200 bg-white">
+      <button
+        onClick={() => setAiPanelOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-2 text-xs text-bridge-500 hover:text-copper-500 hover:bg-paper-50 transition-colors"
+      >
+        <span className="flex items-center gap-1.5 font-medium">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-copper-500" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" />
+          </svg>
+          AI Assistant
+        </span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className={`h-3.5 w-3.5 transition-transform ${aiPanelOpen ? 'rotate-180' : ''}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+        </svg>
+      </button>
+      {aiPanelOpen && (
+        <AiPromptPanel
+          context="canvas"
+          onConnectionsSuggested={handleConnectionsSuggested}
+          docked
+        />
+      )}
+    </div>
     </div>
   );
 }
