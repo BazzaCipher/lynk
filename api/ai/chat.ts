@@ -52,22 +52,27 @@ interface ChatRequestBody {
 // MODEL RESOLUTION
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/** Maps frontend provider id → AI SDK gateway/providerOptions key */
+const PROVIDER_SLUG: Record<string, string> = {
+  anthropic: 'anthropic',
+  openai: 'openai',
+  gemini: 'google',
+};
+
+function providerSlug(provider: string): string {
+  const slug = PROVIDER_SLUG[provider];
+  if (!slug) throw new Error(`Unknown provider: ${provider}`);
+  return slug;
+}
+
 /** Map provider+model to a gateway model slug */
-function resolveModel(provider: string, model: string, _apiKey: string) {
-  const slugMap: Record<string, string> = {
-    anthropic: 'anthropic',
-    openai: 'openai',
-    gemini: 'google',
-  };
+function resolveModel(provider: string, model: string) {
+  return gateway(`${providerSlug(provider)}/${model}` as Parameters<typeof gateway>[0]);
+}
 
-  const prefix = slugMap[provider];
-  if (!prefix) {
-    throw new Error(`Unknown provider: ${provider}`);
-  }
-
-  // Route through gateway with BYO API key via providerOptions
-  // The gateway slug format is "provider/model-id"
-  return gateway(`${prefix}/${model}` as Parameters<typeof gateway>[0]);
+/** Build providerOptions to pass the BYO API key to the correct SDK provider */
+function providerApiKey(provider: string, apiKey: string) {
+  return { [providerSlug(provider)]: { apiKey } };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -329,7 +334,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const resolvedModel = resolveModel(provider, modelId, apiKey);
+    const resolvedModel = resolveModel(provider, modelId);
     const modelMessages = toModelMessages(messages, contextBlock, body.images);
 
     // Streaming response for freeform chat
@@ -340,7 +345,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         messages: modelMessages,
         tools,
         maxOutputTokens: 4096,
-        providerOptions: { [provider === 'gemini' ? 'google' : provider]: { apiKey } },
+        providerOptions: providerApiKey(provider, apiKey),
       });
 
       res.setHeader('Content-Type', 'text/event-stream');
@@ -375,7 +380,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       messages: modelMessages,
       tools,
       maxOutputTokens: 4096,
-      providerOptions: { [provider === 'gemini' ? 'google' : provider]: { apiKey } },
+      providerOptions: providerApiKey(provider, apiKey),
     });
 
     const toolCalls = result.toolCalls?.length
