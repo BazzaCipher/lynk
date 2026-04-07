@@ -10,7 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.67",
     "@ai-sdk/gateway": "^3.0.88",
+    "@ai-sdk/google": "^3.0.59",
+    "@ai-sdk/openai": "^3.0.51",
     "@anthropic-ai/sdk": "^0.82.0",
     "@google/generative-ai": "^0.24.1",
     "@mdx-js/react": "^3.1.1",

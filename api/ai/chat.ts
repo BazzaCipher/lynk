@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { generateText, streamText, tool, Output } from 'ai';
-import { gateway } from '@ai-sdk/gateway';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { z } from 'zod';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -52,27 +54,18 @@ interface ChatRequestBody {
 // MODEL RESOLUTION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** Maps frontend provider id → AI SDK gateway/providerOptions key */
-const PROVIDER_SLUG: Record<string, string> = {
-  anthropic: 'anthropic',
-  openai: 'openai',
-  gemini: 'google',
-};
-
-function providerSlug(provider: string): string {
-  const slug = PROVIDER_SLUG[provider];
-  if (!slug) throw new Error(`Unknown provider: ${provider}`);
-  return slug;
-}
-
-/** Map provider+model to a gateway model slug */
-function resolveModel(provider: string, model: string) {
-  return gateway(`${providerSlug(provider)}/${model}` as Parameters<typeof gateway>[0]);
-}
-
-/** Build providerOptions to pass the BYO API key to the correct SDK provider */
-function providerApiKey(provider: string, apiKey: string) {
-  return { [providerSlug(provider)]: { apiKey } };
+/** Create a provider-specific model instance with the user's API key */
+function resolveModel(provider: string, model: string, apiKey: string) {
+  switch (provider) {
+    case 'anthropic':
+      return createAnthropic({ apiKey })(model);
+    case 'openai':
+      return createOpenAI({ apiKey })(model);
+    case 'gemini':
+      return createGoogleGenerativeAI({ apiKey })(model);
+    default:
+      throw new Error(`Unknown provider: ${provider}`);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -334,7 +327,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const resolvedModel = resolveModel(provider, modelId);
+    const resolvedModel = resolveModel(provider, modelId, apiKey);
     const modelMessages = toModelMessages(messages, contextBlock, body.images);
 
     // Streaming response for freeform chat
@@ -345,7 +338,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         messages: modelMessages,
         tools,
         maxOutputTokens: 4096,
-        providerOptions: providerApiKey(provider, apiKey),
       });
 
       res.setHeader('Content-Type', 'text/event-stream');
@@ -380,7 +372,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       messages: modelMessages,
       tools,
       maxOutputTokens: 4096,
-      providerOptions: providerApiKey(provider, apiKey),
     });
 
     const toolCalls = result.toolCalls?.length
