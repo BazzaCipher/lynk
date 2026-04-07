@@ -408,7 +408,7 @@ export function AiPromptPanel({
                     }`}
                   >
                     {msg.role === 'assistant' ? (
-                      <div className="max-w-none [&_p]:m-0 [&_ul]:m-0 [&_ul]:pl-4 [&_ul]:list-disc [&_ol]:m-0 [&_ol]:pl-4 [&_ol]:list-decimal [&_li]:m-0 [&_pre]:bg-paper-200 [&_pre]:rounded [&_pre]:px-2 [&_pre]:py-1 [&_code]:bg-paper-200 [&_code]:px-1 [&_code]:rounded [&_strong]:font-semibold [&_a]:text-copper-500 [&_a]:underline">
+                      <div className="max-w-none leading-relaxed [&_*]:text-xs [&_*]:leading-relaxed [&_p]:m-0 [&_h1]:m-0 [&_h1]:font-semibold [&_h2]:m-0 [&_h2]:font-semibold [&_h3]:m-0 [&_h3]:font-semibold [&_h4]:m-0 [&_h4]:font-medium [&_h5]:m-0 [&_h6]:m-0 [&_ul]:m-0 [&_ul]:pl-4 [&_ul]:list-disc [&_ol]:m-0 [&_ol]:pl-4 [&_ol]:list-decimal [&_li]:m-0 [&_pre]:bg-paper-200 [&_pre]:rounded [&_pre]:px-2 [&_pre]:py-1 [&_code]:bg-paper-200 [&_code]:px-1 [&_code]:rounded [&_strong]:font-semibold [&_a]:text-copper-500 [&_a]:underline [&>*+*]:mt-1">
                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                       </div>
                     ) : (
