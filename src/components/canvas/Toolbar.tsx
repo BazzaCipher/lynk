@@ -55,7 +55,7 @@ export function FileControls({ focusName, onFocusNameHandled }: FileControlsProp
         type="text"
         value={canvasName}
         onChange={(e) => setCanvasName(e.target.value)}
-        className="px-2 py-1 text-sm border border-paper-200 rounded w-32 focus:outline-none focus:ring-1 focus:ring-copper-400"
+        className="px-2 py-1 text-sm border border-paper-200 rounded w-20 sm:w-32 focus:outline-none focus:ring-1 focus:ring-copper-400"
         title="Canvas name"
       />
 

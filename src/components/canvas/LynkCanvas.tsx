@@ -364,6 +364,52 @@ export function LynkCanvas() {
 
   const { handleCanvasDragOver, handleCanvasDrop, handleCanvasPaste } = useCanvasDrop();
 
+  // Long-press to open create menu on mobile (500ms hold on empty canvas)
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressPosRef = useRef<{ x: number; y: number } | null>(null);
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      const target = e.target as HTMLElement;
+      if (target.closest('.react-flow__node') || target.closest('.react-flow__controls')) return;
+
+      longPressPosRef.current = { x: touch.clientX, y: touch.clientY };
+      longPressTimerRef.current = setTimeout(() => {
+        if (longPressPosRef.current) {
+          const { x, y } = longPressPosRef.current;
+          const flowPosition = screenToFlowPosition({ x, y });
+          setCanvasMenu({ mode: 'create', x, y, flowPosition });
+        }
+      }, 500);
+    },
+    [screenToFlowPosition]
+  );
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (!touch || !longPressPosRef.current) return;
+    const dx = touch.clientX - longPressPosRef.current.x;
+    const dy = touch.clientY - longPressPosRef.current.y;
+    // Cancel long-press if finger moved more than 10px
+    if (Math.hypot(dx, dy) > 10) {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+      longPressPosRef.current = null;
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressPosRef.current = null;
+  }, []);
+
   // Drag overlay state
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounterRef = useRef(0);
@@ -430,9 +476,13 @@ export function LynkCanvas() {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onDoubleClick={handleDoubleClick}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
       >
         {/* Top center: File controls + Undo/Redo */}
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 max-w-[calc(100vw-6rem)]">
           <div className="flex items-center gap-2">
             <FileControls
               focusName={focusNameInput}

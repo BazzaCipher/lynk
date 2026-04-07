@@ -33,14 +33,15 @@ export function ResizeHandle({ corner, onResize, onResizeEnd }: ResizeHandleProp
   const [isActive, setIsActive] = useState(false);
   const startRef = useRef<{ x: number; y: number } | null>(null);
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
       setIsActive(true);
       startRef.current = { x: e.clientX, y: e.clientY };
 
-      const handleMouseMove = (moveEvent: MouseEvent) => {
+      const handlePointerMove = (moveEvent: PointerEvent) => {
         if (!startRef.current) return;
         const dx = moveEvent.clientX - startRef.current.x;
         const dy = moveEvent.clientY - startRef.current.y;
@@ -48,30 +49,30 @@ export function ResizeHandle({ corner, onResize, onResizeEnd }: ResizeHandleProp
         onResize(dx, dy, corner, moveEvent.shiftKey);
       };
 
-      const handleMouseUp = () => {
+      const handlePointerUp = () => {
         setIsActive(false);
         startRef.current = null;
         onResizeEnd?.();
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener('pointermove', handlePointerMove);
+        document.removeEventListener('pointerup', handlePointerUp);
       };
 
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('pointermove', handlePointerMove);
+      document.addEventListener('pointerup', handlePointerUp);
     },
     [corner, onResize, onResizeEnd]
   );
 
   return (
     <div
-      className="absolute"
+      className="absolute touch-none"
       style={{
         ...POSITION_MAP[corner],
         transform: TRANSLATE_MAP[corner],
         cursor: CURSOR_MAP[corner],
         zIndex: 50,
       }}
-      onMouseDown={handleMouseDown}
+      onPointerDown={handlePointerDown}
     >
       {/* Invisible hit area (40px) - larger to ensure clickable region inside node bounds */}
       <div

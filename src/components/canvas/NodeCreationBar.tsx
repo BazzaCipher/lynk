@@ -19,12 +19,17 @@ export function NodeCreationBar() {
   };
 
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 bg-white rounded-lg shadow-md p-2">
+    <div
+      className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10
+                 flex items-center gap-1.5 bg-white rounded-lg shadow-md p-2
+                 max-w-[calc(100vw-4rem)] overflow-x-auto"
+      style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+    >
       {getCreatableTypes().map((def) => (
         <button
           key={def.type}
           onClick={() => handleAddNode(def.type as LynkNodeType, def.defaultData as LynkNodeData)}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm bg-paper-100 hover:bg-paper-200 rounded transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-paper-100 hover:bg-paper-200 rounded transition-colors whitespace-nowrap shrink-0 touch-manipulation"
           title={`Add ${def.label} Node${def.description ? ` - ${def.description}` : ''}`}
         >
           <NodeIcon type={def.icon} />

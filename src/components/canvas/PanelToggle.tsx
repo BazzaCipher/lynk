@@ -25,10 +25,11 @@ export function PanelToggle({ side, isOpen, onClick, label }: PanelToggleProps) 
   return (
     <button
       onClick={onClick}
-      className={`absolute ${positionClass} z-10 p-2 bg-white/80 backdrop-blur-sm rounded-full shadow-md
+      className={`absolute ${positionClass} z-10 p-2.5 bg-white/80 backdrop-blur-sm rounded-full shadow-md
                   text-bridge-400 hover:text-copper-500 hover:bg-copper-400/10 hover:shadow-lg
-                  transition-all duration-200 group`}
+                  transition-all duration-200 group touch-manipulation`}
       title={title}
+      style={{ minWidth: 44, minHeight: 44 }}
     >
       <svg className="w-4 h-4 transition-transform group-hover:scale-110" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d={arrowPath} />

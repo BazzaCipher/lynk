@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, type MouseEvent, type RefObject } from 'react';
+import { useState, useCallback, useRef, type PointerEvent, type RefObject } from 'react';
 import type { RegionCoordinates } from '../../../types';
 
 interface RegionSelectorProps {
@@ -47,7 +47,7 @@ export function RegionSelector({
 
   /** Get coordinates relative to the document element, accounting for zoom and offset within the viewer area */
   const getDocumentRelativeCoordinates = useCallback(
-    (e: MouseEvent): { x: number; y: number } => {
+    (e: PointerEvent): { x: number; y: number } => {
       if (!documentRef.current) {
         // Fallback to overlay-relative
         if (!overlayRef.current) return { x: 0, y: 0 };
@@ -66,7 +66,7 @@ export function RegionSelector({
 
   /** Get coordinates relative to the overlay (for visual display of the selection box) */
   const getOverlayRelativeCoordinates = useCallback(
-    (e: MouseEvent): { x: number; y: number } => {
+    (e: PointerEvent): { x: number; y: number } => {
       if (!overlayRef.current) return { x: 0, y: 0 };
       const rect = overlayRef.current.getBoundingClientRect();
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -76,13 +76,16 @@ export function RegionSelector({
 
   const [displayDrag, setDisplayDrag] = useState<DragState | null>(null);
 
-  const handleMouseDown = useCallback(
-    (e: MouseEvent) => {
+  const handlePointerDown = useCallback(
+    (e: PointerEvent) => {
+      // Only handle primary pointer (ignore secondary touches)
+      if (!e.isPrimary) return;
       const target = e.target as HTMLElement;
       if (target.closest('[data-region-id]') || target.closest('[data-viewport-id]')) {
         return;
       }
 
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
       const docCoords = getDocumentRelativeCoordinates(e);
       const displayCoords = getOverlayRelativeCoordinates(e);
       setDragState({
@@ -101,9 +104,9 @@ export function RegionSelector({
     [getDocumentRelativeCoordinates, getOverlayRelativeCoordinates]
   );
 
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!dragState) return;
+  const handlePointerMove = useCallback(
+    (e: PointerEvent) => {
+      if (!e.isPrimary || !dragState) return;
 
       const docCoords = getDocumentRelativeCoordinates(e);
       const displayCoords = getOverlayRelativeCoordinates(e);
@@ -117,29 +120,32 @@ export function RegionSelector({
     [dragState, getDocumentRelativeCoordinates, getOverlayRelativeCoordinates]
   );
 
-  const handleMouseUp = useCallback(() => {
-    if (!dragState) return;
+  const handlePointerUp = useCallback(
+    (e: PointerEvent) => {
+      if (!e.isPrimary || !dragState) return;
 
-    const minSize = 10;
-    const regionWidth = Math.abs(dragState.currentX - dragState.startX);
-    const regionHeight = Math.abs(dragState.currentY - dragState.startY);
+      const minSize = 10;
+      const regionWidth = Math.abs(dragState.currentX - dragState.startX);
+      const regionHeight = Math.abs(dragState.currentY - dragState.startY);
 
-    if (regionWidth >= minSize && regionHeight >= minSize) {
-      const globalY = Math.min(dragState.startY, dragState.currentY);
-      const { pageNumber, localY } = getPageForY(globalY);
+      if (regionWidth >= minSize && regionHeight >= minSize) {
+        const globalY = Math.min(dragState.startY, dragState.currentY);
+        const { pageNumber, localY } = getPageForY(globalY);
 
-      const coordinates: RegionCoordinates = {
-        x: Math.min(dragState.startX, dragState.currentX),
-        y: localY,
-        width: regionWidth,
-        height: regionHeight,
-      };
-      onRegionCreate(coordinates, pageNumber);
-    }
+        const coordinates: RegionCoordinates = {
+          x: Math.min(dragState.startX, dragState.currentX),
+          y: localY,
+          width: regionWidth,
+          height: regionHeight,
+        };
+        onRegionCreate(coordinates, pageNumber);
+      }
 
-    setDragState(null);
-    setDisplayDrag(null);
-  }, [dragState, onRegionCreate, getPageForY]);
+      setDragState(null);
+      setDisplayDrag(null);
+    },
+    [dragState, onRegionCreate, getPageForY]
+  );
 
   // Display box uses overlay-relative coordinates (so it renders correctly in the viewer area)
   const selectionBox = displayDrag
@@ -154,11 +160,11 @@ export function RegionSelector({
   return (
     <div
       ref={overlayRef}
-      className="absolute inset-0 cursor-crosshair z-10"
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      className="absolute inset-0 cursor-crosshair touch-none z-10"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
     >
       {selectionBox && selectionBox.width > 0 && selectionBox.height > 0 && (
         <div
