@@ -375,6 +375,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       messages: modelMessages,
       tools,
       maxOutputTokens: 4096,
+      providerOptions: { [provider === 'gemini' ? 'google' : provider]: { apiKey } },
     });
 
     const toolCalls = result.toolCalls?.length
