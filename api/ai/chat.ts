@@ -52,14 +52,8 @@ interface ChatRequestBody {
 // MODEL RESOLUTION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** Map provider+model to a gateway model slug, or use direct provider SDK */
-function resolveModel(provider: string, model: string, apiKey: string) {
-  // Gateway provider — apiKey is the OIDC token or gateway key
-  if (provider === 'gateway') {
-    return gateway(model as Parameters<typeof gateway>[0]);
-  }
-
-  // Map legacy provider IDs to gateway slugs for unified routing
+/** Map provider+model to a gateway model slug */
+function resolveModel(provider: string, model: string, _apiKey: string) {
   const slugMap: Record<string, string> = {
     anthropic: 'anthropic',
     openai: 'openai',
@@ -305,8 +299,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  // Gateway provider doesn't need an API key (uses OIDC)
-  if (provider !== 'gateway' && !apiKey) {
+  if (!apiKey) {
     return res.status(400).json({ error: 'Missing API key' });
   }
 
@@ -347,9 +340,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         messages: modelMessages,
         tools,
         maxOutputTokens: 4096,
-        ...(provider !== 'gateway' ? {
-          providerOptions: { [provider === 'gemini' ? 'google' : provider]: { apiKey } },
-        } : {}),
+        providerOptions: { [provider === 'gemini' ? 'google' : provider]: { apiKey } },
       });
 
       res.setHeader('Content-Type', 'text/event-stream');

@@ -1,6 +1,6 @@
 /** AI provider and settings types */
 
-export type ProviderId = 'anthropic' | 'openai' | 'gemini' | 'gateway';
+export type ProviderId = 'anthropic' | 'openai' | 'gemini';
 
 export interface AiProviderDefinition {
   id: ProviderId;
@@ -99,20 +99,6 @@ export interface AiDetectedField {
 
 /** Registry of supported providers */
 export const AI_PROVIDERS: AiProviderDefinition[] = [
-  {
-    id: 'gateway',
-    name: 'Vercel AI Gateway',
-    models: [
-      { id: 'anthropic/claude-sonnet-4.6', name: 'Claude Sonnet 4.6' },
-      { id: 'anthropic/claude-haiku-4.5', name: 'Claude Haiku 4.5' },
-      { id: 'openai/gpt-5.4', name: 'GPT-5.4' },
-      { id: 'openai/gpt-4o', name: 'GPT-4o' },
-      { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
-      { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
-    ],
-    apiKeyLabel: 'Gateway Key (optional with OIDC)',
-    apiKeyPlaceholder: 'Leave blank for OIDC auth',
-  },
   {
     id: 'anthropic',
     name: 'Anthropic Claude',
