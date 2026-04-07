@@ -155,7 +155,7 @@ export function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
         })}
 
         <p className="text-xs text-bridge-400">
-          API keys are stored locally in your browser. Direct provider keys are sent to the provider; Gateway routes through Vercel AI Gateway.
+          API keys are stored locally in your browser and sent directly to the provider.
         </p>
       </div>
     </Modal>
