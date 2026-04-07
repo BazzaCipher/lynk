@@ -197,8 +197,8 @@ function HeroCanvas() {
 const features = [
   {
     num: '01',
-    title: 'Rental Property Schedules',
-    description: 'Built for the documents you actually get — rental statements, loan summaries, depreciation schedules, strata levies, and insurance renewals.',
+    title: 'Any Client Document',
+    description: 'Rental statements, loan summaries, payment summaries, receipts — drop them on the canvas and start extracting. PDF or image.',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
@@ -218,7 +218,7 @@ const features = [
   {
     num: '03',
     title: 'Automatic Totals',
-    description: 'Rental income, interest, repairs, agent fees — totalled and cross-checked automatically. No formulas to maintain.',
+    description: 'Income, deductions, expenses — totalled and cross-checked automatically. No formulas to maintain.',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75V18m-7.5-6.75h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V13.5zm0 2.25h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V18zm2.498-6.75h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V13.5zm0 2.25h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V18zm2.504-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zm0 2.25h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V18zm2.498-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zM8.25 6h7.5v2.25h-7.5V6zM12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.65 4.5 4.757V19.5a2.25 2.25 0 002.25 2.25h10.5a2.25 2.25 0 002.25-2.25V4.757c0-1.108-.806-2.057-1.907-2.185A48.507 48.507 0 0012 2.25z" />
@@ -228,7 +228,7 @@ const features = [
   {
     num: '04',
     title: 'Client-Ready Output',
-    description: 'Generate a clean rental property summary you can attach to the return or send to your client for sign-off.',
+    description: 'Generate a clean summary you can attach to the return or send to your client for sign-off.',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
@@ -238,8 +238,8 @@ const features = [
   },
   {
     num: '05',
-    title: 'Multi-Property Support',
-    description: 'Clients with two, five, or ten properties? Each one gets its own workspace. Roll them up into a single summary at the end.',
+    title: 'Organised by Client',
+    description: 'Multiple properties, multiple income sources — each gets its own workspace. Roll them up into a single summary at the end.',
     icon: (
       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M10.875 12c-.621 0-1.125.504-1.125 1.125M12 12c.621 0 1.125.504 1.125 1.125m0 0v1.5c0 .621-.504 1.125-1.125 1.125m-1.125-2.625c0 .621-.504 1.125-1.125 1.125" />
@@ -262,26 +262,26 @@ const steps = [
   {
     num: '01',
     title: 'Upload the documents',
-    description: 'Drop your client\'s rental statements, loan letters, and receipts onto the canvas. PDF or image, it just works.',
+    description: 'Drop your client\'s statements, receipts, and summaries onto the canvas. PDF or image, it just works.',
     pulseClass: 'step-pulse-1',
   },
   {
     num: '02',
     title: 'Extract the numbers',
-    description: 'Select the figures you need — rent received, interest paid, agent fees. Each value stays linked to the original document.',
+    description: 'Select the figures you need — income, deductions, expenses. Each value stays linked to the original document.',
     pulseClass: 'step-pulse-2',
   },
   {
     num: '03',
     title: 'Export the summary',
-    description: 'Get a rental property schedule ready for the tax return. Every number traceable, every document attached.',
+    description: 'Get an audit-ready summary for the tax return. Every number traceable, every document attached.',
     pulseClass: 'step-pulse-3',
   },
 ];
 
 const comparisons = [
   {
-    before: 'Manually keying rental statements into spreadsheets',
+    before: 'Manually keying client documents into spreadsheets',
     after: 'Upload once, extract automatically',
   },
   {
@@ -339,11 +339,11 @@ function FeaturesSection({ features }: { features: { num: string; title: string;
         <div className={`max-w-2xl mb-16 transition-all duration-700 ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           <p className="text-xs font-semibold text-copper-400 uppercase tracking-[0.15em] mb-3">Why practices switch</p>
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
-            Rental property work, without the grunt work
+            Individual returns, without the grunt work
           </h2>
           <p className="mt-4 text-base text-bridge-400 leading-relaxed">
-            Purpose-built for Australian tax practices handling rental portfolios.
-            Every number sourced, every schedule audit-ready.
+            Purpose-built for Australian tax practices handling individual returns.
+            Every number sourced, every summary audit-ready.
           </p>
         </div>
 
@@ -455,7 +455,7 @@ export function LandingPage() {
             </h1>
 
             <p className="mt-6 text-lg md:text-xl text-bridge-500 leading-relaxed max-w-2xl mx-auto">
-              Upload your rental property clients' documents. Get an audit-ready summary in minutes — no manual keying, no black boxes.
+              Upload your clients' documents — rental statements, receipts, loan summaries — and get an audit-ready summary in minutes. No manual keying, no black boxes.
             </p>
 
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -482,7 +482,7 @@ export function LandingPage() {
                 <svg className="w-3.5 h-3.5 text-copper-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
                 </svg>
-                Rental property schedules
+                Individual &amp; rental returns
               </span>
               <span className="text-paper-200">·</span>
               <span className="flex items-center gap-1.5">
@@ -534,7 +534,7 @@ export function LandingPage() {
             Tax season doesn't have to mean late nights
           </h2>
           <p className="mt-4 text-base text-bridge-400 max-w-lg mx-auto leading-relaxed">
-            Process your rental property clients faster, with every number sourced and every schedule ready for the ATO.
+            Process your individual clients faster, with every number sourced and every summary ready for the ATO.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
