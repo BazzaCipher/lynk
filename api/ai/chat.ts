@@ -326,6 +326,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     tools = getTools();
   }
 
+  const providerSlugMap: Record<string, string> = {
+    anthropic: 'anthropic',
+    openai: 'openai',
+    gemini: 'google',
+  };
+  const providerKey = providerSlugMap[provider] ?? provider;
+
   try {
     const resolvedModel = resolveModel(provider, modelId, apiKey);
     const modelMessages = toModelMessages(messages, contextBlock, body.images);

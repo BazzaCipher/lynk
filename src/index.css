@@ -2,24 +2,44 @@
 @plugin "@tailwindcss/typography";
 
 @theme {
-  --color-paper-50: #faf8f5;
-  --color-paper-100: #f5f0e8;
-  --color-paper-200: #e8dfd3;
-  --color-paper-300: #d4c8b8;
-  --color-bridge-400: #b8a58e;
-  --color-bridge-500: #9c8468;
-  --color-bridge-600: #7d6a52;
-  --color-bridge-700: #5e4f3d;
-  --color-bridge-800: #3f3529;
-  --color-bridge-900: #2a231b;
-  --color-copper-400: #d4896a;
-  --color-copper-500: #c27350;
-  --color-copper-600: #a85f3e;
-  --color-copper-700: #8b4d32;
+  /* ── Finance-grade palette ─────────────────────────────────── */
+  --color-navy-50: #f0f4f8;
+  --color-navy-100: #d9e2ec;
+  --color-navy-200: #bcccdc;
+  --color-navy-300: #9fb3c8;
+  --color-navy-400: #829ab1;
+  --color-navy-500: #627d98;
+  --color-navy-600: #486581;
+  --color-navy-700: #334e68;
+  --color-navy-800: #243b53;
+  --color-navy-900: #102a43;
+  --color-blue-400: #60a5fa;
+  --color-blue-500: #2563eb;
+  --color-blue-600: #1d4ed8;
+  --color-green-400: #34d399;
+  --color-green-500: #059669;
+  --color-green-600: #047857;
+  --color-green-700: #065f46;
+
+  /* Legacy aliases – keeps Tailwind classes short */
+  --color-paper-50: #f8fafc;
+  --color-paper-100: #e2e8f0;
+  --color-paper-200: #cbd5e1;
+  --color-paper-300: #94a3b8;
+  --color-bridge-400: #829ab1;
+  --color-bridge-500: #627d98;
+  --color-bridge-600: #486581;
+  --color-bridge-700: #334e68;
+  --color-bridge-800: #243b53;
+  --color-bridge-900: #102a43;
+  --color-copper-400: #34d399;
+  --color-copper-500: #059669;
+  --color-copper-600: #047857;
+  --color-copper-700: #065f46;
 }
 
 :root {
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.5;
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
@@ -33,7 +53,7 @@ html, body, #root {
   height: 100%;
 }
 
-/* ─── Toast ───────────────────────────────────────────────────── */
+/* ─── Toast ───────────────────────────────────────────────── */
 
 @keyframes slide-in {
   from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
@@ -41,7 +61,7 @@ html, body, #root {
 }
 .animate-slide-in { animation: slide-in 0.3s ease-out; }
 
-/* ─── React Flow overrides ────────────────────────────────────── */
+/* ─── React Flow overrides ────────────────────────────────── */
 
 .react-flow__node-group {
   width: auto !important;
@@ -55,7 +75,7 @@ html, body, #root {
   box-shadow: none !important;
 }
 
-/* ─── Landing: hero stagger ───────────────────────────────────── */
+/* ─── Landing: hero stagger ───────────────────────────────── */
 
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(28px); }
@@ -72,7 +92,7 @@ html, body, #root {
 .hero-stagger > *:nth-child(4) { animation-delay: 260ms; }
 .hero-stagger > *:nth-child(5) { animation-delay: 340ms; }
 
-/* ─── Landing: illustration entrance ──────────────────────────── */
+/* ─── Landing: illustration entrance ──────────────────────── */
 
 @keyframes illo-enter {
   from { opacity: 0; transform: translateY(40px) scale(0.97); }
@@ -83,7 +103,7 @@ html, body, #root {
   animation: illo-enter 0.8s cubic-bezier(0.16, 0.84, 0.2, 1) 0.45s forwards;
 }
 
-/* ─── Landing: shimmer line ───────────────────────────────────── */
+/* ─── Landing: shimmer line ───────────────────────────────── */
 
 @keyframes shimmer-sweep {
   0% { background-position: -200% 0; }
@@ -91,12 +111,12 @@ html, body, #root {
 }
 .shimmer-line {
   height: 1px;
-  background: linear-gradient(90deg, transparent 0%, var(--color-copper-400) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, var(--color-blue-500) 50%, transparent 100%);
   background-size: 200% 100%;
   animation: shimmer-sweep 3.5s ease-in-out infinite;
 }
 
-/* ─── Landing: underline draw ─────────────────────────────────── */
+/* ─── Landing: underline draw ─────────────────────────────── */
 
 @keyframes draw-underline {
   from { stroke-dashoffset: 200; }
@@ -106,31 +126,39 @@ html, body, #root {
   animation: draw-underline 0.9s cubic-bezier(0.16, 0.84, 0.2, 1) 0.6s forwards;
 }
 
-/* ─── Landing: edge dash (mobile compact) ─────────────────────── */
+/* ─── Landing: edge dash (mobile compact) ─────────────────── */
 
 @keyframes hero-dash {
   to { stroke-dashoffset: -16; }
 }
 .hero-edge { animation: hero-dash 1.2s linear infinite; }
 
-/* ─── Landing: feature card stagger ───────────────────────────── */
-
-/* feature-stagger removed — scroll-reveal handles feature animation via JS */
-
-/* ─── Landing: step pulse ─────────────────────────────────────── */
+/* ─── Landing: step pulse ─────────────────────────────────── */
 
 @keyframes step-pulse {
   0%, 30%, 100% { box-shadow: 0 0 0 0 transparent; }
-  15% { box-shadow: 0 0 0 6px rgba(194,115,80,0.15); }
+  15% { box-shadow: 0 0 0 6px rgba(5,150,105,0.15); }
 }
 .step-pulse-1 { animation: step-pulse 6s ease-in-out infinite; }
 .step-pulse-2 { animation: step-pulse 6s ease-in-out 2s infinite; }
 .step-pulse-3 { animation: step-pulse 6s ease-in-out 4s infinite; }
 
-/* ─── Landing: comparison arrow bounce ────────────────────────── */
+/* ─── Landing: comparison arrow bounce ────────────────────── */
 
 @keyframes arrow-bounce {
   0%, 100% { transform: translateX(0); }
   50% { transform: translateX(3px); }
 }
 .arrow-bounce { animation: arrow-bounce 2s ease-in-out infinite; }
+
+/* ─── Reduced motion ──────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .hero-stagger > * { opacity: 1; }
+  .hero-illo-enter { opacity: 1; }
+}
