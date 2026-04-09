@@ -34,6 +34,17 @@ Paperbridge is a browser-based canvas tool that lets accountants and tax agents 
 - Handles individual returns and rental property returns
 - ATO audit-ready output
 
+## Integrations
+
+Paperbridge exports to the tools your practice already uses:
+
+- **Google Drive** — save finished workpapers straight to Drive
+- **Dropbox** — export client files to Dropbox
+- **Notion** — send summaries to Notion
+- **Confluence** — push workpapers to Confluence
+- **Trello** — attach outputs to Trello cards
+- **Slack** — share summaries via Slack
+
 ## Links
 
 - Website: https://paperbridge.com.au
