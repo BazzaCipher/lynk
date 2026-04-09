@@ -2,32 +2,32 @@ import { Link } from 'react-router-dom';
 
 export function Footer() {
   return (
-    <footer className="border-t border-navy-100 bg-navy-50/50">
-      <div className="max-w-6xl mx-auto px-6 py-12">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+    <footer className="border-t border-navy-100 bg-white">
+      <div className="max-w-6xl mx-auto px-6 py-10">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           {/* Brand */}
           <div>
-            <Link to="/" className="flex items-center gap-2">
-              <img src="/logo-lynk.jpg" alt="Paperbridge" className="h-6 rounded-md object-contain" />
+            <Link to="/" className="focus-ring flex items-center gap-2 rounded">
+              <img src="/logo-lynk.jpg" alt="Paperbridge" className="h-5 rounded object-contain" />
               <span className="text-sm font-semibold text-navy-700">Paperbridge</span>
             </Link>
-            <p className="mt-2 text-xs text-navy-400 max-w-xs">
+            <p className="mt-1.5 text-xs text-navy-400 max-w-xs">
               Audit-ready document extraction for Australian tax practices.
             </p>
           </div>
 
           {/* Links */}
           <div className="flex items-center gap-6 text-sm text-navy-400">
-            <Link to="/canvas" className="hover:text-navy-600 transition-colors">
+            <Link to="/canvas" className="focus-ring hover:text-navy-700 transition-colors rounded px-1">
               Canvas
             </Link>
-            <Link to="/blog" className="hover:text-navy-600 transition-colors">
+            <Link to="/blog" className="focus-ring hover:text-navy-700 transition-colors rounded px-1">
               Blog
             </Link>
           </div>
 
           {/* Trust + copyright */}
-          <div className="flex flex-col items-start md:items-end gap-2">
+          <div className="flex flex-col items-start md:items-end gap-1.5">
             <div className="flex items-center gap-4 text-xs text-navy-400">
               <span className="flex items-center gap-1">
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

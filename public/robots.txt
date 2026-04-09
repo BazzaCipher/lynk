@@ -4,3 +4,4 @@ Allow: /blog
 Disallow: /canvas
 
 Sitemap: https://paperbridge.com.au/sitemap.xml
+Llms-txt: https://paperbridge.com.au/llms.txt

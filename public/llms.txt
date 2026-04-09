@@ -1,0 +1,41 @@
+# Paperbridge
+
+> Visual document data extraction for Australian tax practices
+
+Paperbridge is a browser-based canvas tool that lets accountants and tax agents upload client documents (rental statements, loan summaries, receipts, payment summaries), extract figures from them, and produce audit-ready summaries — with every number traced back to its source document.
+
+## Who it's for
+
+- Australian tax practitioners preparing individual and rental property returns
+- Bookkeepers processing client source documents
+- Anyone who needs to extract structured data from PDFs and images with a full audit trail
+
+## What it does
+
+- **Document upload**: Drop PDFs or images onto a visual canvas
+- **Data extraction**: Select and extract figures (income, deductions, expenses) from uploaded documents
+- **Source linking**: Every extracted value links back to the exact line on the original document
+- **Automatic totals**: Income, deductions, and expenses are totalled and cross-checked without manual formulas
+- **Client-ready output**: Generate clean summaries for tax returns or client sign-off
+- **Organised by client**: Separate workspaces per property or income source, rolled up into a single summary
+- **Full audit trail**: Export the complete workpaper — source documents, extracted values, and calculations — as a single portable file
+
+## How it works
+
+1. Upload the documents — drop statements, receipts, and summaries onto the canvas (PDF or image)
+2. Extract the numbers — select figures you need; each value stays linked to the original document
+3. Export the summary — get an ATO audit-ready summary with every number traceable and every document attached
+
+## Key details
+
+- Runs in the browser — no install required
+- Data stays local (browser storage)
+- Designed for Australian tax season workflows
+- Handles individual returns and rental property returns
+- ATO audit-ready output
+
+## Links
+
+- Website: https://paperbridge.com.au
+- Blog: https://paperbridge.com.au/blog
+- Try the canvas: https://paperbridge.com.au/canvas
