@@ -55,7 +55,7 @@ interface ChatRequestBody {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /** Create a provider-specific model instance with the user's API key */
-function resolveModel(provider: string, model: string, apiKey: string) {
+export function resolveModel(provider: string, model: string, apiKey: string) {
   switch (provider) {
     case 'anthropic':
       return createAnthropic({ apiKey })(model);
@@ -128,7 +128,7 @@ const TOOL_DEFS = {
 
 type ToolName = keyof typeof TOOL_DEFS;
 
-function getTools(names?: string[]) {
+export function getTools(names?: string[]) {
   if (!names?.length) return TOOL_DEFS;
   const result: Partial<typeof TOOL_DEFS> = {};
   for (const name of names) {
@@ -205,7 +205,7 @@ type ModelMessage = Parameters<typeof generateText>[0]['messages'] extends infer
   ? T extends Array<infer U> ? U : never
   : never;
 
-function toModelMessages(
+export function toModelMessages(
   messages: ChatRequestBody['messages'],
   contextBlock: string,
   images?: ChatRequestBody['images']
