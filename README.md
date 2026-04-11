@@ -2,7 +2,7 @@
 
 > Visual document data extraction for Australian tax practices
 
-Paperbridge is a browser-based canvas tool that lets accountants and tax agents upload client documents (rental statements, loan summaries, receipts, payment summaries), extract figures from them, and produce audit-ready summaries — with every number traced back to its source document.
+Paperbridge is a browser-based canvas tool that lets accountants and tax agents upload client documents (rental statements, loan summaries, receipts, payment summaries), extract figures from them, and produce audit-ready summaries - with every number traced back to its source document.
 
 ## Who it's for
 
@@ -12,33 +12,33 @@ Paperbridge is a browser-based canvas tool that lets accountants and tax agents 
 
 ## What it does
 
-- **Document upload** — Drop PDFs or images onto a visual canvas
-- **Data extraction** — Select and extract figures (income, deductions, expenses) from uploaded documents
-- **Source linking** — Every extracted value links back to the exact line on the original document
-- **Automatic totals** — Income, deductions, and expenses are totalled and cross-checked without manual formulas
-- **Client-ready output** — Generate clean summaries for tax returns or client sign-off
-- **Organised by client** — Separate workspaces per property or income source, rolled up into a single summary
-- **Full audit trail** — Export the complete workpaper as a single portable `.lynk` archive
+- **Document upload** - Drop PDFs or images onto a visual canvas
+- **Data extraction** - Select and extract figures (income, deductions, expenses) from uploaded documents
+- **Source linking** - Every extracted value links back to the exact line on the original document
+- **Automatic totals** - Income, deductions, and expenses are totalled and cross-checked without manual formulas
+- **Client-ready output** - Generate clean summaries for tax returns or client sign-off
+- **Organised by client** - Separate workspaces per property or income source, rolled up into a single summary
+- **Full audit trail** - Export the complete workpaper as a single portable `.lynk` archive
 
 ## How it works
 
-1. Upload documents — drop statements, receipts, and summaries onto the canvas (PDF or image)
-2. Extract the numbers — select figures you need; each value stays linked to the original document
-3. Export the summary — get an ATO audit-ready summary with every number traceable and every document attached
+1. Upload documents - drop statements, receipts, and summaries onto the canvas (PDF or image)
+2. Extract the numbers - select figures you need; each value stays linked to the original document
+3. Export the summary - get an ATO audit-ready summary with every number traceable and every document attached
 
 ## Tech stack
 
-- **React 19** + **TypeScript** — UI framework
-- **Vite 7** — Build tooling and dev server
-- **Tailwind CSS 4** — Styling
-- **Zustand** — State management (sliced store architecture)
-- **React Flow (@xyflow/react)** — Canvas and node graph
-- **react-pdf** — PDF rendering
-- **Tesseract.js** — OCR extraction
-- **AI SDK** — Multi-provider AI integration (Anthropic, OpenAI, Google)
-- **fflate** — ZIP-based `.lynk` archive format
-- **Zod** — Schema validation
-- **Vitest** — Unit testing
+- **React 19** + **TypeScript** - UI framework
+- **Vite 7** - Build tooling and dev server
+- **Tailwind CSS 4** - Styling
+- **Zustand** - State management (sliced store architecture)
+- **React Flow (@xyflow/react)** - Canvas and node graph
+- **react-pdf** - PDF rendering
+- **Tesseract.js** - OCR extraction
+- **AI SDK** - Multi-provider AI integration (Anthropic, OpenAI, Google)
+- **fflate** - ZIP-based `.lynk` archive format
+- **Zod** - Schema validation
+- **Vitest** - Unit testing
 
 ## Getting started
 
@@ -65,13 +65,13 @@ Open [http://localhost:5173](http://localhost:5173).
 
 The project has a comprehensive unit test suite with **432 tests across 35 test files**, covering:
 
-- **Core logic** — node registry, connection validation, dependency graph, field detection, layout algorithms, operation registry
-- **Store slices** — core, group, history, persistence, file registry, pipeline, blob registry
-- **Services** — canvas persistence, canvas validation, `.lynk` archive pack/unpack, file codecs
-- **Types** — node categories, AI types, data types, view types
-- **Utilities** — formatting, geometry, colors, ID generation, region helpers, suggestions
-- **Schemas** — canvas schema validation
-- **Config & data** — AI config, templates, node defaults
+- **Core logic** - node registry, connection validation, dependency graph, field detection, layout algorithms, operation registry
+- **Store slices** - core, group, history, persistence, file registry, pipeline, blob registry
+- **Services** - canvas persistence, canvas validation, `.lynk` archive pack/unpack, file codecs
+- **Types** - node categories, AI types, data types, view types
+- **Utilities** - formatting, geometry, colors, ID generation, region helpers, suggestions
+- **Schemas** - canvas schema validation
+- **Config & data** - AI config, templates, node defaults
 
 **Coverage:** ~95% lines, ~94% statements, ~97% functions
 
