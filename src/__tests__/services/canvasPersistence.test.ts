@@ -32,8 +32,10 @@ const mockUnpackLynk = vi.fn(() => ({
 }));
 
 vi.mock('../../services/lynkArchive', () => ({
-  packLynk: (...args: any[]) => mockPackLynk(...args),
-  unpackLynk: (...args: any[]) => mockUnpackLynk(...args),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  packLynk: (...args: any[]) => (mockPackLynk as (...a: any[]) => any)(...args),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  unpackLynk: (...args: any[]) => (mockUnpackLynk as (...a: any[]) => any)(...args),
 }));
 
 import { exportCanvas, importCanvas, validateCanvas, saveToFile, loadFromFile } from '../../services/canvasPersistence';
@@ -99,7 +101,7 @@ describe('importCanvas', () => {
         { id: 'node-10', type: 'label', position: { x: 0, y: 0 }, data: { label: 'b', format: 'string', fontSize: 'medium', alignment: 'left' } },
       ],
     };
-    const result = importCanvas(state);
+    const result = importCanvas(state as any);
     expect(result.success).toBe(true);
   });
 
@@ -110,7 +112,7 @@ describe('importCanvas', () => {
         { id: 'custom-id', type: 'label', position: { x: 0, y: 0 }, data: { label: 'a', format: 'string', fontSize: 'medium', alignment: 'left' } },
       ],
     };
-    const result = importCanvas(state);
+    const result = importCanvas(state as any);
     expect(result.success).toBe(true);
   });
 });
@@ -144,8 +146,8 @@ describe('saveToFile', () => {
       download: '',
       click: mockClick,
     } as any);
-    vi.spyOn(document.body, 'appendChild').mockImplementation(mockAppendChild);
-    vi.spyOn(document.body, 'removeChild').mockImplementation(mockRemoveChild);
+    vi.spyOn(document.body, 'appendChild').mockImplementation(mockAppendChild as any);
+    vi.spyOn(document.body, 'removeChild').mockImplementation(mockRemoveChild as any);
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
     mockPackLynk.mockReturnValue(new Uint8Array([1, 2, 3]));
@@ -193,7 +195,7 @@ describe('loadFromFile', () => {
         metadata: { id: 'arc-2', name: 'With Files', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' },
         nodes: [
           { id: 'node-1', type: 'extractor', position: { x: 0, y: 0 }, data: { label: 'E', fileType: 'image', fileId: 'file-1', regions: [], currentPage: 1, totalPages: 1 } },
-        ],
+        ] as any[],
         edges: [],
         viewport: { x: 0, y: 0, zoom: 1 },
         virtualFolders: [],

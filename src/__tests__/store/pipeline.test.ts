@@ -32,7 +32,7 @@ function makeCodec(id: string, opts?: { warning?: string; error?: string }): Can
     decode(canvas: CanvasState): DecodeResult {
       return { canvas, warnings: opts?.warning ? [opts.warning] : [] };
     },
-    validate(canvas: CanvasState): ValidationResult {
+    validate(_canvas: CanvasState): ValidationResult {
       return {
         valid: !opts?.error,
         warnings: opts?.warning ? [opts.warning] : [],

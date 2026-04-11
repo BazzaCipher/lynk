@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // Break circular: services/canvasPersistence → hooks/useLocalStorageSync → store/canvasStore
 vi.mock('../../../hooks/useLocalStorageSync', () => ({
@@ -15,7 +15,7 @@ vi.mock('../../../core/nodes/nodeRegistry', () => ({
 }));
 
 // Mock saveToFile/loadFromFile which use DOM APIs
-const mockSaveToFile = vi.fn(async () => ({ success: true, warnings: [] }));
+const mockSaveToFile = vi.fn(async () => ({ success: true, warnings: [] as string[] }));
 const mockLoadFromFile = vi.fn(async () => ({
   success: true,
   data: {
@@ -33,8 +33,8 @@ vi.mock('../../../services/canvasPersistence', async (importOriginal) => {
   const original = await importOriginal() as any;
   return {
     ...original,
-    saveToFile: (...args: any[]) => mockSaveToFile(...args),
-    loadFromFile: (...args: any[]) => mockLoadFromFile(...args),
+    saveToFile: (...args: unknown[]) => mockSaveToFile(...(args as Parameters<typeof mockSaveToFile>)),
+    loadFromFile: (...args: unknown[]) => mockLoadFromFile(...(args as Parameters<typeof mockLoadFromFile>)),
   };
 });
 
@@ -131,7 +131,7 @@ describe('createPersistenceSlice', () => {
 
   it('saveToFile does not update lastSaved on failure', async () => {
     const store = createStore();
-    mockSaveToFile.mockResolvedValueOnce({ success: false, warnings: ['error'] });
+    mockSaveToFile.mockResolvedValueOnce({ success: false, warnings: ['error'] as string[] });
     const result = await store.saveToFile();
     expect(result.success).toBe(false);
     expect(store.lastSaved).toBeNull();
@@ -149,7 +149,7 @@ describe('createPersistenceSlice', () => {
 
   it('loadFromFile returns error on failure', async () => {
     const store = createStore();
-    mockLoadFromFile.mockResolvedValueOnce({ success: false, error: 'No file' });
+    mockLoadFromFile.mockResolvedValueOnce({ success: false, error: 'No file' } as any);
     const result = await store.loadFromFile();
     expect(result.success).toBe(false);
     expect(result.error).toBe('No file');

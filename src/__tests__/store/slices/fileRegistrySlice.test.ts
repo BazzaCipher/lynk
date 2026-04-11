@@ -79,7 +79,7 @@ describe('createFileRegistrySlice', () => {
   it('createVirtualFolder with parent', () => {
     const store = createStore();
     const parentId = store.createVirtualFolder('Root');
-    const childId = store.createVirtualFolder('Child', parentId);
+    store.createVirtualFolder('Child', parentId);
     expect(store.virtualFolders).toHaveLength(2);
     expect(store.virtualFolders[1].parentId).toBe(parentId);
   });

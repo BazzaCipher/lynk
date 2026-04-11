@@ -138,7 +138,7 @@ describe('FileCodec', () => {
 
   describe('validate', () => {
     it('returns valid for canvas with no file nodes', () => {
-      const result = FileCodec.validate(baseCanvas);
+      const result = FileCodec.validate!(baseCanvas);
       expect(result.valid).toBe(true);
       expect(result.errors).toEqual([]);
     });
@@ -151,7 +151,7 @@ describe('FileCodec', () => {
           data: { label: 'D', fileUrl: 'blob:fake' },
         }] as any,
       };
-      const result = FileCodec.validate(canvas);
+      const result = FileCodec.validate!(canvas);
       expect(result.warnings.length).toBeGreaterThan(0);
     });
 
@@ -163,7 +163,7 @@ describe('FileCodec', () => {
           data: { label: 'D', fileId: 'missing' },
         }] as any,
       };
-      const result = FileCodec.validate(canvas);
+      const result = FileCodec.validate!(canvas);
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
     });
@@ -178,7 +178,7 @@ describe('FileCodec', () => {
           data: { label: 'D', fileId: 'f1' },
         }] as any,
       };
-      const result = FileCodec.validate(canvas);
+      const result = FileCodec.validate!(canvas);
       expect(result.valid).toBe(true);
     });
 
@@ -190,7 +190,7 @@ describe('FileCodec', () => {
           data: { label: 'E', fileId: 'missing', regions: [] },
         }] as any,
       };
-      const result = FileCodec.validate(canvas);
+      const result = FileCodec.validate!(canvas);
       expect(result.errors[0]).toContain('ExtractorNode');
     });
   });

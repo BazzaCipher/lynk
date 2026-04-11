@@ -11,7 +11,6 @@ vi.mock('../../../core/nodes/nodeRegistry', () => ({
 
 import { createCoreSlice, generateNodeId, resetNodeIdCounter, setNodeIdCounter } from '../../../store/slices/coreSlice';
 import type { LynkNode } from '../../../types';
-import type { Edge } from '@xyflow/react';
 
 // Minimal store harness for StateCreator
 function createStore() {
@@ -212,7 +211,7 @@ describe('createCoreSlice', () => {
           { id: 'vp1', x: 0, y: 0, width: 100, height: 100 },
         ],
       },
-    }] as LynkNode[];
+    }] as unknown as LynkNode[];
     store.updateViewportRegion('n1', 'vp1', { width: 200 });
     expect(store.nodes[0].data.viewports[0].width).toBe(200);
   });

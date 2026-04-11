@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { generateText, streamText, tool, Output } from 'ai';
+import { generateText, streamText, tool } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
@@ -133,7 +133,8 @@ export function getTools(names?: string[]) {
   const result: Partial<typeof TOOL_DEFS> = {};
   for (const name of names) {
     if (name in TOOL_DEFS) {
-      result[name as ToolName] = TOOL_DEFS[name as ToolName];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (result as any)[name] = TOOL_DEFS[name as ToolName];
     }
   }
   return result;
@@ -226,7 +227,7 @@ export function toModelMessages(
             type: 'tool-result' as const,
             toolCallId: tr.toolCallId,
             toolName: '', // filled by SDK from context
-            result: textContent,
+            output: { type: 'text' as const, value: textContent },
           }],
         });
       }
@@ -242,7 +243,7 @@ export function toModelMessages(
             type: 'tool-call' as const,
             toolCallId: tc.id,
             toolName: tc.name,
-            args: tc.arguments,
+            input: tc.arguments,
           })),
         ],
       });
@@ -319,19 +320,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // Resolve tools — only for freeform mode or explicit tool list
-  let tools: Record<string, ReturnType<typeof tool>> | undefined;
+  let tools: typeof TOOL_DEFS | Partial<typeof TOOL_DEFS> | undefined;
   if (body.tools?.length) {
     tools = getTools(body.tools);
   } else if (mode === 'freeform') {
     tools = getTools();
   }
-
-  const providerSlugMap: Record<string, string> = {
-    anthropic: 'anthropic',
-    openai: 'openai',
-    gemini: 'google',
-  };
-  const providerKey = providerSlugMap[provider] ?? provider;
 
   try {
     const resolvedModel = resolveModel(provider, modelId, apiKey);
@@ -356,11 +350,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       const finalResult = await result;
-      const toolCalls = finalResult.toolCalls?.length
-        ? finalResult.toolCalls.map((tc) => ({
-            id: tc.toolCallId,
-            name: tc.toolName,
-            arguments: tc.args,
+      const resolvedToolCalls = await finalResult.toolCalls;
+      const toolCalls = resolvedToolCalls?.length
+        ? resolvedToolCalls.map((tc) => ({
+            id: tc!.toolCallId,
+            name: tc!.toolName,
+            arguments: (tc as { toolCallId: string; toolName: string; input: unknown }).input,
           }))
         : undefined;
 
@@ -383,9 +378,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const toolCalls = result.toolCalls?.length
       ? result.toolCalls.map((tc) => ({
-          id: tc.toolCallId,
-          name: tc.toolName,
-          arguments: tc.args,
+          id: tc!.toolCallId,
+          name: tc!.toolName,
+          arguments: (tc as { toolCallId: string; toolName: string; input: unknown }).input,
         }))
       : undefined;
 

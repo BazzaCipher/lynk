@@ -22,6 +22,8 @@ function makeOcrResult(lines: OcrLine[]): FullPageOcrResult {
     lines,
     words: lines.flatMap(l => l.words),
     confidence: 0.95,
+    imageWidth: 800,
+    imageHeight: 1000,
   };
 }
 

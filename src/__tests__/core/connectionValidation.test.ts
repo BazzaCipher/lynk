@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { validateConnection } from '../../core/engine/connectionValidation';
 import type { Edge } from '@xyflow/react';
 import type { LynkNode } from '../../types';
@@ -167,7 +167,7 @@ describe('validateConnection', () => {
     const displayNode = {
       id: 'disp', type: 'display', position: { x: 0, y: 0 },
       data: { label: 'D', fileType: 'image', regions: [], currentPage: 1, totalPages: 1, viewports: [] },
-    } as LynkNode;
+    } as unknown as LynkNode;
     const vpNode = {
       id: 'vp', type: 'viewport', position: { x: 0, y: 0 }, data: { label: 'VP' },
     } as LynkNode;
