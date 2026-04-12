@@ -5,7 +5,7 @@ import type { OcrWord } from '../core/extraction/ocrExtractor';
 const API_URL = '/api/ai/chat';
 
 /** Extract a JSON array from a model response that may include preamble text or markdown code fences */
-function extractJsonArray(content: string): unknown[] {
+function extractJsonArray<T = unknown>(content: string): T[] {
   // Try direct parse first (clean JSON)
   try {
     const parsed = JSON.parse(content.trim());
@@ -200,7 +200,7 @@ export async function detectFieldsWithAI(
   });
 
   try {
-    const fields = extractJsonArray(content);
+    const fields = extractJsonArray<AiDetectedField>(content);
     if (!Array.isArray(fields)) throw new Error('Expected array');
     return fields;
   } catch {
@@ -267,7 +267,7 @@ export async function autoConnectWithAI(
   });
 
   try {
-    const suggestions = extractJsonArray(content);
+    const suggestions = extractJsonArray<AiConnectionSuggestion>(content);
     if (!Array.isArray(suggestions)) throw new Error('Expected array');
     return suggestions;
   } catch {

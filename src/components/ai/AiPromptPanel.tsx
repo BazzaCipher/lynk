@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useAiSettings } from '../../hooks/useAiSettings';
 import { AiSettingsModal } from './AiSettingsModal';
-import { askAI, detectFieldsWithAI, autoConnectWithAI, summariseWithAI } from '../../services/aiService';
+import { askAI, detectFieldsWithAI, autoConnectWithAI } from '../../services/aiService';
 import { useCanvasStore } from '../../store/canvasStore';
 import { BlobRegistry } from '../../store/canvasPersistence';
 import { extractFullPage } from '../../core/extraction/ocrExtractor';
@@ -116,7 +116,6 @@ export function AiPromptPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isSummarising, setIsSummarising] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeToolCall, setActiveToolCall] = useState<string | null>(null);
@@ -317,35 +316,7 @@ export function AiPromptPanel({
     }
   }, [activeProvider, activeConfig, onConnectionsSuggested]);
 
-  const handleSummarise = useCallback(async () => {
-    if (!activeProvider || !activeConfig) return;
-
-    setIsSummarising(true);
-    setError(null);
-
-    const nodesContext = gatherNodesContext();
-
-    try {
-      const summary = await summariseWithAI(
-        ocrText,
-        nodesContext.length > 0 ? nodesContext : undefined,
-        activeProvider.id,
-        activeConfig.selectedModel,
-        activeConfig.apiKey
-      );
-      setMessages((prev) => [...prev,
-        { role: 'user', content: 'Summarise this canvas' },
-        { role: 'assistant', content: summary },
-      ]);
-      setResponse(summary);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Summarise failed');
-    } finally {
-      setIsSummarising(false);
-    }
-  }, [activeProvider, activeConfig, ocrText]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
