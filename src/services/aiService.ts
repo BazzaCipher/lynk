@@ -4,6 +4,34 @@ import type { OcrWord } from '../core/extraction/ocrExtractor';
 
 const API_URL = '/api/ai/chat';
 
+/** Extract a JSON array from a model response that may include preamble text or markdown code fences */
+function extractJsonArray(content: string): unknown[] {
+  // Try direct parse first (clean JSON)
+  try {
+    const parsed = JSON.parse(content.trim());
+    if (Array.isArray(parsed)) return parsed;
+  } catch { /* fall through */ }
+
+  // Try extracting from a markdown code block: ```json\n[...]\n```
+  const fenceMatch = content.match(/```(?:json)?\s*\n([\s\S]*?)\n?```/);
+  if (fenceMatch) {
+    try {
+      const parsed = JSON.parse(fenceMatch[1].trim());
+      if (Array.isArray(parsed)) return parsed;
+    } catch { /* fall through */ }
+  }
+
+  // Find the first '[' and last ']' and try to parse that slice
+  const start = content.indexOf('[');
+  const end = content.lastIndexOf(']');
+  if (start !== -1 && end > start) {
+    const parsed = JSON.parse(content.slice(start, end + 1));
+    if (Array.isArray(parsed)) return parsed;
+  }
+
+  throw new Error('No JSON array found in response');
+}
+
 interface AiResponse {
   content: string;
   toolCalls?: AiToolCall[];
@@ -171,9 +199,8 @@ export async function detectFieldsWithAI(
     images: images,
   });
 
-  const jsonStr = content.replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim();
   try {
-    const fields = JSON.parse(jsonStr);
+    const fields = extractJsonArray(content);
     if (!Array.isArray(fields)) throw new Error('Expected array');
     return fields;
   } catch {
@@ -239,9 +266,8 @@ export async function autoConnectWithAI(
     messages: [{ role: 'user', content: 'Analyse these nodes and suggest connections between matching fields.' }],
   });
 
-  const jsonStr = content.replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim();
   try {
-    const suggestions = JSON.parse(jsonStr);
+    const suggestions = extractJsonArray(content);
     if (!Array.isArray(suggestions)) throw new Error('Expected array');
     return suggestions;
   } catch {
