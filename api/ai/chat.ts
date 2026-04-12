@@ -253,7 +253,7 @@ export function toModelMessages(
     if (msg.role === 'user') {
       // First user message gets context block + images prepended
       if (i === 0 && (contextBlock || images?.length)) {
-        const content: Array<{ type: 'text'; text: string } | { type: 'image'; image: string; mimeType?: string }> = [];
+        const content: Array<{ type: 'text'; text: string } | { type: 'image'; image: string; mediaType?: string }> = [];
         if (contextBlock) {
           content.push({ type: 'text', text: contextBlock + msg.content });
         } else {
@@ -264,7 +264,7 @@ export function toModelMessages(
             content.push({
               type: 'image',
               image: img.base64,
-              mimeType: img.mimeType,
+              mediaType: img.mimeType,
             });
           }
         }
