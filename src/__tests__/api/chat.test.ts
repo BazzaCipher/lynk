@@ -267,7 +267,7 @@ describe('handler', () => {
     const { generateText } = await import('ai');
     (generateText as any).mockResolvedValueOnce({
       text: 'checking',
-      toolCalls: [{ toolCallId: 'tc1', toolName: 'get_canvas_graph', args: {} }],
+      toolCalls: [{ toolCallId: 'tc1', toolName: 'get_canvas_graph', input: {} }],
     });
     const { req, res } = mockReqRes({
       provider: 'anthropic',
