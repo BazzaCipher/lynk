@@ -73,7 +73,7 @@ The project has a comprehensive unit test suite with **432 tests across 35 test 
 - **Schemas** - canvas schema validation
 - **Config & data** - AI config, templates, node defaults
 
-**Coverage:** ~95% lines, ~94% statements, ~97% functions
+**Coverage:** [![codecov](https://codecov.io/github/BazzaCipher/lynk/graph/badge.svg?token=LX8LVSG14J)](https://codecov.io/github/BazzaCipher/lynk)
 
 Run the full suite:
 
