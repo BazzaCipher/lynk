@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { pdfjs } from 'react-pdf';
 import { useAiSettings } from '../../hooks/useAiSettings';
 import { AiSettingsModal } from './AiSettingsModal';
-import { askAI, detectFieldsWithAI, autoConnectWithAI, summariseWithAI } from '../../services/aiService';
+import { askAI, detectFieldsWithAI, autoConnectWithAI } from '../../services/aiService';
 import { useCanvasStore } from '../../store/canvasStore';
 import { BlobRegistry } from '../../store/canvasPersistence';
 import { extractFullPage } from '../../core/extraction/ocrExtractor';
@@ -77,10 +78,32 @@ function gatherNodesContext(): AiNodeContext[] {
   return contexts;
 }
 
-/** Get ALL image files from extractor nodes for vision-based detect */
-async function getExtractorImages(): Promise<Array<{ mimeType: string; base64: string; size: number }>> {
+/** Render all pages of a PDF (base64) to canvases using PDF.js */
+async function renderPdfToCanvases(base64: string, mimeType: string): Promise<HTMLCanvasElement[]> {
+  const dataUrl = `data:${mimeType};base64,${base64}`;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pdf = await (pdfjs as any).getDocument({ url: dataUrl }).promise;
+  const canvases: HTMLCanvasElement[] = [];
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 1.5 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) continue;
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    canvases.push(canvas);
+  }
+
+  return canvases;
+}
+
+/** Get ALL files from extractor nodes for vision-based detect */
+async function getExtractorImages(): Promise<Array<{ mimeType: string; base64: string; size: number; fileType: 'pdf' | 'image' }>> {
   const { nodes } = useCanvasStore.getState();
-  const results: Array<{ mimeType: string; base64: string; size: number }> = [];
+  const results: Array<{ mimeType: string; base64: string; size: number; fileType: 'pdf' | 'image' }> = [];
 
   for (const node of nodes) {
     if (node.type !== 'extractor') continue;
@@ -96,7 +119,7 @@ async function getExtractorImages(): Promise<Array<{ mimeType: string; base64: s
     const base64 = btoa(
       new Uint8Array(buffer).reduce((d, byte) => d + String.fromCharCode(byte), '')
     );
-    results.push({ mimeType: meta.mimeType, base64, size: meta.size });
+    results.push({ mimeType: meta.mimeType, base64, size: meta.size, fileType: meta.fileType });
   }
   return results;
 }
@@ -116,7 +139,6 @@ export function AiPromptPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isSummarising, setIsSummarising] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeToolCall, setActiveToolCall] = useState<string | null>(null);
@@ -208,9 +230,15 @@ export function AiPromptPanel({
           return;
         }
 
-        // Split images into small (vision) and large (OCR) groups
-        const smallImages = allImages.filter((img) => img.size <= AI_IMAGE_SIZE_LIMIT);
-        const largeImages = allImages.filter((img) => img.size > AI_IMAGE_SIZE_LIMIT);
+        // Split by file type: PDFs cannot be sent as image parts to vision models
+        const actualImages = allImages.filter((img) => img.fileType === 'image');
+        const pdfFiles = allImages.filter((img) => img.fileType === 'pdf');
+
+        // For actual images, further split by size. Account for ~33% base64 overhead
+        // so that the encoded payload stays within AI_IMAGE_SIZE_LIMIT.
+        const MAX_RAW_FOR_VISION = AI_IMAGE_SIZE_LIMIT * 0.75;
+        const smallImages = actualImages.filter((img) => img.size <= MAX_RAW_FOR_VISION);
+        const largeImages = actualImages.filter((img) => img.size > MAX_RAW_FOR_VISION);
 
         let fields: AiDetectedField[] = [];
 
@@ -225,18 +253,32 @@ export function AiPromptPanel({
           fields.push(...visionFields);
         }
 
-        // Process large images: run Tesseract OCR on each, combine words
-        if (largeImages.length > 0) {
+        // Process large images and PDFs via Tesseract OCR
+        const ocrCandidates = [...largeImages, ...pdfFiles];
+        if (ocrCandidates.length > 0) {
           const allOcrWords: import('../../core/extraction/ocrExtractor').OcrWord[] = [];
           const allOcrTexts: string[] = [];
 
-          for (const imageData of largeImages) {
-            const img = new Image();
-            img.src = `data:${imageData.mimeType};base64,${imageData.base64}`;
-            await new Promise((resolve) => { img.onload = resolve; });
-            const ocrResult = await extractFullPage(img);
-            allOcrWords.push(...ocrResult.words);
-            allOcrTexts.push(ocrResult.text);
+          for (const imageData of ocrCandidates) {
+            if (imageData.fileType === 'pdf') {
+              // PDFs can't be loaded as <img> — render each page to canvas via PDF.js
+              const canvases = await renderPdfToCanvases(imageData.base64, imageData.mimeType);
+              for (const canvas of canvases) {
+                const ocrResult = await extractFullPage(canvas);
+                allOcrWords.push(...ocrResult.words);
+                allOcrTexts.push(ocrResult.text);
+              }
+            } else {
+              const img = new Image();
+              img.src = `data:${imageData.mimeType};base64,${imageData.base64}`;
+              await new Promise<void>((resolve, reject) => {
+                img.onload = () => resolve();
+                img.onerror = () => reject(new Error(`Failed to load image for OCR`));
+              });
+              const ocrResult = await extractFullPage(img);
+              allOcrWords.push(...ocrResult.words);
+              allOcrTexts.push(ocrResult.text);
+            }
           }
 
           const ocrFields = await detectFieldsWithAI(
@@ -317,35 +359,7 @@ export function AiPromptPanel({
     }
   }, [activeProvider, activeConfig, onConnectionsSuggested]);
 
-  const handleSummarise = useCallback(async () => {
-    if (!activeProvider || !activeConfig) return;
-
-    setIsSummarising(true);
-    setError(null);
-
-    const nodesContext = gatherNodesContext();
-
-    try {
-      const summary = await summariseWithAI(
-        ocrText,
-        nodesContext.length > 0 ? nodesContext : undefined,
-        activeProvider.id,
-        activeConfig.selectedModel,
-        activeConfig.apiKey
-      );
-      setMessages((prev) => [...prev,
-        { role: 'user', content: 'Summarise this canvas' },
-        { role: 'assistant', content: summary },
-      ]);
-      setResponse(summary);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Summarise failed');
-    } finally {
-      setIsSummarising(false);
-    }
-  }, [activeProvider, activeConfig, ocrText]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -470,7 +484,7 @@ export function AiPromptPanel({
                 )}
               </button>
 
-              {/* Canvas-only: Auto-connect and Summarise */}
+              {/* Canvas-only: Auto-connect */}
               {context === 'canvas' && (
                 <div className="flex gap-1.5">
                   <button
@@ -493,28 +507,6 @@ export function AiPromptPanel({
                           <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
                         </svg>
                         Auto-connect
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={handleSummarise}
-                    disabled={isSummarising}
-                    className="flex-1 px-3 py-1.5 text-xs rounded-md bg-purple-500 text-white hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    {isSummarising ? (
-                      <>
-                        <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                        </svg>
-                        Summarising...
-                      </>
-                    ) : (
-                      <>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                        </svg>
-                        Summarise
                       </>
                     )}
                   </button>

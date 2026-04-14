@@ -34,15 +34,17 @@ export interface VirtualFolder {
 }
 
 async function computeHash(blob: Blob): Promise<string> {
-  const buffer = await blob.arrayBuffer();
+  const rawBuffer = await blob.arrayBuffer();
+  // Ensure we have a proper ArrayBuffer (jsdom may return a Node Buffer)
+  const view = new Uint8Array(rawBuffer);
   // crypto.subtle is only available in secure contexts (HTTPS/localhost)
   if (crypto.subtle) {
-    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', view);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
   }
   // Fallback: simple FNV-1a-like hash for non-secure contexts
-  const bytes = new Uint8Array(buffer);
+  const bytes = view;
   let h = 0x811c9dc5;
   for (let i = 0; i < bytes.length; i++) {
     h ^= bytes[i];
