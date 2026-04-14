@@ -19,7 +19,7 @@ function extractJsonArray<T = unknown>(content: string): T[] {
   } catch { /* fall through */ }
 
   // Try extracting from a markdown code block: ```json\n[...]\n```
-  const fenceMatch = content.match(/```(?:json)?\s*\n([\s\S]*?)\n?```/);
+  const fenceMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
   if (fenceMatch) {
     try {
       const parsed = JSON.parse(fenceMatch[1].trim());
@@ -40,6 +40,18 @@ function extractJsonArray<T = unknown>(content: string): T[] {
       const parsed = JSON.parse(content.slice(start, end + 1));
       if (Array.isArray(parsed)) return parsed;
     } catch { /* fall through */ }
+  }
+
+  // Truncated JSON recovery: find last complete object in a cut-off array
+  if (start !== -1) {
+    const lastBrace = content.lastIndexOf('}');
+    if (lastBrace > start) {
+      try {
+        const patched = content.slice(start, lastBrace + 1) + ']';
+        const parsed = JSON.parse(patched);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch { /* fall through */ }
+    }
   }
 
   throw new Error(`No JSON array found in response (length=${content.length}, preview=${content.slice(0, 200)})`);

@@ -394,13 +394,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.end();
     }
 
-    // Non-streaming response
+    // Non-streaming response — detect_fields needs more tokens for large documents
     const result = await generateText({
       model: resolvedModel,
       system,
       messages: modelMessages,
       tools,
-      maxOutputTokens: 4096,
+      maxOutputTokens: mode === 'detect_fields' ? 16384 : 4096,
     });
 
     const toolCalls = result.toolCalls?.length
