@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { pdfjs } from 'react-pdf';
 import { useAiSettings } from '../../hooks/useAiSettings';
 import { AiSettingsModal } from './AiSettingsModal';
 import { askAI, detectFieldsWithAI, autoConnectWithAI } from '../../services/aiService';
@@ -77,10 +78,32 @@ function gatherNodesContext(): AiNodeContext[] {
   return contexts;
 }
 
-/** Get ALL image files from extractor nodes for vision-based detect */
-async function getExtractorImages(): Promise<Array<{ mimeType: string; base64: string; size: number }>> {
+/** Render all pages of a PDF (base64) to canvases using PDF.js */
+async function renderPdfToCanvases(base64: string, mimeType: string): Promise<HTMLCanvasElement[]> {
+  const dataUrl = `data:${mimeType};base64,${base64}`;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pdf = await (pdfjs as any).getDocument({ url: dataUrl }).promise;
+  const canvases: HTMLCanvasElement[] = [];
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 1.5 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) continue;
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    canvases.push(canvas);
+  }
+
+  return canvases;
+}
+
+/** Get ALL files from extractor nodes for vision-based detect */
+async function getExtractorImages(): Promise<Array<{ mimeType: string; base64: string; size: number; fileType: 'pdf' | 'image' }>> {
   const { nodes } = useCanvasStore.getState();
-  const results: Array<{ mimeType: string; base64: string; size: number }> = [];
+  const results: Array<{ mimeType: string; base64: string; size: number; fileType: 'pdf' | 'image' }> = [];
 
   for (const node of nodes) {
     if (node.type !== 'extractor') continue;
@@ -96,7 +119,7 @@ async function getExtractorImages(): Promise<Array<{ mimeType: string; base64: s
     const base64 = btoa(
       new Uint8Array(buffer).reduce((d, byte) => d + String.fromCharCode(byte), '')
     );
-    results.push({ mimeType: meta.mimeType, base64, size: meta.size });
+    results.push({ mimeType: meta.mimeType, base64, size: meta.size, fileType: meta.fileType });
   }
   return results;
 }
@@ -207,9 +230,15 @@ export function AiPromptPanel({
           return;
         }
 
-        // Split images into small (vision) and large (OCR) groups
-        const smallImages = allImages.filter((img) => img.size <= AI_IMAGE_SIZE_LIMIT);
-        const largeImages = allImages.filter((img) => img.size > AI_IMAGE_SIZE_LIMIT);
+        // Split by file type: PDFs cannot be sent as image parts to vision models
+        const actualImages = allImages.filter((img) => img.fileType === 'image');
+        const pdfFiles = allImages.filter((img) => img.fileType === 'pdf');
+
+        // For actual images, further split by size. Account for ~33% base64 overhead
+        // so that the encoded payload stays within AI_IMAGE_SIZE_LIMIT.
+        const MAX_RAW_FOR_VISION = AI_IMAGE_SIZE_LIMIT * 0.75;
+        const smallImages = actualImages.filter((img) => img.size <= MAX_RAW_FOR_VISION);
+        const largeImages = actualImages.filter((img) => img.size > MAX_RAW_FOR_VISION);
 
         let fields: AiDetectedField[] = [];
 
@@ -224,18 +253,32 @@ export function AiPromptPanel({
           fields.push(...visionFields);
         }
 
-        // Process large images: run Tesseract OCR on each, combine words
-        if (largeImages.length > 0) {
+        // Process large images and PDFs via Tesseract OCR
+        const ocrCandidates = [...largeImages, ...pdfFiles];
+        if (ocrCandidates.length > 0) {
           const allOcrWords: import('../../core/extraction/ocrExtractor').OcrWord[] = [];
           const allOcrTexts: string[] = [];
 
-          for (const imageData of largeImages) {
-            const img = new Image();
-            img.src = `data:${imageData.mimeType};base64,${imageData.base64}`;
-            await new Promise((resolve) => { img.onload = resolve; });
-            const ocrResult = await extractFullPage(img);
-            allOcrWords.push(...ocrResult.words);
-            allOcrTexts.push(ocrResult.text);
+          for (const imageData of ocrCandidates) {
+            if (imageData.fileType === 'pdf') {
+              // PDFs can't be loaded as <img> — render each page to canvas via PDF.js
+              const canvases = await renderPdfToCanvases(imageData.base64, imageData.mimeType);
+              for (const canvas of canvases) {
+                const ocrResult = await extractFullPage(canvas);
+                allOcrWords.push(...ocrResult.words);
+                allOcrTexts.push(ocrResult.text);
+              }
+            } else {
+              const img = new Image();
+              img.src = `data:${imageData.mimeType};base64,${imageData.base64}`;
+              await new Promise<void>((resolve, reject) => {
+                img.onload = () => resolve();
+                img.onerror = () => reject(new Error(`Failed to load image for OCR`));
+              });
+              const ocrResult = await extractFullPage(img);
+              allOcrWords.push(...ocrResult.words);
+              allOcrTexts.push(ocrResult.text);
+            }
           }
 
           const ocrFields = await detectFieldsWithAI(

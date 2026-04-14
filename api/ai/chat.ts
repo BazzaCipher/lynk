@@ -163,15 +163,23 @@ When OCR word data with bounding boxes is provided:
 
 Be thorough — extract ALL identifiable fields including line items in tables, dates, amounts, names, addresses, reference numbers, payment terms, and any labeled key-value pairs. For tables, extract each row as separate line_item entries.`;
 
-const FREEFORM_SYSTEM_PROMPT = `You are a helpful assistant for a document processing application called Paper Bridge. Your primary goal is to help users understand their document data — what it contains, what it represents, and how different pieces of information relate to each other.
+const FREEFORM_SYSTEM_PROMPT = `You are a helpful assistant for a document processing application called Paper Bridge. You help users understand their document data and set up extraction fields on their documents.
 
-When answering questions:
+When answering questions about document content:
 - Focus on the actual data and its business meaning: totals, dates, parties involved, what the document is for
-- Provide a complete overview of the data when asked — summarise key facts, relationships between values, and anything noteworthy
-- Do NOT describe internal application mechanics like extractor nodes, regions, handles, or graph structure — the user cares about their documents, not the app's internals
 - Be concise and reference specific values from the documents when possible
 
-You have access to tools that let you inspect files, view document content, and understand the canvas layout. Use them proactively to give informed answers.`;
+When asked to extract, highlight, or create fields:
+- Use get_file_content to visually inspect the document and identify where the field appears
+- Use get_canvas_graph to find the correct extractor node ID
+- Use create_region with accurate pixel coordinates (x, y, width, height) to create the extraction region
+- After creating, confirm which field was created and on which document
+
+When asked to connect fields between nodes:
+- Use get_canvas_graph to understand the current layout
+- Use suggest_connection to wire source fields to target nodes
+
+You have access to tools that let you inspect files, view document content, and understand the canvas layout. Use them proactively — do not ask the user for information you can look up with a tool.`;
 
 const AUTO_CONNECT_SYSTEM_PROMPT = `You are a document processing assistant that analyses extracted fields across multiple document nodes and suggests connections between them.
 
@@ -218,16 +226,35 @@ export function toModelMessages(
 
     if (msg.role === 'tool_result' && msg.toolResults) {
       for (const tr of msg.toolResults) {
-        const textContent = tr.content
-          .map((p) => (p.type === 'text' ? p.text : `[image]`))
-          .join('\n');
+        const hasImages = tr.content.some((p) => p.type === 'image');
+
+        // If the result contains images, use the 'content' output type so vision
+        // models actually receive the image data instead of a [image] placeholder.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let output: any;
+        if (hasImages) {
+          output = {
+            type: 'content' as const,
+            value: tr.content.map((p) =>
+              p.type === 'text'
+                ? { type: 'text' as const, text: p.text ?? '' }
+                : { type: 'file-data' as const, data: p.base64!, mediaType: p.mimeType! }
+            ),
+          };
+        } else {
+          output = {
+            type: 'text' as const,
+            value: tr.content.map((p) => p.text ?? '').join('\n'),
+          };
+        }
+
         result.push({
           role: 'tool' as const,
           content: [{
             type: 'tool-result' as const,
             toolCallId: tr.toolCallId,
             toolName: '', // filled by SDK from context
-            output: { type: 'text' as const, value: textContent },
+            output,
           }],
         });
       }

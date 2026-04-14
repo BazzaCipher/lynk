@@ -109,7 +109,7 @@ describe('toModelMessages', () => {
     expect(content[1].type).toBe('tool-call');
   });
 
-  it('converts tool_result messages', () => {
+  it('converts text-only tool_result to text output', () => {
     const messages = [{
       role: 'tool_result' as const,
       content: '',
@@ -120,6 +120,46 @@ describe('toModelMessages', () => {
     }];
     const result = toModelMessages(messages, '', undefined);
     expect(result[0].role).toBe('tool');
+    const toolResult = (result[0] as any).content[0];
+    expect(toolResult.output.type).toBe('text');
+    expect(toolResult.output.value).toBe('result data');
+  });
+
+  it('converts image-containing tool_result to content output with file-data', () => {
+    const messages = [{
+      role: 'tool_result' as const,
+      content: '',
+      toolResults: [{
+        toolCallId: 'tc2',
+        content: [
+          { type: 'text' as const, text: 'Existing fields: none' },
+          { type: 'image' as const, mimeType: 'image/png', base64: 'abc123' },
+        ],
+      }],
+    }];
+    const result = toModelMessages(messages, '', undefined);
+    expect(result[0].role).toBe('tool');
+    const toolResult = (result[0] as any).content[0];
+    expect(toolResult.output.type).toBe('content');
+    const parts = toolResult.output.value;
+    expect(parts).toHaveLength(2);
+    expect(parts[0]).toEqual({ type: 'text', text: 'Existing fields: none' });
+    expect(parts[1]).toEqual({ type: 'file-data', data: 'abc123', mediaType: 'image/png' });
+  });
+
+  it('emits one tool message per tool result in a tool_result message', () => {
+    const messages = [{
+      role: 'tool_result' as const,
+      content: '',
+      toolResults: [
+        { toolCallId: 'tc1', content: [{ type: 'text' as const, text: 'first' }] },
+        { toolCallId: 'tc2', content: [{ type: 'text' as const, text: 'second' }] },
+      ],
+    }];
+    const result = toModelMessages(messages, '', undefined);
+    expect(result).toHaveLength(2);
+    expect(result[0].role).toBe('tool');
+    expect(result[1].role).toBe('tool');
   });
 
   it('converts plain assistant text', () => {
