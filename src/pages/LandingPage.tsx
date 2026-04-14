@@ -5,7 +5,7 @@ import { SoftwareAppJsonLd } from '../components/seo/JsonLd';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGoogleDrive, faDropbox, faConfluence, faNotion, faTrello, faSlack } from '@fortawesome/free-brands-svg-icons';
 
-/* ─── Scroll-reveal hook ─────────────────────────────────────────────── */
+/* ---- Scroll-reveal hook ------------------------------------------------- */
 
 function useReveal(threshold = 0.15) {
   const ref = useRef<HTMLDivElement>(null);
@@ -23,7 +23,7 @@ function useReveal(threshold = 0.15) {
   return { ref, visible };
 }
 
-/* ─── Mouse-tracking glow for feature cards ───────────────────────────── */
+/* ---- Mouse-tracking glow for feature cards ------------------------------ */
 
 function useMouseGlow() {
   const ref = useRef<HTMLDivElement>(null);
@@ -37,204 +37,100 @@ function useMouseGlow() {
   return { ref, onMove };
 }
 
-/* ─── Simulated canvas for hero ────────────────────────────────────────── */
+/* ---- Animated counter --------------------------------------------------- */
 
-function HeroCanvas() {
-  const po = { x: 30, y: 40 };
-  const bank = { x: 30, y: 220 };
-  const calc = { x: 320, y: 120 };
-  const label = { x: 310, y: 290 };
-  const sheet = { x: 590, y: 90 };
+function AnimatedStat({ value, suffix, label, delay }: { value: number; suffix: string; label: string; delay: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [display, setDisplay] = useState(0);
+  const [started, setStarted] = useState(false);
 
-  const edges = [
-    { from: { x: po.x + 170, y: po.y + 69 }, to: { x: calc.x, y: calc.y + 49 } },
-    { from: { x: bank.x + 170, y: bank.y + 69 }, to: { x: calc.x, y: calc.y + 87 } },
-    { from: { x: po.x + 170, y: po.y + 49 }, to: { x: sheet.x, y: sheet.y + 50 } },
-    { from: { x: bank.x + 170, y: bank.y + 49 }, to: { x: sheet.x, y: sheet.y + 75 } },
-    { from: { x: calc.x + 170, y: calc.y + 104 }, to: { x: sheet.x, y: sheet.y + 100 } },
-  ];
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setStarted(true); obs.disconnect(); } },
+      { threshold: 0.3 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!started) return;
+    const timeout = setTimeout(() => {
+      const duration = 1200;
+      const steps = 40;
+      const increment = value / steps;
+      let current = 0;
+      const interval = setInterval(() => {
+        current += increment;
+        if (current >= value) {
+          setDisplay(value);
+          clearInterval(interval);
+        } else {
+          setDisplay(Math.floor(current));
+        }
+      }, duration / steps);
+      return () => clearInterval(interval);
+    }, delay);
+    return () => clearTimeout(timeout);
+  }, [started, value, delay]);
 
   return (
-    <div className="mt-16 md:mt-20 max-w-4xl mx-auto hero-illo-enter">
-      <div className="rounded-lg border border-navy-200 bg-white overflow-hidden">
-        {/* Browser chrome */}
-        <div className="flex items-center gap-2 px-4 py-3 bg-navy-50 border-b border-navy-100">
-          <div className="flex gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-navy-200" />
-            <div className="w-2.5 h-2.5 rounded-full bg-navy-200" />
-            <div className="w-2.5 h-2.5 rounded-full bg-navy-200" />
-          </div>
-          <div className="flex-1 mx-8">
-            <div className="h-6 bg-white rounded border border-navy-100 max-w-xs mx-auto flex items-center justify-center">
-              <span className="text-[10px] text-navy-400 font-medium">paperbridge / canvas</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Canvas SVG */}
-        <svg
-          viewBox="0 0 800 400"
-          className="w-full h-auto bg-[#f8fafc] hidden sm:block"
-          style={{ aspectRatio: '800 / 400' }}
-          role="img"
-          aria-label="Paperbridge canvas showing rental statement and loan summary documents connected to calculation and sheet nodes, producing a rental schedule summary"
-        >
-          <defs>
-            <pattern id="hero-dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-              <circle cx="10" cy="10" r="0.8" fill="#94a3b8" opacity="0.25" />
-            </pattern>
-            <style>{`
-              @keyframes hero-dash { to { stroke-dashoffset: -20; } }
-              .hero-edge { animation: hero-dash 1.5s linear infinite; }
-            `}</style>
-          </defs>
-          <rect width="800" height="400" fill="url(#hero-dots)" />
-
-          {/* Edges */}
-          {edges.map((e, i) => {
-            const dx = (e.to.x - e.from.x) * 0.5;
-            return (
-              <path
-                key={i}
-                d={`M${e.from.x},${e.from.y} C${e.from.x + dx},${e.from.y} ${e.to.x - dx},${e.to.y} ${e.to.x},${e.to.y}`}
-                fill="none"
-                stroke="#bcccdc"
-                strokeWidth="1.5"
-                strokeDasharray="6 4"
-                className="hero-edge"
-              />
-            );
-          })}
-
-          {/* Rental Statement Node */}
-          <g transform={`translate(${po.x},${po.y})`}>
-            <rect width="170" height="130" rx="6" fill="white" stroke="#d9e2ec" strokeWidth="1" />
-            <rect width="170" height="28" rx="6" fill="#f0f4f8" stroke="none" />
-            <rect y="28" width="170" height="1" fill="#d9e2ec" />
-            <text x="10" y="18" fontSize="10" fontWeight="600" fill="#243b53">Rental Statement</text>
-            <text x="10" y="48" fontSize="9" fill="#829ab1">property</text>
-            <rect x="60" y="39" width="90" height="14" rx="2" fill="rgba(37,99,235,0.08)" />
-            <text x="66" y="49" fontSize="8" fill="#1d4ed8">14 Elm St</text>
-            <text x="10" y="68" fontSize="9" fill="#829ab1">rent</text>
-            <rect x="60" y="59" width="90" height="14" rx="2" fill="rgba(5,150,105,0.08)" />
-            <text x="66" y="69" fontSize="8" fill="#047857">$31,200.00</text>
-            <text x="10" y="88" fontSize="9" fill="#829ab1">period</text>
-            <rect x="60" y="79" width="90" height="14" rx="2" fill="rgba(99,102,241,0.08)" />
-            <text x="66" y="89" fontSize="8" fill="#4338ca">FY 2024–25</text>
-            <text x="10" y="108" fontSize="9" fill="#829ab1">agent fees</text>
-            <rect x="60" y="99" width="90" height="14" rx="2" fill="rgba(5,150,105,0.08)" />
-            <text x="66" y="109" fontSize="8" fill="#047857">$3,432.00</text>
-            <circle cx="170" cy="49" r="4" fill="#2563eb" stroke="white" strokeWidth="2" />
-            <circle cx="170" cy="69" r="4" fill="#059669" stroke="white" strokeWidth="2" />
-            <circle cx="170" cy="89" r="4" fill="#6366f1" stroke="white" strokeWidth="2" />
-            <circle cx="170" cy="109" r="4" fill="#059669" stroke="white" strokeWidth="2" />
-          </g>
-
-          {/* Loan Summary Node */}
-          <g transform={`translate(${bank.x},${bank.y})`}>
-            <rect width="170" height="130" rx="6" fill="white" stroke="#d9e2ec" strokeWidth="1" />
-            <rect width="170" height="28" rx="6" fill="#f0f4f8" stroke="none" />
-            <rect y="28" width="170" height="1" fill="#d9e2ec" />
-            <text x="10" y="18" fontSize="10" fontWeight="600" fill="#243b53">Loan Summary</text>
-            <text x="10" y="48" fontSize="9" fill="#829ab1">lender</text>
-            <rect x="60" y="39" width="90" height="14" rx="2" fill="rgba(37,99,235,0.08)" />
-            <text x="66" y="49" fontSize="8" fill="#1d4ed8">CBA ••7193</text>
-            <text x="10" y="68" fontSize="9" fill="#829ab1">interest</text>
-            <rect x="60" y="59" width="90" height="14" rx="2" fill="rgba(5,150,105,0.08)" />
-            <text x="66" y="69" fontSize="8" fill="#047857">$18,640.00</text>
-            <text x="10" y="88" fontSize="9" fill="#829ab1">principal</text>
-            <rect x="60" y="79" width="90" height="14" rx="2" fill="rgba(5,150,105,0.08)" />
-            <text x="66" y="89" fontSize="8" fill="#047857">$6,200.00</text>
-            <text x="10" y="108" fontSize="9" fill="#829ab1">balance</text>
-            <rect x="60" y="99" width="90" height="14" rx="2" fill="rgba(5,150,105,0.08)" />
-            <text x="66" y="109" fontSize="8" fill="#047857">$412,000</text>
-            <circle cx="170" cy="49" r="4" fill="#2563eb" stroke="white" strokeWidth="2" />
-            <circle cx="170" cy="69" r="4" fill="#059669" stroke="white" strokeWidth="2" />
-            <circle cx="170" cy="89" r="4" fill="#059669" stroke="white" strokeWidth="2" />
-            <circle cx="170" cy="109" r="4" fill="#059669" stroke="white" strokeWidth="2" />
-          </g>
-
-          {/* Calculation Node */}
-          <g transform={`translate(${calc.x},${calc.y})`}>
-            <rect width="170" height="120" rx="6" fill="white" stroke="#d9e2ec" strokeWidth="1" />
-            <rect width="170" height="28" rx="6" fill="#f0f4f8" stroke="none" />
-            <rect y="28" width="170" height="1" fill="#d9e2ec" />
-            <text x="10" y="18" fontSize="10" fontWeight="600" fill="#243b53">Net Rental Income</text>
-            <rect x="10" y="38" width="60" height="16" rx="3" fill="rgba(5,150,105,0.12)" />
-            <text x="16" y="49" fontSize="8" fontWeight="600" fill="#047857">SUBTRACT</text>
-            <circle cx="0" cy="49" r="4" fill="#059669" stroke="white" strokeWidth="2" />
-            <text x="10" y="70" fontSize="9" fill="#829ab1">Rent</text>
-            <text x="100" y="70" fontSize="8" fill="#047857">$31,200</text>
-            <circle cx="0" cy="87" r="4" fill="#059669" stroke="white" strokeWidth="2" />
-            <text x="10" y="87" fontSize="9" fill="#829ab1">Interest</text>
-            <text x="100" y="87" fontSize="8" fill="#047857">$18,640</text>
-            <rect x="10" y="96" width="150" height="16" rx="3" fill="rgba(5,150,105,0.08)" />
-            <text x="18" y="107" fontSize="9" fontWeight="600" fill="#047857">= $12,560.00</text>
-            <circle cx="170" cy="104" r="4" fill="#059669" stroke="white" strokeWidth="2" />
-          </g>
-
-          {/* Label Node */}
-          <g transform={`translate(${label.x},${label.y})`}>
-            <rect width="200" height="44" rx="6" fill="white" stroke="#d9e2ec" strokeWidth="1" />
-            <text x="14" y="18" fontSize="9" fill="#627d98" fontWeight="600">Label</text>
-            <text x="14" y="34" fontSize="12" fontWeight="600" fill="#102a43">14 Elm St — FY 2024–25</text>
-          </g>
-
-          {/* Sheet Node */}
-          <g transform={`translate(${sheet.x},${sheet.y})`}>
-            <rect width="180" height="200" rx="6" fill="white" stroke="#d9e2ec" strokeWidth="1" />
-            <rect width="180" height="28" rx="6" fill="#f0f4f8" stroke="none" />
-            <rect y="28" width="180" height="1" fill="#d9e2ec" />
-            <text x="10" y="18" fontSize="10" fontWeight="600" fill="#243b53">Rental Schedule</text>
-            <circle cx="0" cy="50" r="4" fill="#2563eb" stroke="white" strokeWidth="2" />
-            <circle cx="0" cy="75" r="4" fill="#2563eb" stroke="white" strokeWidth="2" />
-            <circle cx="0" cy="100" r="4" fill="#059669" stroke="white" strokeWidth="2" />
-            <rect x="8" y="36" width="164" height="20" rx="3" fill="#f0f4f8" />
-            <text x="14" y="50" fontSize="9" fontWeight="600" fill="#102a43">Property</text>
-            <text x="14" y="72" fontSize="8" fill="#829ab1">Address</text>
-            <text x="100" y="72" fontSize="8" fill="#334e68">14 Elm St</text>
-            <text x="14" y="88" fontSize="8" fill="#829ab1">Lender</text>
-            <text x="100" y="88" fontSize="8" fill="#334e68">CBA ••7193</text>
-            <rect x="8" y="100" width="164" height="20" rx="3" fill="#f0f4f8" />
-            <text x="14" y="114" fontSize="9" fontWeight="600" fill="#102a43">Income</text>
-            <text x="110" y="114" fontSize="9" fill="#047857" fontWeight="600">$31,200</text>
-            <text x="14" y="136" fontSize="8" fill="#829ab1">Interest</text>
-            <text x="110" y="136" fontSize="8" fill="#334e68">$18,640</text>
-            <text x="14" y="152" fontSize="8" fill="#829ab1">Agent fees</text>
-            <text x="110" y="152" fontSize="8" fill="#334e68">$3,432</text>
-            <rect x="8" y="164" width="164" height="20" rx="3" fill="#f0f4f8" />
-            <text x="14" y="178" fontSize="9" fontWeight="600" fill="#102a43">Net income</text>
-            <text x="110" y="178" fontSize="9" fill="#059669" fontWeight="600">$9,128</text>
-          </g>
-        </svg>
-
-        {/* Mobile: simplified placeholder */}
-        <div className="sm:hidden px-6 py-10 text-center bg-[#f8fafc]">
-          <div className="flex items-center justify-center gap-3 text-navy-400">
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-            </svg>
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-            </svg>
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375" />
-            </svg>
-          </div>
-          <p className="mt-3 text-sm text-navy-500">Documents &rarr; Calculations &rarr; Summary</p>
-        </div>
+    <div ref={ref} className="text-center">
+      <div className="text-4xl md:text-5xl font-bold text-navy-900 tabular-nums">
+        {display}{suffix}
       </div>
+      <p className="mt-2 text-sm text-navy-500 leading-relaxed">{label}</p>
     </div>
   );
 }
 
-/* ─── Feature data ──────────────────────────────────────────────────────── */
+/* ---- Value proposition pillars ------------------------------------------ */
+
+const pillars = [
+  {
+    title: 'Your team finishes faster',
+    description: 'Every document uploaded once, every figure extracted automatically. Your team spends time on advice, not data entry.',
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+      </svg>
+    ),
+    stat: '3x',
+    statLabel: 'faster per return',
+  },
+  {
+    title: 'Audit trail built in',
+    description: 'Every number links back to the exact line on the original document. When the ATO asks, you show them in seconds.',
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+      </svg>
+    ),
+    stat: '100%',
+    statLabel: 'source-linked',
+  },
+  {
+    title: 'No more manual keying',
+    description: 'Stop re-typing rental statements into spreadsheets. Upload the document, select the fields, and the summary builds itself.',
+    icon: (
+      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+      </svg>
+    ),
+    stat: '0',
+    statLabel: 'hours re-keying',
+  },
+];
+
+/* ---- Feature data ------------------------------------------------------- */
 
 const features = [
   {
     num: '01',
     title: 'Any Client Document',
-    description: 'Rental statements, loan summaries, payment summaries, receipts — drop them on the canvas and start extracting. PDF or image.',
+    description: 'Rental statements, loan summaries, payment summaries, receipts - drop them on the canvas and start extracting. PDF or image.',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
@@ -254,7 +150,7 @@ const features = [
   {
     num: '03',
     title: 'Automatic Totals',
-    description: 'Income, deductions, expenses — totalled and cross-checked automatically. No formulas to maintain.',
+    description: 'Income, deductions, expenses - totalled and cross-checked automatically. No formulas to maintain.',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75V18m-7.5-6.75h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V13.5zm0 2.25h.008v.008H8.25v-.008zm0 2.25h.008v.008H8.25V18zm2.498-6.75h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V13.5zm0 2.25h.007v.008h-.007v-.008zm0 2.25h.007v.008h-.007V18zm2.504-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zm0 2.25h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V18zm2.498-6.75h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V13.5zM8.25 6h7.5v2.25h-7.5V6zM12 2.25c-1.892 0-3.758.11-5.593.322C5.307 2.7 4.5 3.65 4.5 4.757V19.5a2.25 2.25 0 002.25 2.25h10.5a2.25 2.25 0 002.25-2.25V4.757c0-1.108-.806-2.057-1.907-2.185A48.507 48.507 0 0012 2.25z" />
@@ -274,7 +170,7 @@ const features = [
   {
     num: '05',
     title: 'Organised by Client',
-    description: 'Multiple properties, multiple income sources — each gets its own workspace. Roll them up into a single summary at the end.',
+    description: 'Multiple properties, multiple income sources - each gets its own workspace. Roll them up into a single summary at the end.',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
@@ -284,30 +180,12 @@ const features = [
   {
     num: '06',
     title: 'Full Audit Trail',
-    description: 'Export the complete workpaper — every source document, every extracted value, every calculation — as a single portable file.',
+    description: 'Export the complete workpaper - every source document, every extracted value, every calculation - as a single portable file.',
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
       </svg>
     ),
-  },
-];
-
-const steps = [
-  {
-    num: '01',
-    title: 'Upload the documents',
-    description: 'Drop your client\'s statements, receipts, and summaries onto the canvas. PDF or image, it just works.',
-  },
-  {
-    num: '02',
-    title: 'Extract the numbers',
-    description: 'Select the figures you need — income, deductions, expenses. Each value stays linked to the original document.',
-  },
-  {
-    num: '03',
-    title: 'Export the summary',
-    description: 'Get an audit-ready summary for the tax return. Every number traceable, every document attached.',
   },
 ];
 
@@ -326,14 +204,71 @@ const comparisons = [
   },
 ];
 
-/* ─── Scroll-revealed sections ─────────────────────────────────────────── */
+/* ---- Sections ----------------------------------------------------------- */
+
+function StatsBar() {
+  const { ref, visible } = useReveal(0.2);
+  return (
+    <section ref={ref} className="py-16 md:py-20 border-y border-navy-100 bg-white">
+      <div className="max-w-4xl mx-auto px-6">
+        <div className={`grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8 reveal ${visible ? 'visible' : ''}`}>
+          <AnimatedStat value={80} suffix="%" label="Less time on data entry per return" delay={0} />
+          <AnimatedStat value={100} suffix="%" label="Of figures source-linked for audit" delay={150} />
+          <AnimatedStat value={0} suffix=" spreadsheets" label="To maintain or reconcile" delay={300} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PillarsSection() {
+  const { ref, visible } = useReveal(0.1);
+  return (
+    <section ref={ref} className="py-24 md:py-32 bg-white">
+      <div className="max-w-6xl mx-auto px-6">
+        <div className={`text-center mb-16 reveal ${visible ? 'visible' : ''}`}>
+          <p className="text-xs font-semibold text-green-500 uppercase tracking-[0.15em] mb-3">Why practice managers switch</p>
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-navy-900">
+            Run a tighter practice, not a harder one
+          </h2>
+          <p className="mt-4 text-base text-navy-500 max-w-2xl mx-auto leading-relaxed">
+            Your team handles more clients with fewer errors. You get visibility and confidence at every step.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8">
+          {pillars.map((p, i) => (
+            <div
+              key={p.title}
+              className={`card-hover relative rounded-lg border border-navy-100 bg-white p-8 reveal ${visible ? 'visible' : ''}`}
+              style={{ transitionDelay: `${i * 100}ms` }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-green-500/8 text-green-600">
+                  {p.icon}
+                </div>
+                <span className="text-2xl font-bold text-navy-900">{p.stat}</span>
+              </div>
+              <h3 className="text-lg font-semibold text-navy-900 mb-2">{p.title}</h3>
+              <p className="text-sm text-navy-500 leading-relaxed">{p.description}</p>
+              <p className="mt-3 text-xs font-medium text-green-600">{p.statLabel}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function ComparisonSection({ comparisons }: { comparisons: { before: string; after: string }[] }) {
   const { ref, visible } = useReveal(0.2);
   return (
     <section ref={ref} className="py-16 md:py-20 bg-navy-50/40">
       <div className="max-w-3xl mx-auto px-6">
-        <p className={`text-xs font-semibold text-navy-500 uppercase tracking-[0.15em] mb-8 text-center reveal ${visible ? 'visible' : ''}`}>Before &amp; after Paperbridge</p>
+        <p className={`text-xs font-semibold text-navy-500 uppercase tracking-[0.15em] mb-3 text-center reveal ${visible ? 'visible' : ''}`}>Before & after Paperbridge</p>
+        <h2 className={`text-2xl md:text-3xl font-bold text-navy-900 tracking-tight text-center mb-10 reveal ${visible ? 'visible' : ''}`}>
+          What changes for your practice
+        </h2>
         <div className="space-y-2">
           {comparisons.map((c, i) => (
             <div
@@ -367,7 +302,7 @@ function FeaturesSection({ features }: { features: { num: string; title: string;
     <section ref={ref} className="relative py-24 md:py-32 bg-navy-900">
       <div className="relative max-w-6xl mx-auto px-6">
         <div className={`max-w-2xl mb-16 reveal ${visible ? 'visible' : ''}`}>
-          <p className="text-xs font-semibold text-green-400 uppercase tracking-[0.15em] mb-3">Why practices switch</p>
+          <p className="text-xs font-semibold text-green-400 uppercase tracking-[0.15em] mb-3">Built for the workflow</p>
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
             Individual returns, without the grunt work
           </h2>
@@ -396,8 +331,26 @@ function FeaturesSection({ features }: { features: { num: string; title: string;
   );
 }
 
-function StepsSection({ steps }: { steps: { num: string; title: string; description: string }[] }) {
+function HowItWorksSection() {
   const { ref, visible } = useReveal(0.15);
+  const steps = [
+    {
+      num: '01',
+      title: 'Upload the documents',
+      description: 'Drop your client\'s statements, receipts, and summaries onto the canvas. PDF or image, it just works.',
+    },
+    {
+      num: '02',
+      title: 'Extract the numbers',
+      description: 'Select the figures you need - income, deductions, expenses. Each value stays linked to the original document.',
+    },
+    {
+      num: '03',
+      title: 'Export the summary',
+      description: 'Get an audit-ready summary for the tax return. Every number traceable, every document attached.',
+    },
+  ];
+
   return (
     <section ref={ref} className="py-24 md:py-32">
       <div className="max-w-6xl mx-auto px-6">
@@ -409,11 +362,9 @@ function StepsSection({ steps }: { steps: { num: string; title: string; descript
         </div>
 
         <div className="relative max-w-3xl mx-auto">
-          {/* Desktop connector */}
           <div className="hidden md:block absolute top-[22px] left-[calc(16.67%+20px)] right-[calc(16.67%+20px)] z-0">
             <div className="h-px border-t border-navy-200 origin-left transition-transform duration-700" style={{ transform: visible ? 'scaleX(1)' : 'scaleX(0)', transitionDelay: '300ms' }} />
           </div>
-          {/* Mobile connector */}
           <div className="md:hidden absolute left-[19px] top-12 bottom-12 z-0">
             <div className="w-px h-full border-l border-navy-200 origin-top transition-transform duration-700" style={{ transform: visible ? 'scaleY(1)' : 'scaleY(0)', transitionDelay: '300ms' }} />
           </div>
@@ -441,9 +392,7 @@ function StepsSection({ steps }: { steps: { num: string; title: string; descript
   );
 }
 
-/* ─── Integration logos (inline SVG paths) ────────────────────────────── */
-
-/* ─── Bubble map: size = prominence, position = organic cluster ────────── */
+/* ---- Integration logos (bubble map) ------------------------------------- */
 
 const bubbles = [
   { name: 'Google Drive', color: '#1FA463', bg: 'rgba(31,164,99,0.08)',  size: 130, x: 50, y: 46, float: 4.5, icon: faGoogleDrive, iconPx: 48 },
@@ -469,10 +418,8 @@ function IntegrationsSection() {
           Save your finished workpapers to Google Drive, Dropbox, or wherever your practice stores client files.
         </p>
 
-        {/* Bubble map */}
         <div className="relative mt-12 mx-auto w-full max-w-lg" style={{ aspectRatio: '1 / 0.8' }}>
           {bubbles.map((b, i) => (
-            /* Outer: handles position + entrance scale/opacity (transition only) */
             <div
               key={b.name}
               className="absolute"
@@ -488,7 +435,6 @@ function IntegrationsSection() {
                 transition: `transform 0.5s var(--ease-spring) ${150 + i * 100}ms, opacity 0.4s ease ${150 + i * 100}ms`,
               }}
             >
-              {/* Inner: handles float animation (no transition, just animation) */}
               <div
                 className="group flex items-center justify-center rounded-full cursor-default w-full h-full"
                 title={b.name}
@@ -531,17 +477,17 @@ function CtaSection() {
     <section ref={ref} className="py-24 md:py-28 bg-navy-900">
       <div className={`max-w-2xl mx-auto px-6 text-center reveal-scale ${visible ? 'visible' : ''}`}>
         <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
-          Tax season doesn't have to mean late nights
+          Give your team the tool that pays for itself
         </h2>
         <p className="mt-4 text-base text-navy-300 max-w-lg mx-auto leading-relaxed">
-          Process your individual clients faster, with every number sourced and every summary ready for the ATO.
+          Process individual clients faster, with complete audit trails and zero manual data entry. Your team will thank you.
         </p>
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
             to="/canvas"
             className="focus-ring btn-press group inline-flex items-center px-6 py-3 text-sm font-semibold bg-green-500 text-white rounded-md hover:bg-green-600 cursor-pointer"
           >
-            Open Canvas
+            Try it free
             <svg className="ml-2 w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
             </svg>
@@ -558,7 +504,7 @@ function CtaSection() {
   );
 }
 
-/* ─── Page ──────────────────────────────────────────────────────────────── */
+/* ---- Page --------------------------------------------------------------- */
 
 export function LandingPage() {
   return (
@@ -566,10 +512,9 @@ export function LandingPage() {
       <SEO />
       <SoftwareAppJsonLd />
 
-      {/* ── Hero ─────────────────────────────────────────────────────── */}
+      {/* Hero - targets the boss with outcome-driven messaging */}
       <section className="relative overflow-hidden">
         <div className="max-w-6xl mx-auto px-6 pt-20 pb-16 md:pt-28 md:pb-20">
-          {/* Text */}
           <div className="hero-stagger max-w-3xl mx-auto text-center">
             <div>
               <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/8 border border-green-500/15">
@@ -581,93 +526,93 @@ export function LandingPage() {
             </div>
 
             <h1 className="mt-8 text-4xl md:text-5xl lg:text-[3.5rem] font-bold tracking-tight text-navy-900 leading-[1.08]">
-              Every number traced{' '}
+              Your team processes returns{' '}
               <br className="hidden sm:block" />
-              back to its{' '}
               <span className="relative inline-block">
-                <span className="bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
-                  source document
+                <span className="bg-gradient-to-r from-green-500 to-green-600 bg-clip-text text-transparent">
+                  3x faster
                 </span>
                 <svg className="absolute -bottom-1.5 left-0 w-full h-[3px]" viewBox="0 0 200 4" preserveAspectRatio="none">
                   <line x1="0" y1="2" x2="200" y2="2" stroke="url(#cg)" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="200" strokeDashoffset="200" className="underline-draw" />
                   <defs>
                     <linearGradient id="cg" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#2563eb" stopOpacity="0.4" />
-                      <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0.4" />
+                      <stop offset="0%" stopColor="#059669" stopOpacity="0.4" />
+                      <stop offset="100%" stopColor="#047857" stopOpacity="0.4" />
                     </linearGradient>
                   </defs>
                 </svg>
               </span>
+              {' '}with full audit trails
             </h1>
 
             <p className="mt-6 text-lg md:text-xl text-navy-500 leading-relaxed max-w-2xl mx-auto">
-              Upload your clients' documents — rental statements, receipts, loan summaries — and get an audit-ready summary in minutes. No manual keying, no black boxes.
+              Stop losing hours to manual data entry. Paperbridge extracts, links, and summarises your clients' documents automatically - so your team focuses on advice, not admin.
             </p>
 
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Link
                 to="/canvas"
-                className="focus-ring btn-press group inline-flex items-center px-6 py-3 text-sm font-semibold bg-navy-900 text-white rounded-md hover:bg-navy-800 cursor-pointer"
+                className="focus-ring btn-press group inline-flex items-center px-7 py-3.5 text-sm font-semibold bg-navy-900 text-white rounded-md hover:bg-navy-800 cursor-pointer"
               >
-                Try the Canvas
+                Try it free
                 <svg className="ml-2 w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                 </svg>
               </Link>
               <Link
                 to="/blog"
-                className="focus-ring btn-press inline-flex items-center px-6 py-3 text-sm font-semibold text-navy-600 rounded-md border border-navy-200 hover:border-navy-300 hover:bg-navy-50 cursor-pointer"
+                className="focus-ring btn-press inline-flex items-center px-7 py-3.5 text-sm font-semibold text-navy-600 rounded-md border border-navy-200 hover:border-navy-300 hover:bg-navy-50 cursor-pointer"
               >
-                Read the blog
+                See how it works
               </Link>
             </div>
 
-            {/* Trust signals */}
+            {/* Trust signals - efficiency focused */}
             <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-navy-400">
-              <span className="flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                </svg>
-                Individual &amp; rental returns
-              </span>
-              <span className="text-navy-200">&middot;</span>
-              <span className="flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                </svg>
-                ATO audit-ready output
-              </span>
-              <span className="text-navy-200">&middot;</span>
               <span className="flex items-center gap-1.5">
                 <svg className="w-3.5 h-3.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 Minutes, not hours
               </span>
+              <span className="text-navy-200">&middot;</span>
+              <span className="flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+                </svg>
+                Complete audit trail
+              </span>
+              <span className="text-navy-200">&middot;</span>
+              <span className="flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                </svg>
+                Built for teams
+              </span>
             </div>
           </div>
-
-          {/* Canvas illustration */}
-          <HeroCanvas />
         </div>
       </section>
 
-      {/* ── Divider ─────────────────────────────────────────────────── */}
-      <div className="h-px bg-navy-100" />
+      {/* Stats bar - Breezeway-style quantified outcomes */}
+      <StatsBar />
 
-      {/* ── What Paperbridge replaces ────────────────────────────────── */}
+      {/* Three pillars - boss-targeted value props */}
+      <PillarsSection />
+
+      {/* Before & after */}
       <ComparisonSection comparisons={comparisons} />
 
-      {/* ── Features ─────────────────────────────────────────────────── */}
+      {/* Detailed features */}
       <FeaturesSection features={features} />
 
-      {/* ── How It Works ─────────────────────────────────────────────── */}
-      <StepsSection steps={steps} />
+      {/* How it works */}
+      <HowItWorksSection />
 
-      {/* ── Integrations ────────────────────────────────────────────── */}
+      {/* Integrations */}
       <IntegrationsSection />
 
-      {/* ── CTA ──────────────────────────────────────────────────────── */}
+      {/* CTA */}
       <CtaSection />
     </>
   );
