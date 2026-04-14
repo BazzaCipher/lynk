@@ -240,9 +240,36 @@ export async function askAI(
   if (opts.stream && opts.onChunk) {
     const result = await callAiStream(request, opts.onChunk, opts.onToolCall);
 
-    // If there were tool calls, fall back to non-streaming loop for tool execution
+    // If there were tool calls, execute them and continue the loop from where we left off
     if (result.toolCalls?.length) {
-      return callAi(request, opts.onToolCall);
+      const toolResults = await Promise.all(
+        result.toolCalls.map(async (tc) => {
+          opts.onToolCall?.(tc.name);
+          return executeToolCall(tc.id, tc.name, tc.arguments);
+        })
+      );
+
+      const continuedMessages: AiMessage[] = [
+        ...request.messages,
+        {
+          role: 'assistant' as const,
+          content: result.text,
+          toolCalls: result.toolCalls,
+        },
+        {
+          role: 'tool_result' as const,
+          content: '',
+          toolResults: toolResults.map((tr) => ({
+            toolCallId: tr.toolCallId,
+            content: tr.content.map((c) => ({
+              type: c.type,
+              ...(c.type === 'text' ? { text: c.text } : { mimeType: c.mimeType, base64: c.base64 }),
+            })),
+          })),
+        },
+      ];
+
+      return callAi({ ...request, messages: continuedMessages }, opts.onToolCall);
     }
 
     return result.text;

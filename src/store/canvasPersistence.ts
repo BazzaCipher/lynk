@@ -34,7 +34,9 @@ export interface VirtualFolder {
 }
 
 async function computeHash(blob: Blob): Promise<string> {
-  const buffer = await blob.arrayBuffer();
+  const rawBuffer = await blob.arrayBuffer();
+  // Ensure we have a proper ArrayBuffer (jsdom may return a Node Buffer)
+  const buffer = rawBuffer instanceof ArrayBuffer ? rawBuffer : new Uint8Array(rawBuffer as ArrayBufferLike).buffer;
   // crypto.subtle is only available in secure contexts (HTTPS/localhost)
   if (crypto.subtle) {
     const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
