@@ -10,6 +10,12 @@ function extractJsonArray<T = unknown>(content: string): T[] {
   try {
     const parsed = JSON.parse(content.trim());
     if (Array.isArray(parsed)) return parsed;
+    // Some models wrap in an object like { "fields": [...] }
+    if (parsed && typeof parsed === 'object') {
+      const values = Object.values(parsed);
+      const arr = values.find((v) => Array.isArray(v));
+      if (arr) return arr as T[];
+    }
   } catch { /* fall through */ }
 
   // Try extracting from a markdown code block: ```json\n[...]\n```
@@ -18,6 +24,11 @@ function extractJsonArray<T = unknown>(content: string): T[] {
     try {
       const parsed = JSON.parse(fenceMatch[1].trim());
       if (Array.isArray(parsed)) return parsed;
+      if (parsed && typeof parsed === 'object') {
+        const values = Object.values(parsed);
+        const arr = values.find((v) => Array.isArray(v));
+        if (arr) return arr as T[];
+      }
     } catch { /* fall through */ }
   }
 
@@ -25,11 +36,13 @@ function extractJsonArray<T = unknown>(content: string): T[] {
   const start = content.indexOf('[');
   const end = content.lastIndexOf(']');
   if (start !== -1 && end > start) {
-    const parsed = JSON.parse(content.slice(start, end + 1));
-    if (Array.isArray(parsed)) return parsed;
+    try {
+      const parsed = JSON.parse(content.slice(start, end + 1));
+      if (Array.isArray(parsed)) return parsed;
+    } catch { /* fall through */ }
   }
 
-  throw new Error('No JSON array found in response');
+  throw new Error(`No JSON array found in response (length=${content.length}, preview=${content.slice(0, 200)})`);
 }
 
 interface AiResponse {
@@ -203,8 +216,9 @@ export async function detectFieldsWithAI(
     const fields = extractJsonArray<AiDetectedField>(content);
     if (!Array.isArray(fields)) throw new Error('Expected array');
     return fields;
-  } catch {
-    throw new Error('Failed to parse AI response as field data');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to parse AI response as field data: ${msg}`);
   }
 }
 
