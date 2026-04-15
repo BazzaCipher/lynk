@@ -193,6 +193,8 @@ export interface DetectFieldsOptions {
   ocrWords?: OcrWord[];
   /** Raw OCR text (legacy fallback) */
   ocrText?: string;
+  /** User custom instructions to guide field detection */
+  customInstructions?: string;
 }
 
 export async function detectFieldsWithAI(
@@ -201,7 +203,7 @@ export async function detectFieldsWithAI(
   model: string,
   apiKey: string
 ): Promise<AiDetectedField[]> {
-  const { images, ocrWords, ocrText } = options;
+  const { images, ocrWords, ocrText, customInstructions } = options;
 
   let userContent = 'Detect all fields in this document. Be thorough — extract every field you can identify, including table rows as separate line items.';
   if (ocrWords?.length) {
@@ -222,6 +224,7 @@ export async function detectFieldsWithAI(
     ocrText: !images?.length ? ocrText : undefined,
     messages: [{ role: 'user', content: userContent }],
     images: images,
+    customInstructions,
   });
 
   try {
@@ -238,6 +241,8 @@ export interface AskAIOptions {
   onChunk?: (text: string) => void;
   onToolCall?: (toolName: string) => void;
   stream?: boolean;
+  /** User custom instructions to guide AI behavior */
+  customInstructions?: string;
 }
 
 export async function askAI(
@@ -261,6 +266,7 @@ export async function askAI(
     mode: 'freeform',
     ocrText,
     messages: [...history, { role: 'user', content: question }],
+    customInstructions: opts.customInstructions,
   };
 
   if (opts.stream && opts.onChunk) {

@@ -28,8 +28,9 @@ import { EmptyState } from './EmptyState';
 import { SuggestionBar } from './SuggestionBar';
 import { useToast } from '../ui/Toast';
 import { AiPromptPanel } from '../ai/AiPromptPanel';
-import type { AiConnectionSuggestion } from '../../types/ai';
+import type { AiConnectionSuggestion, AiDetectedField } from '../../types/ai';
 import type { ExtractorNodeData } from '../../types/nodes';
+import { createRegionFromDetectedField } from '../../utils/regions';
 import { validateConnection } from '../../core/engine/connectionValidation';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useMagneticConnect } from '../../hooks/useMagneticConnect';
@@ -311,8 +312,37 @@ export function LynkCanvas() {
     [edges, nodes, storeAddEdge, showToast]
   );
 
+  const handleFieldsDetected = useCallback(
+    (fields: AiDetectedField[]) => {
+      const { nodes: currentNodes, updateNodeData, pushHistory } = useCanvasStore.getState();
+      const extractorNodes = currentNodes.filter((n) => n.type === 'extractor');
+      if (extractorNodes.length === 0 || fields.length === 0) return;
+
+      pushHistory();
+
+      for (const extractorNode of extractorNodes) {
+        const data = extractorNode.data as ExtractorNodeData;
+        const newRegions = fields
+          .filter((f) => f.bbox)
+          .map((f, i) => createRegionFromDetectedField(f, 1, data.regions.length + i));
+        if (newRegions.length > 0) {
+          updateNodeData(extractorNode.id, { regions: [...data.regions, ...newRegions] });
+        }
+      }
+      const count = fields.filter((f) => f.bbox).length;
+      if (count > 0) showToast(`Applied ${count} detected field(s)`, 'success');
+    },
+    [showToast]
+  );
+
   const handleConnectionsSuggested = useCallback(
     (suggestions: AiConnectionSuggestion[]) => {
+      const { pushHistory } = useCanvasStore.getState();
+      const hasValid = suggestions.some((s) =>
+        nodes.find((n) => n.id === s.sourceNodeId) && nodes.find((n) => n.id === s.targetNodeId)
+      );
+      if (hasValid) pushHistory();
+
       let connected = 0;
       for (const s of suggestions) {
         const sourceNode = nodes.find((n) => n.id === s.sourceNodeId);
@@ -625,6 +655,7 @@ export function LynkCanvas() {
         {aiPanelOpen && (
           <AiPromptPanel
             context="canvas"
+            onFieldsDetected={handleFieldsDetected}
             onConnectionsSuggested={handleConnectionsSuggested}
             docked
           />
@@ -632,7 +663,7 @@ export function LynkCanvas() {
       </div>
     ) : createPortal(
       <div className="fixed bottom-4 right-4 z-[60]">
-        <AiPromptPanel context="canvas" onConnectionsSuggested={handleConnectionsSuggested} />
+        <AiPromptPanel context="canvas" onFieldsDetected={handleFieldsDetected} onConnectionsSuggested={handleConnectionsSuggested} />
       </div>,
       document.body
     )}

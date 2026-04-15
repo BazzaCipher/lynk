@@ -11,6 +11,7 @@ interface AiSettingsModalProps {
 
 export function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
   const {
+    settings,
     getProviderConfig,
     setApiKey,
     setVerified,
@@ -18,6 +19,7 @@ export function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
     setActiveProvider,
     activeProvider,
     removeProvider,
+    setCustomInstructions,
   } = useAiSettings();
 
   const [verifying, setVerifying] = useState<ProviderId | null>(null);
@@ -185,6 +187,23 @@ export function AiSettingsModal({ isOpen, onClose }: AiSettingsModalProps) {
             </div>
           );
         })}
+
+        {/* Custom Instructions */}
+        <div className="border border-paper-200 rounded-lg p-3">
+          <label className="block text-sm font-medium text-bridge-900 mb-1.5">
+            Custom Instructions
+          </label>
+          <p className="text-xs text-bridge-400 mb-2">
+            Tell the AI what to focus on, how to label fields, or any preferences. This is included in every AI request.
+          </p>
+          <textarea
+            value={settings.customInstructions ?? ''}
+            onChange={(e) => setCustomInstructions(e.target.value)}
+            placeholder="e.g. Focus on invoice totals and line items. Label currency fields in USD. Ignore headers and footers."
+            rows={4}
+            className="w-full px-2.5 py-1.5 text-xs border border-paper-200 rounded-md bg-white text-bridge-900 placeholder:text-bridge-400 focus:outline-none focus:ring-1 focus:ring-copper-400 resize-y"
+          />
+        </div>
 
         <p className="text-xs text-bridge-400">
           API keys are stored locally in your browser and sent directly to the provider.

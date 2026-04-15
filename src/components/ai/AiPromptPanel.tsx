@@ -132,7 +132,7 @@ export function AiPromptPanel({
   onConnectionsSuggested,
   docked = false,
 }: AiPromptPanelProps) {
-  const { activeProvider, activeConfig, enabledProviders } = useAiSettings();
+  const { settings, activeProvider, activeConfig, enabledProviders } = useAiSettings();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [response, setResponse] = useState<string | null>(null);
@@ -193,6 +193,7 @@ export function AiPromptPanel({
             });
           },
           onToolCall: (toolName) => setActiveToolCall(toolName),
+          customInstructions: settings.customInstructions,
         }
       );
       setActiveToolCall(null);
@@ -207,7 +208,7 @@ export function AiPromptPanel({
     } finally {
       setIsLoading(false);
     }
-  }, [input, activeProvider, activeConfig, messages, ocrText]);
+  }, [input, activeProvider, activeConfig, messages, ocrText, settings.customInstructions]);
 
   const handleDetectFields = useCallback(async () => {
     if (context === 'canvas') {
@@ -245,7 +246,7 @@ export function AiPromptPanel({
         // Process small images: send all together to vision model
         if (smallImages.length > 0) {
           const visionFields = await detectFieldsWithAI(
-            { images: smallImages.map((img) => ({ mimeType: img.mimeType, base64: img.base64 })) },
+            { images: smallImages.map((img) => ({ mimeType: img.mimeType, base64: img.base64 })), customInstructions: settings.customInstructions },
             activeProvider.id,
             activeConfig.selectedModel,
             activeConfig.apiKey
@@ -282,7 +283,7 @@ export function AiPromptPanel({
           }
 
           const ocrFields = await detectFieldsWithAI(
-            { ocrWords: allOcrWords, ocrText: allOcrTexts.join('\n\n---\n\n') },
+            { ocrWords: allOcrWords, ocrText: allOcrTexts.join('\n\n---\n\n'), customInstructions: settings.customInstructions },
             activeProvider.id,
             activeConfig.selectedModel,
             activeConfig.apiKey
@@ -310,7 +311,7 @@ export function AiPromptPanel({
 
     try {
       const fields = await detectFieldsWithAI(
-        { ocrText },
+        { ocrText, customInstructions: settings.customInstructions },
         activeProvider.id,
         activeConfig.selectedModel,
         activeConfig.apiKey
@@ -321,7 +322,7 @@ export function AiPromptPanel({
     } finally {
       setIsDetecting(false);
     }
-  }, [context, ocrText, activeProvider, activeConfig, onFieldsDetected, onCanvasDetect]);
+  }, [context, ocrText, activeProvider, activeConfig, onFieldsDetected, onCanvasDetect, settings.customInstructions]);
 
   const handleAutoConnect = useCallback(async () => {
     if (!activeProvider || !activeConfig) return;
@@ -444,7 +445,14 @@ const handleKeyDown = (e: React.KeyboardEvent) => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    {activeToolCall ? `Using ${activeToolCall}...` : 'Thinking...'}
+                    {activeToolCall ? ({
+                      get_file_content: 'Reading document...',
+                      get_canvas_graph: 'Scanning canvas...',
+                      get_node_details: 'Inspecting node...',
+                      get_file_list: 'Listing files...',
+                      suggest_connection: 'Creating connection...',
+                      create_region: 'Defining field...',
+                    } as Record<string, string>)[activeToolCall] ?? `Running ${activeToolCall}...` : 'Thinking...'}
                   </div>
                 )}
                 <div ref={messagesEndRef} />
