@@ -35,6 +35,7 @@ interface AiSettingsStore {
   setSelectedModel: (id: ProviderId, model: string) => void;
   setActiveProvider: (id: ProviderId) => void;
   removeProvider: (id: ProviderId) => void;
+  setCustomInstructions: (text: string) => void;
 }
 
 function deriveFromSettings(settings: AiSettings) {
@@ -120,5 +121,8 @@ export const useAiSettings = create<AiSettingsStore>((set, get) => {
           activeProvider: prev.activeProvider === id ? null : prev.activeProvider,
         };
       }),
+
+    setCustomInstructions: (text: string) =>
+      update(set, (prev) => ({ ...prev, customInstructions: text || undefined })),
   };
 });

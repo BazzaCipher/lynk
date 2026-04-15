@@ -1,4 +1,5 @@
 import type { ExtractedRegion, RegionCoordinates, TextRange, SimpleDataType } from '../types';
+import type { AiDetectedField } from '../types/ai';
 import { getColorForType } from './colors';
 import { generateId } from './id';
 import { detectDataType, parseDateString } from './formatting';
@@ -59,5 +60,25 @@ export function createRegionFromText(
     extractedData: { type: detectedType, value },
     dataType: detectedType,
     color: getColorForType(detectedType).border,
+  };
+}
+
+/**
+ * Create an ExtractedRegion from an AI-detected field.
+ */
+export function createRegionFromDetectedField(
+  field: AiDetectedField,
+  pageNumber: number,
+  existingCount: number
+): ExtractedRegion {
+  const dataType = (field.dataType as SimpleDataType) ?? 'string';
+  const coords = field.bbox ?? { x: 0, y: 0, width: 100, height: 20 };
+  const base = createRegionFromBox(coords, pageNumber, existingCount);
+  return {
+    ...base,
+    label: field.label || field.text || base.label,
+    dataType,
+    color: getColorForType(dataType).border,
+    extractedData: { type: dataType, value: field.text },
   };
 }

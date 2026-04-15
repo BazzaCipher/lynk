@@ -48,6 +48,7 @@ interface ChatRequestBody {
   images?: Array<{ mimeType: string; base64: string }>;
   tools?: string[];
   stream?: boolean;
+  customInstructions?: string;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -335,7 +336,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     auto_connect: AUTO_CONNECT_SYSTEM_PROMPT,
     summarise: SUMMARISE_SYSTEM_PROMPT,
   };
-  const system = systemPromptMap[mode] ?? FREEFORM_SYSTEM_PROMPT;
+  let system = systemPromptMap[mode] ?? FREEFORM_SYSTEM_PROMPT;
+  if (body.customInstructions?.trim()) {
+    system += `\n\n## User Instructions\n${body.customInstructions.trim()}`;
+  }
 
   // Build context string
   let contextBlock = '';

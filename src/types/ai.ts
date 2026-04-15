@@ -24,6 +24,8 @@ export interface AiProviderConfig {
 export interface AiSettings {
   providers: Partial<Record<ProviderId, AiProviderConfig>>;
   activeProvider: ProviderId | null;
+  /** User-written instructions the AI assistant should follow (markdown) */
+  customInstructions?: string;
 }
 
 export interface AiContentPart {
@@ -64,6 +66,8 @@ export interface AiChatRequest {
   images?: Array<{ mimeType: string; base64: string }>;
   /** Tool names to enable for this request */
   tools?: string[];
+  /** User-written custom instructions to append to system prompt */
+  customInstructions?: string;
 }
 
 /** Describes a node and its fields for AI auto-connect */
