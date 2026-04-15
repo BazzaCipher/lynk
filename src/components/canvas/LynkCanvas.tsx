@@ -34,6 +34,7 @@ import { validateConnection } from '../../core/engine/connectionValidation';
 import { useKeyboardShortcuts } from '../../hooks/useKeyboardShortcuts';
 import { useMagneticConnect } from '../../hooks/useMagneticConnect';
 import { useCanvasDrop } from '../../hooks/useCanvasDrop';
+import { DuplicateFilesDialog } from './DuplicateFilesDialog';
 import type { LynkNode, DisplayNodeData, ViewportRegion } from '../../types';
 import { useProjectSessions } from '../../hooks/useProjectSessions';
 import { DisplayNode, GroupNode } from '../../types';
@@ -362,7 +363,7 @@ export function LynkCanvas() {
     [nodes, storeAddEdge, showToast]
   );
 
-  const { handleCanvasDragOver, handleCanvasDrop, handleCanvasPaste } = useCanvasDrop();
+  const { handleCanvasDragOver, handleCanvasDrop, handleCanvasPaste, pendingDrop, resolveDuplicates } = useCanvasDrop();
 
   // Long-press to open create menu on mobile (500ms hold on empty canvas)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -636,6 +637,12 @@ export function LynkCanvas() {
       </div>,
       document.body
     )}
+    <DuplicateFilesDialog
+      isOpen={pendingDrop !== null}
+      duplicates={pendingDrop?.duplicates ?? []}
+      newFiles={pendingDrop?.newFiles ?? []}
+      onResolve={resolveDuplicates}
+    />
     </div>
   );
 }

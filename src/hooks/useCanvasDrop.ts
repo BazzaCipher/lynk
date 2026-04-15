@@ -1,15 +1,23 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useReactFlow } from '@xyflow/react';
 import { useCanvasStore } from '../store/canvasStore';
 import { useToast } from '../components/ui/Toast';
 import { useFileUpload, type FileUploadResult } from './useFileUpload';
 import { BlobRegistry } from '../store/canvasPersistence';
+import type { DuplicateResolution } from '../components/canvas/DuplicateFilesDialog';
+
+interface PendingDrop {
+  duplicates: FileUploadResult[];
+  newFiles: FileUploadResult[];
+  position: { x: number; y: number };
+}
 
 export function useCanvasDrop() {
   const addNode = useCanvasStore((state) => state.addNode);
   const pushHistory = useCanvasStore((state) => state.pushHistory);
   const { showToast } = useToast();
   const { screenToFlowPosition } = useReactFlow();
+  const [pendingDrop, setPendingDrop] = useState<PendingDrop | null>(null);
 
   const { processFile, processDataTransferItems, handleClipboardPaste } = useFileUpload({
     onFileRegistered: () => {},
@@ -46,6 +54,45 @@ export function useCanvasDrop() {
       showToast(`Created ${results.length} extractor node(s)`, 'success');
     },
     [addNode, pushHistory, showToast]
+  );
+
+  const handleDropResults = useCallback(
+    (results: FileUploadResult[], position: { x: number; y: number }) => {
+      if (results.length === 0) {
+        showToast('No valid files (PDF or images only)', 'warning');
+        return;
+      }
+
+      const duplicates = results.filter((r) => r.isDuplicate);
+      const newFiles = results.filter((r) => !r.isDuplicate);
+
+      if (duplicates.length > 0) {
+        setPendingDrop({ duplicates, newFiles, position });
+      } else {
+        createNodesFromResults(results, position);
+      }
+    },
+    [createNodesFromResults, showToast]
+  );
+
+  const resolveDuplicates = useCallback(
+    (resolution: DuplicateResolution) => {
+      if (!pendingDrop) return;
+      const { duplicates, newFiles, position } = pendingDrop;
+
+      const toInsert = resolution === 'insert-all'
+        ? [...newFiles, ...duplicates]
+        : newFiles;
+
+      setPendingDrop(null);
+
+      if (toInsert.length > 0) {
+        createNodesFromResults(toInsert, position);
+      } else {
+        showToast('No new files to insert', 'info');
+      }
+    },
+    [pendingDrop, createNodesFromResults, showToast]
   );
 
   const handleCanvasDragOver = useCallback((event: React.DragEvent) => {
@@ -87,7 +134,7 @@ export function useCanvasDrop() {
       if (event.dataTransfer.items && event.dataTransfer.items.length > 0) {
         const results = await processDataTransferItems(event.dataTransfer.items);
         if (results.length > 0) {
-          createNodesFromResults(results, dropPosition);
+          handleDropResults(results, dropPosition);
           return;
         }
       }
@@ -100,14 +147,9 @@ export function useCanvasDrop() {
       const processed = await Promise.all(promises);
       const results = processed.filter((r): r is NonNullable<typeof r> => r !== null);
 
-      if (results.length === 0) {
-        showToast('No valid files (PDF or images only)', 'warning');
-        return;
-      }
-
-      createNodesFromResults(results, dropPosition);
+      handleDropResults(results, dropPosition);
     },
-    [screenToFlowPosition, processFile, processDataTransferItems, createNodesFromResults, showToast]
+    [screenToFlowPosition, processFile, processDataTransferItems, handleDropResults, showToast, pushHistory, addNode]
   );
 
   const handleCanvasPaste = useCallback(
@@ -120,10 +162,16 @@ export function useCanvasDrop() {
         y: window.innerHeight / 2,
       });
 
-      createNodesFromResults(results, center);
+      handleDropResults(results, center);
     },
-    [handleClipboardPaste, screenToFlowPosition, createNodesFromResults]
+    [handleClipboardPaste, screenToFlowPosition, handleDropResults]
   );
 
-  return { handleCanvasDragOver, handleCanvasDrop, handleCanvasPaste };
+  return {
+    handleCanvasDragOver,
+    handleCanvasDrop,
+    handleCanvasPaste,
+    pendingDrop,
+    resolveDuplicates,
+  };
 }
