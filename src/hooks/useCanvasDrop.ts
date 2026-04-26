@@ -37,6 +37,7 @@ export function useCanvasDrop() {
           currentPage: 1,
           totalPages: 1,
           regions: [],
+          compressed: true,
         });
 
         BlobRegistry.addNodeReference(result.fileId, nodeId);
@@ -75,6 +76,7 @@ export function useCanvasDrop() {
             currentPage: 1,
             totalPages: 1,
             regions: [],
+            compressed: true,
           });
           BlobRegistry.addNodeReference(meta.fileId, nodeId);
           useCanvasStore.getState().refreshFileRegistry();

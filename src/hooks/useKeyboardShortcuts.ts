@@ -18,6 +18,7 @@ export function useKeyboardShortcuts(): void {
   const removeSelectedNodes = useCanvasStore((state) => state.removeSelectedNodes);
   const removeSelectedEdges = useCanvasStore((state) => state.removeSelectedEdges);
   const clearSelection = useCanvasStore((state) => state.clearSelection);
+  const setFocusedGroup = useCanvasStore((state) => state.setFocusedGroup);
   const saveToFile = useCanvasStore((state) => state.saveToFile);
   const createGroup = useCanvasStore((state) => state.createGroup);
   const ungroupNodes = useCanvasStore((state) => state.ungroupNodes);
@@ -36,10 +37,14 @@ export function useKeyboardShortcuts(): void {
 
       const isMod = event.ctrlKey || event.metaKey;
 
-      // Escape - clear selection
+      // Escape - exit focus mode if active, else clear selection
       if (event.key === 'Escape') {
         event.preventDefault();
-        clearSelection();
+        if (useCanvasStore.getState().focusedGroupId) {
+          setFocusedGroup(null);
+        } else {
+          clearSelection();
+        }
       }
 
       // Delete/Backspace - delete selected nodes and edges
@@ -131,6 +136,7 @@ export function useKeyboardShortcuts(): void {
     removeSelectedNodes,
     removeSelectedEdges,
     clearSelection,
+    setFocusedGroup,
     saveToFile,
     createGroup,
     ungroupNodes,

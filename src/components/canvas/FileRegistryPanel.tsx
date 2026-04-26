@@ -715,6 +715,7 @@ export function FileRegistryPanel() {
         currentPage: 1,
         totalPages: 1,
         regions: [],
+        compressed: true,
       });
 
       BlobRegistry.addNodeReference(meta.fileId, nodeId);

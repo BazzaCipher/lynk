@@ -35,7 +35,7 @@ export function useProjectSessions() {
   const loadFromFile = useCanvasStore((state) => state.loadFromFile);
   const { showToast } = useToast();
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [focusNameInput, setFocusNameInput] = useState(false);
 
   const [projects, setProjects] = useState<SessionProject[]>(() => [{

@@ -31,7 +31,7 @@ export interface TextRange {
 }
 
 /** Selection mode types */
-export type SelectionType = 'box' | 'text';
+export type SelectionType = 'box' | 'text' | 'manual';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // DATA PROVENANCE

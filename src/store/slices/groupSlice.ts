@@ -103,9 +103,10 @@ export const createGroupSlice: StateCreator<GroupSlice> = (set, get) => ({
   },
 
   ungroupNodes: (groupId) => {
-    const { nodes } = get();
+    const { nodes, focusedGroupId } = get();
     const groupNode = nodes.find((n) => n.id === groupId && GroupNode.is(n));
     if (!groupNode) return;
+    if (focusedGroupId === groupId) set({ focusedGroupId: null });
 
     const { position: groupPosition } = groupNode;
 
@@ -137,11 +138,14 @@ export const createGroupSlice: StateCreator<GroupSlice> = (set, get) => ({
   },
 
   removeSelectedNodes: () => {
-    const { nodes, edges } = get();
+    const { nodes, edges, focusedGroupId } = get();
     const selectedIds = new Set(
       nodes.filter((n) => n.selected).map((n) => n.id)
     );
     const allIdsToRemove = collectWithChildren(selectedIds, nodes);
+    if (focusedGroupId && allIdsToRemove.has(focusedGroupId)) {
+      set({ focusedGroupId: null });
+    }
 
     // Clean up file references before removing nodes
     for (const nodeId of allIdsToRemove) {

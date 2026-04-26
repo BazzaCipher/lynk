@@ -34,6 +34,7 @@ export interface CoreSlice {
   edges: Edge[];
   viewport: Viewport;
   highlightedHandle: string | null;
+  focusedGroupId: string | null;
 
   onNodesChange: (changes: NodeChange<LynkNode>[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
@@ -53,6 +54,7 @@ export interface CoreSlice {
 
   setViewport: (viewport: Viewport) => void;
   setHighlightedHandle: (handle: string | null) => void;
+  setFocusedGroup: (id: string | null) => void;
 
   updateViewportRegion: (nodeId: string, viewportId: string, updates: Partial<ViewportRegion>) => void;
 }
@@ -107,6 +109,7 @@ export const createCoreSlice: StateCreator<CoreSlice> = (set, get) => ({
   edges: [],
   viewport: { x: 0, y: 0, zoom: 1 },
   highlightedHandle: null,
+  focusedGroupId: null,
 
   onNodesChange: (changes) => {
     const nodes = get().nodes;
@@ -150,6 +153,7 @@ export const createCoreSlice: StateCreator<CoreSlice> = (set, get) => ({
     set({
       nodes: get().nodes.filter((n) => n.id !== nodeId),
       edges: get().edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
+      ...(get().focusedGroupId === nodeId ? { focusedGroupId: null } : {}),
     });
   },
 
@@ -180,6 +184,14 @@ export const createCoreSlice: StateCreator<CoreSlice> = (set, get) => ({
       console.warn(`Edge from ${edge.source} to ${edge.target} would create a cycle`);
       return false;
     }
+    const isDuplicate = edges.some(
+      (e) =>
+        e.source === edge.source &&
+        e.target === edge.target &&
+        (e.sourceHandle ?? null) === (edge.sourceHandle ?? null) &&
+        (e.targetHandle ?? null) === (edge.targetHandle ?? null),
+    );
+    if (isDuplicate) return false;
     set({ edges: [...edges, edge] });
     return true;
   },
@@ -209,6 +221,7 @@ export const createCoreSlice: StateCreator<CoreSlice> = (set, get) => ({
 
   setViewport: (viewport) => set({ viewport }),
   setHighlightedHandle: (handle) => set({ highlightedHandle: handle }),
+  setFocusedGroup: (id) => set({ focusedGroupId: id }),
 
   updateViewportRegion: (nodeId, viewportId, updates) => {
     const { nodes } = get();
